@@ -1,0 +1,12 @@
+@page "/staff"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.RoomService RoomService
+
+<h3>Staff Dashboard</h3>
+<p>Welcome staff. You can manage rooms (book only) and view dashboards. Employee management hidden.</p>
+<a href="/admin/rooms">Go to Rooms</a>
+<button @onclick="Logout">Logout</button>
+
+@code {
+ void Logout()=> Navigation.NavigateTo("/");
+}

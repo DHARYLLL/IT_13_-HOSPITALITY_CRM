@@ -1,0 +1,146 @@
+﻿@page "/signup"
+@layout EmptyLayout
+@inject NavigationManager Navigation
+@inject Hospitality.Services.UserService UserService
+
+<link rel="stylesheet" href="css/login.css" />
+<link rel="stylesheet" href="css/signup.css" />
+
+<div class="login-page minimal">
+	<div class="login-container signup-container">
+		<div class="login-left simple">
+			<div class="logo-container">
+				<img src="images/InnSight.png" alt="InnSight Logo" class="innsight-logo" />
+			</div>
+			<h1 class="welcome-text">Join Us</h1>
+			<p class="welcome-subtitle">Create your account</p>
+		</div>
+
+		<div class="login-right signup-right-noscroll">
+			<div class="login-form signup-form-compact">
+				<h2 class="login-title">Create Account</h2>
+
+				@if (!string.IsNullOrEmpty(errorMessage))
+				{
+					<div class="error-message"><span>⚠️</span> @errorMessage</div>
+				}
+
+				<div class="form-section-compact">
+					<div class="form-row">
+						<div class="form-group form-group-half">
+							<div class="input-wrapper">
+								<span class="input-icon">👤</span>
+								<input type="text" class="form-input" placeholder="First Name *" @bind="firstName" />
+							</div>
+						</div>
+						<div class="form-group form-group-half">
+							<div class="input-wrapper">
+								<span class="input-icon">👤</span>
+								<input type="text" class="form-input" placeholder="Last Name *" @bind="lastName" />
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="input-wrapper">
+							<span class="input-icon">👤</span>
+							<input type="text" class="form-input" placeholder="Middle Name" @bind="middleName" />
+						</div>
+					</div>
+					<div class="form-row">
+						<div class="form-group form-group-half">
+							<div class="input-wrapper">
+								<span class="input-icon">📅</span>
+								<input type="date" class="form-input" @bind="birthDate" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+							</div>
+						</div>
+						<div class="form-group form-group-half">
+							<div class="input-wrapper">
+								<span class="input-icon">📱</span>
+								<input type="tel" class="form-input" placeholder="Contact Number" @bind="contactNumber" />
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="input-wrapper">
+							<span class="input-icon">📧</span>
+							<input type="email" class="form-input" placeholder="Email *" @bind="email" />
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="input-wrapper @(passwordsMatch ? "input-valid" : confirmPassword.Length >0 ? "input-invalid" : "")">
+							<span class="input-icon">🔒</span>
+							<input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Password *" @bind="password" />
+							<button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">@(showPassword ? "👁️" : "👁️‍🗨️")</button>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="input-wrapper @(passwordsMatch ? "input-valid" : confirmPassword.Length >0 ? "input-invalid" : "")">
+							<span class="input-icon">🔒</span>
+							<input type="@(showConfirmPassword ? "text" : "password")" class="form-input" placeholder="Confirm Password *" @bind="confirmPassword" />
+							<button type="button" class="toggle-password" @onclick="ToggleConfirmPasswordVisibility">@(showConfirmPassword ? "👁️" : "👁️‍🗨️")</button>
+						</div>
+						@if (confirmPassword.Length >0 && passwordsMatch)
+						{
+							<span class="validation-message success">Match</span>
+						}
+					</div>
+				</div>
+
+				<button class="btn-login btn-signup-primary" @onclick="HandleSignup" disabled="@(!IsFormValid())">Create Account</button>
+				<div class="divider"><span>Already have an account?</span></div>
+				<button class="btn-signup" @onclick="HandleLogin">Sign in</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	string firstName = "";
+	string middleName = "";
+	string lastName = "";
+	DateTime? birthDate = null;
+	string email = "";
+	string contactNumber = "";
+	string password = "";
+	string confirmPassword = "";
+	bool showPassword = false;
+	bool showConfirmPassword = false;
+	string errorMessage = "";
+
+	bool passwordsMatch => !string.IsNullOrEmpty(password) && password == confirmPassword;
+
+	void TogglePasswordVisibility() => showPassword = !showPassword;
+	void ToggleConfirmPasswordVisibility() => showConfirmPassword = !showConfirmPassword;
+
+	bool IsFormValid() => !string.IsNullOrWhiteSpace(firstName)
+		&& !string.IsNullOrWhiteSpace(lastName)
+		&& !string.IsNullOrWhiteSpace(email)
+		&& !string.IsNullOrWhiteSpace(password)
+		&& passwordsMatch;
+
+	async Task HandleSignup()
+	{
+		errorMessage = "";
+		if (!IsFormValid()) { errorMessage = "Please fill required fields."; return; }
+		if (await UserService.EmailExistsAsync(email)) { errorMessage = "Email already registered."; return; }
+		var roleId = await UserService.GetRoleIdByNameAsync("client") ??0; // auto client role
+		var user = new Hospitality.Models.User
+		{
+			role_id = roleId,
+			user_fname = firstName,
+			user_mname = string.IsNullOrWhiteSpace(middleName) ? null : System.Text.Encoding.UTF8.GetBytes(middleName),
+			user_lname = string.IsNullOrWhiteSpace(lastName) ? null : System.Text.Encoding.UTF8.GetBytes(lastName),
+			user_brith_date = birthDate,
+			user_email = email,
+			user_contact_number = contactNumber,
+			user_password = password,
+			roleName = "client"
+		};
+		var id = await UserService.RegisterAsync(user);
+		user.userId = id;
+		// redirect to profile (create route /client/profile?id=)
+		Navigation.NavigateTo($"/client/profile/{id}");
+	}
+
+	void HandleLogin() => Navigation.NavigateTo("/");
+}

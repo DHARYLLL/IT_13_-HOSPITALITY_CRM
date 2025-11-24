@@ -1,0 +1,291 @@
+@page "/client/profile/{id:int}"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.UserService UserService
+@inject Hospitality.Services.BookingService BookingService
+
+<link rel="stylesheet" href="css/clientprofile.css" />
+
+<div class="client-profile-page">
+	<!-- Sidebar -->
+	<aside class="profile-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/rooms" class="nav-item">
+				<span class="nav-icon">??</span>
+				<span>Room</span>
+			</a>
+			<a href="/client/profile/@id" class="nav-item active">
+				<span class="nav-icon">??</span>
+				<span>Guest</span>
+			</a>
+			<a href="/bookings" class="nav-item">
+				<span class="nav-icon">??</span>
+				<span>Bookings</span>
+			</a>
+		</nav>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="profile-main">
+		<header class="profile-header">
+			<h1 class="page-title">Guest Details</h1>
+			<div class="header-actions">
+				<div class="search-box">
+					<span>??</span>
+					<input type="text" placeholder="Search here" />
+				</div>
+				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span>??</button>
+				<button class="icon-btn" title="Messages"><span class="badge-dot">2</span>??</button>
+				<button class="icon-btn" title="Favorites">??</button>
+				<div class="profile-avatar">
+					<span>@GetInitials()</span>
+				</div>
+			</div>
+		</header>
+
+		@if (loading)
+		{
+			<div class="loading-container">
+				<p>Loading...</p>
+			</div>
+		}
+		else if (user == null)
+		{
+			<div class="error-container">
+				<p>User not found.</p>
+			</div>
+		}
+		else
+		{
+			<div class="profile-content">
+				<!-- Guest Information Card -->
+				<div class="guest-info-card">
+					<div class="guest-header">
+						<span class="guest-label">Guest / @user.user_fname @Decode(user.user_lname)</span>
+					</div>
+					<div class="guest-profile">
+						<div class="guest-avatar">
+							<span>@GetInitials()</span>
+						</div>
+						<div class="guest-details">
+							<p class="guest-id">#GS-@user.userId.ToString("D4")</p>
+							<h3 class="guest-name">@FullName</h3>
+							<div class="contact-info">
+								<div class="contact-item">
+									<span class="contact-icon">??</span>
+									<span>@(user.user_contact_number ?? "N/A")</span>
+								</div>
+								<div class="contact-item">
+									<span class="contact-icon">??</span>
+									<span>@(user.user_email ?? "N/A")</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Current Booking Section -->
+				@if (currentBooking != null)
+				{
+					<div class="current-booking-section">
+						<h2 class="section-title">Current Booking</h2>
+						<div class="booking-card">
+							<div class="booking-badge">
+								<span class="badge-icon">???</span>
+								<div class="badge-info">
+									<p class="badge-label">Booking ID #@currentBooking.booking_id.ToString("D10")</p>
+									<h3 class="room-name">@currentBooking.room_name Room A@currentBooking.room_number?.ToString("D5")</h3>
+								</div>
+							</div>
+							<div class="booking-details-grid">
+								<div class="detail-item">
+									<span class="detail-icon">??</span>
+									<div>
+										<p class="detail-label">Room Capacity</p>
+										<p class="detail-value">@currentBooking.guest_count-Person</p>
+									</div>
+								</div>
+								<div class="detail-item">
+									<span class="detail-icon">???</span>
+									<div>
+										<p class="detail-label">Bed Type</p>
+										<p class="detail-value">@currentBooking.bed_type</p>
+									</div>
+								</div>
+								<div class="detail-item">
+									<span class="detail-icon">??</span>
+									<div>
+										<p class="detail-label">Booking Date</p>
+										<p class="detail-value">@currentBooking.check_in_date.ToString("MMM dd") - @currentBooking.check_out_date.ToString("dd, yyyy")</p>
+									</div>
+								</div>
+							</div>
+							@if (!string.IsNullOrWhiteSpace(currentBooking.room_facilities))
+							{
+								<div class="room-facilities">
+									<h4>Room Facilities</h4>
+									<p>@currentBooking.room_facilities</p>
+								</div>
+							}
+							<div class="booking-images">
+								<div class="room-image-placeholder">
+									<span>??</span>
+									<p>Room View</p>
+								</div>
+								<div class="room-image-placeholder">
+									<span>???</span>
+									<p>Bed View</p>
+								</div>
+								<div class="room-image-placeholder">
+									<span>???</span>
+									<p>Dining Area</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				}
+
+				<!-- Booking History Section -->
+				<div class="history-section">
+					<div class="history-header">
+						<h2 class="section-title">History Booking</h2>
+						<div class="history-actions">
+							<button class="btn-action">?? Generate Report</button>
+							<button class="btn-action">??? Date Filter</button>
+						</div>
+					</div>
+
+					@if (bookingHistory == null || bookingHistory.Count == 0)
+					{
+						<div class="no-bookings">
+							<p>No booking history available.</p>
+						</div>
+					}
+					else
+					{
+						<div class="history-table">
+							<table>
+								<thead>
+									<tr>
+										<th>Room Name</th>
+										<th>Bed Type</th>
+										<th>Room Floor</th>
+										<th>Room Facility</th>
+										<th>Book Date</th>
+										<th>Status</th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									@foreach (var booking in bookingHistory)
+									{
+										<tr>
+											<td>
+												<div class="room-cell">
+													<div class="room-thumb">??</div>
+													<span>#@booking.booking_id.ToString("D5")</span>
+												</div>
+											</td>
+											<td>@booking.bed_type</td>
+											<td>Floor @(booking.room_floor?.ToString() ?? "N/A")</td>
+											<td>@GetFacilitiesPreview(booking.room_facilities)</td>
+											<td>@booking.check_in_date.ToString("MMM dd, yyyy")</td>
+											<td>
+												<span class="status-badge @GetStatusClass(booking.booking_status)">
+													@booking.booking_status
+												</span>
+											</td>
+											<td>
+												<button class="btn-more">?</button>
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					}
+				</div>
+			</div>
+		}
+	</main>
+</div>
+
+@code {
+	[Parameter] public int id { get; set; }
+	Hospitality.Models.User? user;
+	Hospitality.Models.Booking? currentBooking;
+	List<Hospitality.Models.Booking> bookingHistory = new();
+	bool loading = true;
+
+	string FullName => user == null ? "" : string.Join(" ", new[] { user.user_fname, Decode(user.user_mname), Decode(user.user_lname) }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+	protected override async Task OnInitializedAsync()
+	{
+		loading = true;
+		try
+		{
+			user = await UserService.GetUserByIdAsync(id);
+			if (user != null)
+			{
+				currentBooking = await BookingService.GetCurrentBookingByUserIdAsync(id);
+				bookingHistory = await BookingService.GetBookingsByUserIdAsync(id);
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading client profile: {ex.Message}");
+		}
+		finally
+		{
+			loading = false;
+		}
+	}
+
+	string Decode(byte[]? data)
+	{
+		if (data == null || data.Length == 0) return "";
+		try { return System.Text.Encoding.UTF8.GetString(data); }
+		catch { return ""; }
+	}
+
+	string GetInitials()
+	{
+		if (user == null) return "G";
+		var parts = new List<string>();
+		if (!string.IsNullOrWhiteSpace(user.user_fname))
+			parts.Add(user.user_fname.Substring(0, 1));
+		if (user.user_lname != null && user.user_lname.Length > 0)
+		{
+			try
+			{
+				var ln = Decode(user.user_lname);
+				if (!string.IsNullOrWhiteSpace(ln))
+					parts.Add(ln.Substring(0, 1));
+			}
+			catch { }
+		}
+		return string.Join("", parts).ToUpper();
+	}
+
+	string GetFacilitiesPreview(string? facilities)
+	{
+		if (string.IsNullOrWhiteSpace(facilities)) return "Standard";
+		var items = facilities.Split(',').Take(3);
+		return string.Join(", ", items);
+	}
+
+	string GetStatusClass(string status)
+	{
+		return status.ToLower() switch
+		{
+			"confirmed" => "status-confirmed",
+			"active" => "status-active",
+			"checked-in" => "status-active",
+			"completed" => "status-completed",
+			"cancelled" => "status-cancelled",
+			_ => "status-pending"
+		};
+	}
+}

@@ -1,0 +1,163 @@
+﻿@page "/admin/rooms"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.RoomService RoomService
+
+<link rel="stylesheet" href="css/admin.css" />
+
+<div class="admin-page">
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/admin" class="nav-item"><span class="nav-icon">👥</span><span>EMPLOYEES</span></a>
+			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon">📊</span><span>DASHBOARD</span></a>
+			<a href="/admin/rooms" class="nav-item active"><span class="nav-icon">🏠</span><span>ROOMS</span></a>
+		</nav>
+	</aside>
+
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Rooms</h1>
+				<p class="page-subtitle">Manage hotel rooms and availability</p>
+			</div>
+			<div class="header-actions">
+				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span>🔔</button>
+				<button class="icon-btn" title="Profile">👤</button>
+				<button class="icon-btn" title="Logout" @onclick="Logout">⎋</button>
+			</div>
+		</header>
+
+		<div class="toolbar">
+			<div class="search-box"><span>🔍</span><input type="text" placeholder="Search rooms..." @bind="searchQuery" @bind:event="oninput" /></div>
+			<button class="btn-sort" @onclick="SortByNumber">Sort: @(sortAsc?"▲":"▼")</button>
+			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Room</button>
+		</div>
+
+		@if (loading)
+		{
+			<p>Loading rooms...</p>
+		}
+		else if (loadError)
+		{
+			<p class="error-banner">Failed to load rooms.</p>
+		}
+		else
+		{
+			<div class="employee-grid">
+				@foreach (var room in PagedRooms)
+				{
+					<div class="employee-card">
+						<div class="room-number-badge" style="background:@GetStatusColor(room.room_status)">@room.room_number</div>
+						<h3 class="card-name">@room.room_name</h3>
+						<p class="card-role">Floor @room.room_floor</p>
+						<div class="room-price">$@room.room_price.ToString("N2") / night</div>
+						<div class="room-status-badge status-@room.room_status.ToLower()">@room.room_status (@room.room_available)</div>
+						<button class="btn-view-profile" @onclick="() => Edit(room)">Edit Room</button>
+						<div class="card-actions">
+							<button class="card-action-btn" title="Details" @onclick="() => Edit(room)">📋</button>
+							<button class="card-action-btn" title="Book" @onclick="() => BookRoom(room)">📅</button>
+							<button class="card-action-btn" title="Delete" @onclick="() => Delete(room)">🗑️</button>
+						</div>
+					</div>
+				}
+			</div>
+			<div class="pagination">
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">« First</button>
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">‹ Prev</button>
+				@foreach (var p in PageNumbers)
+				{
+					<button class="page-btn @(p==page?"active":"")" @onclick="() => GoPage(p)">@p</button>
+				}
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ›</button>
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last »</button>
+				<span class="page-info">Page @(@page) of @totalPages • Total @FilteredRooms.Count()</span>
+				<select class="page-size" @onchange="PageSizeChanged">
+					<option value="8" selected="@(pageSize==8)">8</option>
+					<option value="16" selected="@(pageSize==16)">16</option>
+					<option value="32" selected="@(pageSize==32)">32</option>
+				</select>
+			</div>
+		}
+	</main>
+</div>
+
+@if (showModal)
+{
+	<div class="modal-overlay" @onclick="CloseModal">
+		<div class="modal-card" @onclick:stopPropagation>
+			<div class="modal-header"><h2 class="modal-title">@(isEdit ? "Edit Room" : "New Room")</h2><button class="modal-close-btn" @onclick="CloseModal">✕</button></div>
+			<div class="modal-body">
+				<div class="form-grid"><div class="form-field"><label>Room Name *</label><input type="text" @bind="current.room_name" /></div><div class="form-field"><label>Room Number *</label><input type="number" @bind="current.room_number" min="1" /></div></div>
+				<div class="form-grid"><div class="form-field"><label>Floor *</label><input type="number" @bind="current.room_floor" min="1" /></div><div class="form-field"><label>Price *</label><input type="number" step="0.01" @bind="current.room_price" min="0" /></div></div>
+				<div class="form-grid"><div class="form-field"><label>Available *</label><input type="text" @bind="current.room_available" /></div><div class="form-field"><label>Status *</label><select @bind="current.room_status"><option value="Available">Available</option><option value="Occupied">Occupied</option><option value="Cleaning">Cleaning</option><option value="Maintenance">Maintenance</option><option value="Reserved">Reserved</option></select></div></div>
+			</div>
+			<div class="modal-footer"><button class="btn-modal-cancel" @onclick="CloseModal">Cancel</button><button class="btn-modal-save" @onclick="Save">@(isEdit ? "Update" : "Add") Room</button></div>
+		</div>
+	</div>
+}
+
+@code {
+	List<Hospitality.Models.Room> rooms = new();
+	string searchQuery = string.Empty;
+	bool showModal = false;
+	bool isEdit = false;
+	Hospitality.Models.Room current = new();
+	bool loading = true;
+	bool loadError = false;
+	bool sortAsc = true;
+
+	int page =1;
+	int pageSize =8;
+	int totalPages => FilteredRooms.Count()==0 ?1 : (int)Math.Ceiling(FilteredRooms.Count() / (double)pageSize);
+	List<int> PageNumbers => Enumerable.Range(1, totalPages).ToList();
+	bool CanPrev => page >1;
+	bool CanNext => page < totalPages;
+	List<Hospitality.Models.Room> PagedRooms => FilteredRooms.Skip((page-1)*pageSize).Take(pageSize).ToList();
+
+	protected override async Task OnInitializedAsync() { await LoadRoomsAsync(); }
+
+	async Task LoadRoomsAsync()
+	{
+		loading = true; loadError = false;
+		try { rooms = await RoomService.GetRoomsAsync(); }
+		catch { loadError = true; }
+		finally { loading = false; }
+	}
+
+	IEnumerable<Hospitality.Models.Room> FilteredRooms => ApplySort(string.IsNullOrWhiteSpace(searchQuery)
+		? rooms
+		: rooms.Where(r => r.room_name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || r.room_number.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase)));
+
+	IEnumerable<Hospitality.Models.Room> ApplySort(IEnumerable<Hospitality.Models.Room> list) => sortAsc ? list.OrderBy(r => r.room_number) : list.OrderByDescending(r => r.room_number);
+	void SortByNumber() { sortAsc = !sortAsc; }
+
+	string GetStatusColor(string status) => status switch
+	{
+		"Available" => "#27ae60",
+		"Occupied" => "#e74c3c",
+		"Cleaning" => "#f39c12",
+		"Maintenance" => "#95a5a6",
+		"Reserved" => "#3498db",
+		_ => "#5e1369"
+	};
+
+	void ShowAddModal() { isEdit = false; current = new() { room_status = "Available", room_available = "Yes", room_floor =1, room_price =100.00m }; showModal = true; }
+	void Edit(Hospitality.Models.Room r) { isEdit = true; current = new() { room_id = r.room_id, room_name = r.room_name, room_number = r.room_number, room_floor = r.room_floor, room_price = r.room_price, room_status = r.room_status, room_available = r.room_available }; showModal = true; }
+	async Task Delete(Hospitality.Models.Room r) { try { await RoomService.DeleteRoomAsync(r.room_id); rooms.Remove(r); } catch { loadError = true; } }
+	void BookRoom(Hospitality.Models.Room r) { Console.WriteLine($"Booking room: {r.room_number}"); }
+	void CloseModal() { showModal = false; current = new(); }
+	async Task Save() { if (string.IsNullOrWhiteSpace(current.room_name) || current.room_number <=0) return; try { if (isEdit) { await RoomService.UpdateRoomAsync(current); var existing = rooms.First(x => x.room_id == current.room_id); existing.room_name = current.room_name; existing.room_number = current.room_number; existing.room_floor = current.room_floor; existing.room_price = current.room_price; existing.room_status = current.room_status; existing.room_available = current.room_available; } else { var newId = await RoomService.AddRoomAsync(current); current.room_id = newId; rooms.Add(current); } CloseModal(); } catch { loadError = true; } }
+
+	async Task PrevPage() { if (CanPrev) { page--; } }
+	async Task NextPage() { if (CanNext) { page++; } }
+	async Task FirstPage() { if (CanPrev) { page =1; } }
+	async Task LastPage() { if (CanNext) { page = totalPages; } }
+	async Task GoPage(int p) { if (p != page) { page = p; } }
+	async Task PageSizeChanged(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out var ps) && ps >0) { pageSize = ps; page =1; } }
+
+	void Logout() => Navigation.NavigateTo("/");
+
+	string currentUserRole = "admin"; // TODO: replace with actual injected auth context
+}

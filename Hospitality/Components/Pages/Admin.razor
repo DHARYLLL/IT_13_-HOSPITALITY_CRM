@@ -1,0 +1,255 @@
+﻿@page "/admin"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.UserService UserService
+
+<link rel="stylesheet" href="css/admin.css" />
+
+<div class="admin-page">
+	<!-- Sidebar -->
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/admin" class="nav-item active">
+				<span class="nav-icon">👥</span>
+				<span>EMPLOYEES</span>
+			</a>
+			<a href="/admin/dashboard" class="nav-item">
+				<span class="nav-icon">📊</span>
+				<span>DASHBOARD</span>
+			</a>
+			<a href="/admin/rooms" class="nav-item">
+				<span class="nav-icon">🏠</span>
+				<span>ROOMS</span>
+			</a>
+		</nav>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Employees</h1>
+				<p class="page-subtitle">Manage your team members</p>
+			</div>
+			<div class="header-actions">
+				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span>🔔</button>
+				<button class="icon-btn" title="Profile">👤</button>
+				<button class="icon-btn" title="Logout" @onclick="Logout">⎋</button>
+			</div>
+		</header>
+
+		<div class="toolbar">
+			<div class="search-box">
+				<span>🔍</span>
+				<input type="text" placeholder="Search employees..." @bind="searchQuery" @bind:event="oninput" />
+			</div>
+			<button class="btn-sort" @onclick="ToggleRoleFilter">Role: @(string.IsNullOrEmpty(roleFilter)?"All":roleFilter)</button>
+			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Employee</button>
+		</div>
+
+		@if (loading)
+		{
+			<p>Loading...</p>
+		}
+		else if (loadError)
+		{
+			<p class="error-banner">Failed to load employees.</p>
+		}
+		else
+		{
+			<!-- Employee Cards Grid -->
+			<div class="employee-grid">
+				@foreach (var emp in EmployeesPage)
+				{
+					<div class="employee-card">
+						<div class="card-avatar" style="background:#5e1369">@GetInitials(emp)</div>
+						<h3 class="card-name">@GetFullName(emp)</h3>
+						<p class="card-role">@emp.roleName</p>
+						<button class="btn-view-profile" @onclick="() => Edit(emp)">View profile</button>
+						<div class="card-actions">
+							<button class="card-action-btn" title="Email">📧</button>
+						</div>
+					</div>
+				}
+			</div>
+			<!-- Pagination -->
+			<div class="pagination">
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">« First</button>
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">‹ Prev</button>
+				@foreach (var p in PageNumbers)
+				{
+					<button class="page-btn @(p==page?"active":"")" @onclick="() => GoPage(p)">@p</button>
+				}
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ›</button>
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last »</button>
+				<span class="page-info">Page @(@page) of @totalPages • Total @totalCount</span>
+				<select class="page-size" @onchange="PageSizeChanged">
+					<option value="8" selected="@(pageSize==8)">8</option>
+					<option value="16" selected="@(pageSize==16)">16</option>
+					<option value="32" selected="@(pageSize==32)">32</option>
+				</select>
+			</div>
+		}
+	</main>
+</div>
+
+@if (showModal)
+{
+	<div class="modal-overlay" @onclick="CloseModal">
+		<div class="modal-card" @onclick:stopPropagation>
+			<div class="modal-header">
+				<h2 class="modal-title">@(isEdit ? "Edit Employee" : "New Employee")</h2>
+				<button class="modal-close-btn" @onclick="CloseModal">✕</button>
+			</div>
+			<div class="modal-body">
+				<div class="form-grid">
+					<div class="form-field">
+						<label>First Name *</label>
+						<input type="text" @bind="formFirstName" />
+					</div>
+					<div class="form-field">
+						<label>Middle Name</label>
+						<input type="text" @bind="formMiddleName" />
+					</div>
+				</div>
+				<div class="form-grid">
+					<div class="form-field">
+						<label>Last Name *</label>
+						<input type="text" @bind="formLastName" />
+					</div>
+					<div class="form-field">
+						<label>Birth Date</label>
+						<input type="date" value="@formBirthDateString" @onchange="OnBirthDateChanged" />
+					</div>
+				</div>
+				<div class="form-grid">
+					<div class="form-field">
+						<label>Email *</label>
+						<input type="email" @bind="formEmail" />
+					</div>
+					<div class="form-field">
+						<label>Contact Number</label>
+						<input type="text" @bind="formContact" />
+					</div>
+				</div>
+				<div class="form-grid">
+					<div class="form-field">
+						<label>Role *</label>
+						<select @bind="formRole">
+							<option value="admin">Admin</option>
+							<option value="staff">Staff</option>
+						</select>
+					</div>
+					<div class="form-field">
+						<label>Password *</label>
+						<input type="password" @bind="formPassword" />
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn-modal-cancel" @onclick="CloseModal">Cancel</button>
+				<button class="btn-modal-save" @onclick="Save">@(isEdit ? "Update" : "Add")</button>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	List<Hospitality.Models.User> employees = new();
+	bool loading = true;
+	bool loadError = false;
+	bool showModal = false;
+	bool isEdit = false;
+	string searchQuery = string.Empty;
+	string roleFilter = string.Empty;
+	int page =1;
+	int pageSize =8;
+	int totalCount =0;
+	int totalPages => totalCount ==0 ?1 : (int)Math.Ceiling(totalCount / (double)pageSize);
+	List<int> PageNumbers => Enumerable.Range(1, totalPages).ToList();
+	List<Hospitality.Models.User> EmployeesPage => employees;
+	bool CanPrev => page >1;
+	bool CanNext => page < totalPages;
+
+	string formFirstName = "";
+	string formMiddleName = "";
+	string formLastName = "";
+	string formBirthDateString = "";
+	string formEmail = "";
+	string formContact = "";
+	string formRole = "staff";
+	string formPassword = "";
+
+	protected override async Task OnInitializedAsync() => await LoadPageAsync();
+
+	async Task LoadPageAsync()
+	{
+		loading = true; loadError = false;
+		try
+		{
+			employees = await UserService.GetEmployeesAsync(page, pageSize, searchQuery, roleFilter);
+			totalCount = await UserService.GetEmployeesCountAsync(searchQuery, roleFilter);
+		}
+		catch { loadError = true; }
+		finally { loading = false; }
+	}
+
+	void ToggleRoleFilter()
+	{
+		if (string.IsNullOrEmpty(roleFilter)) roleFilter = "staff"; else if (roleFilter == "staff") roleFilter = "admin"; else if (roleFilter == "admin") roleFilter = "client"; else roleFilter = string.Empty;
+		page =1;
+		_ = LoadPageAsync();
+	}
+
+	void ShowAddModal() { isEdit = false; ResetForm(); showModal = true; }
+	void Edit(Hospitality.Models.User u) { isEdit = true; formFirstName = u.user_fname ?? ""; formEmail = u.user_email ?? ""; formRole = u.roleName ?? "staff"; showModal = true; }
+	void ResetForm() { formFirstName = formMiddleName = formLastName = formBirthDateString = formEmail = formContact = formPassword = string.Empty; formRole = "staff"; }
+
+	async Task Save()
+	{
+		if (string.IsNullOrWhiteSpace(formFirstName) || string.IsNullOrWhiteSpace(formLastName) || string.IsNullOrWhiteSpace(formEmail) || string.IsNullOrWhiteSpace(formPassword)) return;
+		try
+		{
+			if (!isEdit)
+			{
+				var roleId = await UserService.GetRoleIdByNameAsync(formRole) ??0;
+				DateTime? birth = DateTime.TryParse(formBirthDateString, out var b) ? b : null;
+				var newUser = new Hospitality.Models.User
+				{
+					role_id = roleId,
+					user_fname = formFirstName,
+					user_mname = string.IsNullOrWhiteSpace(formMiddleName) ? null : System.Text.Encoding.UTF8.GetBytes(formMiddleName),
+					user_lname = string.IsNullOrWhiteSpace(formLastName) ? null : System.Text.Encoding.UTF8.GetBytes(formLastName),
+					user_brith_date = birth,
+					user_email = formEmail,
+					user_contact_number = formContact,
+					user_password = formPassword,
+					roleName = formRole
+				};
+				var id = await UserService.RegisterAsync(newUser);
+				newUser.userId = id; employees.Add(newUser); totalCount++;
+			}
+			CloseModal();
+		}
+		catch { loadError = true; }
+	}
+
+	void CloseModal() { showModal = false; ResetForm(); }
+	string GetInitials(Hospitality.Models.User u) { var parts = new List<string>(); if (!string.IsNullOrWhiteSpace(u.user_fname)) parts.Add(u.user_fname.Substring(0,1)); if (u.user_lname != null && u.user_lname.Length >0) { try { var ln = System.Text.Encoding.UTF8.GetString(u.user_lname); if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0,1)); } catch { } } return string.Join("", parts).ToUpper(); }
+	string GetFullName(Hospitality.Models.User u) { var ln = u.user_lname == null ? "" : SafeDecode(u.user_lname); var mn = u.user_mname == null ? "" : SafeDecode(u.user_mname); return string.Join(" ", new[] { u.user_fname, mn, ln }.Where(s => !string.IsNullOrWhiteSpace(s))); }
+	string SafeDecode(byte[] data) { try { return System.Text.Encoding.UTF8.GetString(data); } catch { return string.Empty; } }
+
+	async Task PrevPage() { if (CanPrev) { page--; await LoadPageAsync(); } }
+	async Task NextPage() { if (CanNext) { page++; await LoadPageAsync(); } }
+	async Task FirstPage() { if (CanPrev) { page =1; await LoadPageAsync(); } }
+	async Task LastPage() { if (CanNext) { page = totalPages; await LoadPageAsync(); } }
+	async Task GoPage(int p) { if (p != page) { page = p; await LoadPageAsync(); } }
+	async Task PageSizeChanged(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out var ps) && ps >0) { pageSize = ps; page =1; await LoadPageAsync(); } }
+
+	List<Hospitality.Models.User> ApplySearch(List<Hospitality.Models.User> list) => string.IsNullOrWhiteSpace(searchQuery) ? list : list.Where(u => (u.user_fname ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || (u.user_email ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
+	void OnBirthDateChanged(ChangeEventArgs e) { formBirthDateString = e.Value?.ToString() ?? string.Empty; }
+
+	void Logout() => Navigation.NavigateTo("/");
+}

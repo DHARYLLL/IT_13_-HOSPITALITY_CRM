@@ -1,0 +1,26 @@
+# .NET / Visual Studio / MAUI
+.vs/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userprefs
+
+# NuGet
+*.nupkg
+packages/
+
+# Build outputs for MAUI platforms
+**/Platforms/*/bin/
+**/Platforms/*/obj/
+
+# Logs / temp
+*.log
+*.sqlite
+*.db
+
+# Secrets (only if you actually use these; remove if needed)
+appsettings*.json
+
+# Crash dumps
+*.dmp
