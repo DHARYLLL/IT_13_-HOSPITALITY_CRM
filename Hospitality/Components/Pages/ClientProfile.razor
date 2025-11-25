@@ -6,42 +6,29 @@
 <link rel="stylesheet" href="css/clientprofile.css" />
 
 <div class="client-profile-page">
-	<!-- Sidebar -->
-	<aside class="profile-sidebar">
-		<div class="sidebar-header">
-			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
-		</div>
-		<nav class="sidebar-nav">
-			<a href="/rooms" class="nav-item">
-				<span class="nav-icon">??</span>
-				<span>Room</span>
-			</a>
-			<a href="/client/profile/@id" class="nav-item active">
-				<span class="nav-icon">??</span>
-				<span>Guest</span>
-			</a>
-			<a href="/bookings" class="nav-item">
-				<span class="nav-icon">??</span>
-				<span>Bookings</span>
-			</a>
-		</nav>
-	</aside>
-
-	<!-- Main Content -->
-	<main class="profile-main">
+	<div class="profile-container">
 		<header class="profile-header">
-			<h1 class="page-title">Guest Details</h1>
+			<div class="header-top">
+				<div class="welcome-section">
+					<h1 class="welcome-title">Welcome back, @(user?.user_fname ?? "Guest")</h1>
+					<p class="welcome-subtitle">Here is your stay summary and upcoming plans.</p>
+				</div>
+				<div class="user-badge">
+					<span class="user-name">@(user?.user_fname ?? "Guest") @Decode(user?.user_lname)</span>
+					<span class="user-label">Loyalty member</span>
+					<div class="user-avatar">@GetInitials()</div>
+				</div>
+			</div>
 			<div class="header-actions">
-				<div class="search-box">
-					<span></span>
-					<input type="text" placeholder="Search here" />
-				</div>
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span></button>
-				<button class="icon-btn" title="Messages"><span class="badge-dot">2</span></button>
-				<button class="icon-btn" title="Favorites"></button>
-				<div class="profile-avatar">
-					<span>@GetInitials()</span>
-				</div>
+				<a href="/booking/new/@id" class="btn btn-primary">
+					<span class="btn-icon">??</span> Book a Room
+				</a>
+				<button class="btn btn-secondary" disabled>
+					<span class="btn-icon">??</span> View Receipts
+				</button>
+				<button class="btn btn-secondary" disabled>
+					<span class="btn-icon">??</span> Edit Profile
+				</button>
 			</div>
 		</header>
 
@@ -59,167 +46,183 @@
 		}
 		else
 		{
-			<div class="profile-content">
-				<!-- Guest Information Card -->
-				<div class="guest-info-card">
-					<div class="guest-header">
-						<span class="guest-label">Guest / @user.user_fname @Decode(user.user_lname)</span>
+			<div class="dashboard-grid">
+				<!-- Upcoming Booking -->
+				<div class="card upcoming-booking-card">
+					<div class="card-header">
+						<span class="card-icon">??</span>
+						<h2>Upcoming Booking</h2>
 					</div>
-					<div class="guest-profile">
-						<div class="guest-avatar">
-							<span>@GetInitials()</span>
+					<div class="card-body">
+						@if (currentBooking == null)
+						{
+							<p class="empty-text">No upcoming booking.</p>
+						}
+						else
+						{
+							<div class="booking-details">
+								<h3 class="booking-title">@currentBooking.room_name</h3>
+								<p class="booking-dates">Check-in: @currentBooking.check_in_date.ToString("MMM dd") · Check-out: @currentBooking.check_out_date.ToString("MMM dd, yyyy")</p>
+								<p class="booking-guests">Guests: @currentBooking.guest_count adults · Flexible cancellation</p>
+								<p class="booking-info">Booking ID #@currentBooking.booking_id.ToString("D6")</p>
+								<button class="link-btn" disabled>View details</button>
+							</div>
+							<div class="booking-map">
+								<div class="map-placeholder">[Map]</div>
+							</div>
+						}
+					</div>
+				</div>
+
+				<!-- Total Stays -->
+				<div class="card total-stays-card">
+					<div class="card-header-inline">
+						<div>
+							<span class="card-icon">??</span>
+							<h2>Total Stays</h2>
 						</div>
-						<div class="guest-details">
-							<p class="guest-id">#GS-@user.userId.ToString("D4")</p>
-							<h3 class="guest-name">@FullName</h3>
-							<div class="contact-info">
-								<div class="contact-item">
-									<span class="contact-icon">??</span>
-									<span>@(user.user_contact_number ?? "N/A")</span>
+						<span class="time-range">Last 12 months</span>
+					</div>
+					<div class="card-body">
+						<div class="stays-number">@TotalStays</div>
+						<p class="stays-label">Completed bookings</p>
+						<p class="stays-avg">Average @AverageNights.ToString("0.0") nights / stay</p>
+						<div class="months-chart">
+							@foreach (var m in GetMonthData())
+							{
+								<div class="month-bar" style="height: @(m.Height)%" title="@m.Label">
+									<span class="month-label">@m.Label</span>
 								</div>
-								<div class="contact-item">
-									<span class="contact-icon">??</span>
-									<span>@(user.user_email ?? "N/A")</span>
+							}
+							<span class="chart-label">Peak in May</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Loyalty & Rewards -->
+				<div class="card loyalty-card">
+					<div class="card-header-inline">
+						<div>
+							<span class="card-icon">?</span>
+							<h2>Loyalty & Rewards</h2>
+						</div>
+						<span class="member-badge">Member since 2019</span>
+					</div>
+					<div class="card-body">
+						<div class="loyalty-content">
+							<div class="points-circle">
+								<svg viewBox="0 0 100 100">
+									<circle cx="50" cy="50" r="45" fill="none" stroke="#e0e0e0" stroke-width="8"/>
+									<circle cx="50" cy="50" r="45" fill="none" stroke="#6366f1" stroke-width="8"
+									        stroke-dasharray="@GetPointsProgress() 283" stroke-dashoffset="0" 
+									        transform="rotate(-90 50 50)"/>
+								</svg>
+								<div class="points-value">
+									<strong>@LoyaltyPoints</strong>
+									<span>points</span>
 								</div>
+							</div>
+							<div class="loyalty-info">
+								<span class="member-tier">?? Gold member</span>
+								<p>Enjoy late checkout, room upgrades (when available), and welcome drinks.</p>
+								<p class="next-tier">Next tier: Platinum</p>
+								<p class="points-needed">@PointsToNextTier points to reach Platinum</p>
 							</div>
 						</div>
 					</div>
 				</div>
 
-				<!-- Current Booking Section -->
-				@if (currentBooking != null)
-				{
-					<div class="current-booking-section">
-						<h2 class="section-title">Current Booking</h2>
-						<div class="booking-card">
-							<div class="booking-badge">
-								<span class="badge-icon">???</span>
-								<div class="badge-info">
-									<p class="badge-label">Booking ID #@currentBooking.booking_id.ToString("D10")</p>
-									<h3 class="room-name">@currentBooking.room_name Room A@currentBooking.room_number?.ToString("D5")</h3>
-								</div>
-							</div>
-							<div class="booking-details-grid">
-								<div class="detail-item">
-									<span class="detail-icon"></span>
-									<div>
-										<p class="detail-label">Room Capacity</p>
-										<p class="detail-value">@currentBooking.guest_count-Person</p>
-									</div>
-								</div>
-								<div class="detail-item">
-									<span class="detail-icon"></span>
-									<div>
-										<p class="detail-label">Bed Type</p>
-										<p class="detail-value">@currentBooking.bed_type</p>
-									</div>
-								</div>
-								<div class="detail-item">
-									<span class="detail-icon">??</span>
-									<div>
-										<p class="detail-label">Booking Date</p>
-										<p class="detail-value">@currentBooking.check_in_date.ToString("MMM dd") - @currentBooking.check_out_date.ToString("dd, yyyy")</p>
-									</div>
-								</div>
-							</div>
-							@if (!string.IsNullOrWhiteSpace(currentBooking.room_facilities))
-							{
-								<div class="room-facilities">
-									<h4>Room Facilities</h4>
-									<p>@currentBooking.room_facilities</p>
-								</div>
-							}
-							<div class="booking-images">
-								<div class="room-image-placeholder">
-									<span>??</span>
-									<p>Room View</p>
-								</div>
-								<div class="room-image-placeholder">
-									<span>???</span>
-									<p>Bed View</p>
-								</div>
-								<div class="room-image-placeholder">
-									<span>???</span>
-									<p>Dining Area</p>
-								</div>
-							</div>
+				<!-- Messages & Notifications -->
+				<div class="card messages-card">
+					<div class="card-header-inline">
+						<div>
+							<span class="card-icon">??</span>
+							<h2>Messages & Notifications</h2>
 						</div>
+						<span class="unread-count">3 unread</span>
 					</div>
-				}
-
-				<!-- Booking History Section -->
-				<div class="history-section">
-					<div class="history-header">
-						<h2 class="section-title">History Booking</h2>
-						<div class="history-actions">
-							<button class="btn-action">?? Generate Report</button>
-							<button class="btn-action">??? Date Filter</button>
-						</div>
+					<div class="card-body">
+						<ul class="messages-list">
+							<li class="message-item">
+								<div class="message-header">
+									<strong>Early check-in request approved</strong>
+									<span class="message-time">2h ago</span>
+								</div>
+								<p class="message-text">You can now check in from 12:00 PM for your upcoming stay on Jul 22.</p>
+							</li>
+							<li class="message-item">
+								<div class="message-header">
+									<strong>Exclusive Gold member offer</strong>
+									<span class="message-time">Yesterday</span>
+								</div>
+								<p class="message-text">Save 15% on weekend stays in August at participating properties.</p>
+							</li>
+							<li class="message-item">
+								<div class="message-header">
+									<strong>Receipt available for your stay</strong>
+									<span class="message-time">Jun 29</span>
+								</div>
+								<p class="message-text">Your receipt for booking #H0478392 is now ready to download.</p>
+							</li>
+						</ul>
 					</div>
+				</div>
+			</div>
 
+			<!-- Recent Booking History -->
+			<div class="card history-card">
+				<div class="card-header-inline">
+					<div>
+						<h2>Recent Booking History</h2>
+						<p class="card-subtitle">Overview of your latest stays and their status.</p>
+					</div>
+					<a href="#" class="link-btn">View all bookings</a>
+				</div>
+				<div class="card-body">
 					@if (bookingHistory == null || bookingHistory.Count == 0)
 					{
-						<div class="no-bookings">
-							<p>No booking history available.</p>
-						</div>
+						<p class="empty-text">No booking history available.</p>
 					}
 					else
 					{
-						<div class="history-table">
-							<table>
-								<thead>
+						<table class="bookings-table">
+							<thead>
+								<tr>
+									<th>Booking ID</th>
+									<th>Room type</th>
+									<th>Duration</th>
+									<th>Status</th>
+									<th>Price</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (var booking in bookingHistory.Take(5))
+								{
+									var nights = (int)(booking.check_out_date - booking.check_in_date).TotalDays;
 									<tr>
-										<th>Room Name</th>
-										<th>Bed Type</th>
-										<th>Room Floor</th>
-										<th>Room Facility</th>
-										<th>Book Date</th>
-										<th>Status</th>
-										<th></th>
+										<td>@booking.booking_id.ToString("#\\H\\0000000")</td>
+										<td>@booking.room_name</td>
+										<td>@nights night@(nights != 1 ? "s" : "") · @booking.check_in_date.ToString("MMM dd")–@booking.check_out_date.ToString("dd")</td>
+										<td><span class="status-badge status-@booking.booking_status.ToLower()">? @booking.booking_status</span></td>
+										<td>@(booking.room_price?.ToString("C") ?? "—")</td>
 									</tr>
-								</thead>
-								<tbody>
-									@foreach (var booking in bookingHistory)
-									{
-										<tr>
-											<td>
-												<div class="room-cell">
-													<div class="room-thumb">??</div>
-													<span>#@booking.booking_id.ToString("D5")</span>
-												</div>
-											</td>
-											<td>@booking.bed_type</td>
-											<td>Floor @(booking.room_floor?.ToString() ?? "N/A")</td>
-											<td>@GetFacilitiesPreview(booking.room_facilities)</td>
-											<td>@booking.check_in_date.ToString("MMM dd, yyyy")</td>
-											<td>
-												<span class="status-badge @GetStatusClass(booking.booking_status)">
-													@booking.booking_status
-												</span>
-											</td>
-											<td>
-												<button class="btn-more">?</button>
-											</td>
-										</tr>
-									}
-								</tbody>
-							</table>
-						</div>
+								}
+							</tbody>
+						</table>
 					}
 				</div>
 			</div>
 		}
-	</main>
+	</div>
 </div>
 
 @code {
 	[Parameter] public int id { get; set; }
+
 	Hospitality.Models.User? user;
 	Hospitality.Models.Booking? currentBooking;
 	List<Hospitality.Models.Booking> bookingHistory = new();
 	bool loading = true;
-
-	string FullName => user == null ? "" : string.Join(" ", new[] { user.user_fname, Decode(user.user_mname), Decode(user.user_lname) }.Where(s => !string.IsNullOrWhiteSpace(s)));
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -245,47 +248,57 @@
 
 	string Decode(byte[]? data)
 	{
-		if (data == null || data.Length == 0) return "";
+		if (data == null || data.Length == 0) return string.Empty;
 		try { return System.Text.Encoding.UTF8.GetString(data); }
-		catch { return ""; }
+		catch { return string.Empty; }
 	}
 
 	string GetInitials()
 	{
 		if (user == null) return "G";
 		var parts = new List<string>();
-		if (!string.IsNullOrWhiteSpace(user.user_fname))
-			parts.Add(user.user_fname.Substring(0, 1));
+		if (!string.IsNullOrWhiteSpace(user.user_fname)) parts.Add(user.user_fname.Substring(0, 1));
 		if (user.user_lname != null && user.user_lname.Length > 0)
 		{
 			try
 			{
 				var ln = Decode(user.user_lname);
-				if (!string.IsNullOrWhiteSpace(ln))
-					parts.Add(ln.Substring(0, 1));
+				if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0, 1));
 			}
 			catch { }
 		}
-		return string.Join("", parts).ToUpper();
-	}
-
-	string GetFacilitiesPreview(string? facilities)
-	{
-		if (string.IsNullOrWhiteSpace(facilities)) return "Standard";
-		var items = facilities.Split(',').Take(3);
-		return string.Join(", ", items);
+		return string.Join("", parts).ToUpperInvariant();
 	}
 
 	string GetStatusClass(string status)
 	{
-		return status.ToLower() switch
+		return status?.ToLowerInvariant() switch
 		{
 			"confirmed" => "status-confirmed",
-			"active" => "status-active",
-			"checked-in" => "status-active",
+			"active" or "checked-in" => "status-active",
 			"completed" => "status-completed",
 			"cancelled" => "status-cancelled",
 			_ => "status-pending"
 		};
+	}
+
+	int TotalStays => bookingHistory.Count(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase));
+	double AverageNights => bookingHistory.Count == 0 ? 0 : bookingHistory.Average(b => (b.check_out_date - b.check_in_date).TotalDays);
+	int LoyaltyPoints => (int)bookingHistory.Sum(b => (b.check_out_date - b.check_in_date).TotalDays * 100);
+	int PointsToNextTier => Math.Max(0, 5000 - LoyaltyPoints);
+	double GetPointsProgress() => LoyaltyPoints > 0 ? (LoyaltyPoints / 5000.0) * 283 : 0;
+
+	record MonthData(string Label, int Height);
+	List<MonthData> GetMonthData()
+	{
+		var months = new[] { "Jan", "Mar", "May", "Jul", "Sep", "Nov" };
+		var data = new List<MonthData>();
+		for (int i = 0; i < 6; i++)
+		{
+			int count = bookingHistory.Count(b => b.check_in_date.Month == DateTime.Now.AddMonths(-5 + i).Month);
+			int height = Math.Min(100, count * 20 + 40);
+			data.Add(new MonthData(months[i], height));
+		}
+		return data;
 	}
 }
