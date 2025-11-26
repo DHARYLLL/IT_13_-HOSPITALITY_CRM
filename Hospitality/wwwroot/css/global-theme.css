@@ -1,0 +1,66 @@
+/* Global Theme - Color Palette & Typography */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap');
+
+/* CSS Variables for Color Palette */
+:root {
+	/* Primary Colors */
+	--color-white: #ffffff;
+	--color-primary-dark: #5e1369;
+	--color-primary-light: #9937c8;
+	--color-black: #000000;
+	
+	/* Gradient */
+	--gradient-primary: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	
+	/* Neutral Colors */
+	--color-gray-50: #fafafa;
+	--color-gray-100: #f5f5f7;
+	--color-gray-200: #e5e5e7;
+	--color-gray-300: #d2d2d7;
+	--color-gray-400: #86868b;
+	--color-gray-500: #6e6e73;
+	--color-gray-900: #1d1d1f;
+	
+	/* Typography */
+	--font-heading: 'Playfair Display', serif;
+	--font-subheading: 'Lora', serif;
+	--font-body: 'Open Sans', sans-serif;
+}
+
+/* Global Typography */
+body {
+	font-family: var(--font-body);
+	color: var(--color-gray-900);
+}
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: var(--font-heading);
+	font-weight: 700;
+}
+
+.subheading {
+	font-family: var(--font-subheading);
+}
+
+/* Global Utility Classes */
+.text-primary {
+	color: var(--color-primary-dark);
+}
+
+.text-primary-light {
+	color: var(--color-primary-light);
+}
+
+.bg-primary {
+	background: var(--gradient-primary);
+}
+
+.bg-white {
+	background: var(--color-white);
+}
+
+.bg-black {
+	background: var(--color-black);
+}

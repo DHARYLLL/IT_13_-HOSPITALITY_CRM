@@ -1,0 +1,350 @@
+﻿@page "/booking/rooms"
+@page "/booking/rooms/{clientId:int}"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.RoomService RoomService
+
+<link rel="stylesheet" href="css/roomselection.css" />
+
+<div class="room-selection-page">
+	<!-- Top Navigation -->
+	<nav class="top-nav">
+		<div class="nav-left">
+			<div class="brand">
+				<img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
+				<span class="brand-name">InnSight</span>
+				<span class="brand-sub">Guest Portal</span>
+			</div>
+		</div>
+		<div class="nav-center">
+			<a href="@GetDashboardLink()" class="nav-link">Dashboard</a>
+			<a href="#" class="nav-link">Stays</a>
+			<a href="#" class="nav-link">Loyalty</a>
+			<a href="#" class="nav-link">Messages</a>
+			<a href="#" class="nav-link">Reports</a>
+		</div>
+		<div class="nav-right">
+			<span class="user-name">Alex Johnson</span>
+			<div class="user-avatar-small">A</div>
+			<span class="points-badge">Gold member</span>
+		</div>
+	</nav>
+
+	<div class="room-selection-container">
+		<!-- Left Panel - Room Options -->
+		<div class="rooms-left">
+			<!-- Header -->
+			<div class="page-header">
+				<div>
+					<h1 class="page-title">Choose your room</h1>
+					<p class="page-subtitle">Review available rooms for your dates and pick the one that fits best.</p>
+				</div>
+			</div>
+
+			<!-- Action Bar -->
+			<div class="action-bar">
+				<button class="back-link" @onclick="BackToDetails">
+					← Back to details
+				</button>
+				<button class="edit-dates-btn">
+					📅 Edit dates
+				</button>
+			</div>
+
+			<!-- Available Rooms Section -->
+			<div class="available-rooms-section">
+				<div class="section-header">
+					<div class="section-icon">🏨</div>
+					<h3>Available rooms</h3>
+					<span class="step-badge">Step 2 of 3</span>
+				</div>
+
+				<div class="room-options-info">
+					<span class="room-count">3 options for @adults guests • @checkInDate.ToString("ddd, MMM dd") – @checkOutDate.ToString("ddd, MMM dd")</span>
+					<div class="filter-tabs">
+						<button class="filter-tab active">Recommended</button>
+						@* <button class="filter-tab">Most flexible</button>
+						<button class="filter-tab">Best value</button> *@
+					</div>
+				</div>
+
+				<!-- Room Cards -->
+				@foreach (var room in availableRooms)
+				{
+					<div class="room-card">
+						<div class="room-image">
+							<img src="@room.ImageUrl" alt="@room.Name" />
+						</div>
+						<div class="room-details">
+							<div class="room-header">
+								<h4 class="room-name">@room.Name</h4>
+								@* @if (!string.IsNullOrEmpty(room.RateType))
+								{
+									<span class="rate-badge">@room.RateType</span>
+								} *@
+							</div>
+							<div class="room-features">
+								@foreach (var feature in room.Features)
+								{
+									<span class="feature">@feature</span>
+								}
+							</div>
+							<div class="room-amenities">
+								@foreach (var amenity in room.Amenities)
+								{
+									<span class="amenity">@amenity</span>
+								}
+							</div>
+							@* @if (!string.IsNullOrEmpty(room.CancellationPolicy))
+							{
+								<div class="cancellation-info">
+									<span class="refund-badge">@room.RefundStatus</span>
+									<span class="policy-text">@room.CancellationPolicy</span>
+								</div>
+							} *@
+						</div>
+						<div class="room-pricing">
+							<div class="price-info">
+								<div class="price-main">$@room.PricePerNight/night</div>
+								@* <div class="price-total">$@room.TotalBeforeTaxes total before taxes</div> *@
+								@* @if (!string.IsNullOrEmpty(room.SavingsMessage))
+								{
+									<div class="savings-message">@room.SavingsMessage</div>
+								} *@
+							</div>
+							<button class="select-room-btn" @onclick="() => SelectRoom(room)">
+								Select room
+							</button>
+						</div>
+					</div>
+				}
+
+				<!-- Footer Actions -->
+				<div class="footer-actions">
+					<button class="adjust-filters-btn">
+						⚙️ Adjust filters
+					</button>
+					<button class="continue-btn" @onclick="ContinueToPayment">
+						Continue to guest & payment →
+					</button>
+				</div>
+
+				<!-- Pricing Disclaimer -->
+				<div class="pricing-disclaimer">
+					<p>Prices in USD • Taxes and fees shown in summary.</p>
+					<p>Gold benefits applied where eligible.</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- Right Panel - Stay Summary -->
+		<div class="rooms-right">
+			<div class="summary-card">
+				<div class="summary-header">
+					<div class="summary-icon">📊</div>
+					<h3>Stay summary</h3>
+					@if (goldBenefitsApplied)
+					{
+						<span class="gold-badge">Gold benefits applied</span>
+					}
+				</div>
+
+				<div class="summary-section">
+					<h4 class="summary-title">Selected details</h4>
+					<div class="summary-item">
+						<span class="summary-label">HarborKey Waterfront • San Francisco</span>
+					</div>
+					<div class="summary-item">
+						<span class="summary-label">@adults guests • @rooms room • @NightsCount nights</span>
+					</div>
+				</div>
+
+				<div class="summary-section">
+					<div class="check-dates">
+						<div class="check-date">
+							<span class="date-label">Check-in</span>
+							<span class="date-value">@checkInDate.ToString("ddd, MMM dd") • 3:00 PM</span>
+						</div>
+						<div class="check-date">
+							<span class="date-label">Check-out</span>
+							<span class="date-value">@checkOutDate.ToString("ddd, MMM dd") • 11:00 AM</span>
+						</div>
+					</div>
+				</div>
+
+				@if (selectedRoom != null)
+				{
+					<div class="summary-section">
+						<h4 class="summary-title">Room selection</h4>
+						<div class="selected-room-info">
+							<div class="selected-room-name">@selectedRoom.Name</div>
+							<div class="selected-room-rate">@selectedRoom.RateType • @selectedRoom.IncludedFeatures</div>
+						</div>
+					</div>
+
+					<div class="summary-section">
+						<h4 class="summary-title">Pricing</h4>
+						<div class="pricing-breakdown">
+							<div class="pricing-row">
+								<span>Nightly rate (average)</span>
+								<span class="price-amount">$@selectedRoom.PricePerNight</span>
+							</div>
+							<div class="pricing-row">
+								<span>Estimated taxes & fees</span>
+								@* <span class="price-amount">$@EstimatedTaxes</span> *@
+							</div>
+							<div class="pricing-row total">
+								<span>Total for @NightsCount nights</span>
+								<span class="price-amount">$@TotalPrice</span>
+							</div>
+						</div>
+						<p class="pricing-note">Final amount confirmed on the next step before you book.</p>
+					</div>
+
+					<div class="summary-section">
+						<h4 class="summary-title">Points</h4>
+						<div class="points-earning">
+							<div class="points-main">Earn +@PointsEarned points</div>
+							<div class="points-progress">You currently have @CurrentPoints points • @PointsToNextTier to Platinum</div>
+							<button class="use-points-btn">Use points later</button>
+						</div>
+					</div>
+
+					<div class="summary-section">
+						<h4 class="summary-title">Policies</h4>
+						<ul class="policies-list">
+							<li>• Free cancellation up to 24 hours before arrival for flexible rates</li>
+							<li>• Late checkout subject to availability for Gold members</li>
+							<li>• A credit card is required on the next step to guarantee your booking</li>
+						</ul>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+@code { 
+	[Parameter] public int? clientId { get; set; }
+
+	DateTime checkInDate = DateTime.Today.AddDays(1);
+	DateTime checkOutDate = DateTime.Today.AddDays(4);
+	int adults = 2;
+	int rooms = 1;
+	bool goldBenefitsApplied = true;
+
+	RoomOption? selectedRoom = null;
+
+	int NightsCount => (checkOutDate - checkInDate).Days;
+	decimal EstimatedTaxes => 96.50m;
+	decimal TotalPrice => selectedRoom != null ? selectedRoom.TotalBeforeTaxes + EstimatedTaxes : 0;
+	int PointsEarned => 2100;
+	int CurrentPoints => 12450;
+	int PointsToNextTier => 2550;
+
+	List<RoomOption> availableRooms = new List<RoomOption>
+	{
+		new RoomOption
+		{
+			Name = "Deluxe King Suite",
+			ImageUrl = "/images/room-deluxe.jpg",
+			// RateType = "Member flexible rate",
+			// "City & bay view", "Access to lounge"
+			Features = new[] { "1 king bed" },
+			// "Approx. 38 m² • Upper floors • Floor-to-ceiling windows • Late checkout for Gold"
+			Amenities = new[] { "Includes breakfast for 2 • Welcome drink" },
+			PricePerNight = 204,
+			// TotalBeforeTaxes = 612,
+			// RefundStatus = "Free cancellation",
+			// CancellationPolicy = "Pay at property • No prepayment required",
+			// SavingsMessage = "You save 15% with Gold"
+		},
+		new RoomOption
+		{
+			Name = "Harbor View King",
+			ImageUrl = "/images/room-harbor.jpg",
+			// RateType = "Member advance purchase",
+			// "Partial bay view", "Balcony"
+			// Features = new[] { "1 king bed" },
+			// "Approx. 30 m² • Mid floors • Private balcony"
+			// Points on eligible spend • Same-day changes
+			Amenities = new[] { "Room only" },
+			PricePerNight = 188,
+			TotalBeforeTaxes = 564,
+			RefundStatus = "Partially refundable",
+			CancellationPolicy = "Changes with fee",
+			SavingsMessage = "Save more by booking early"
+		},
+		new RoomOption
+		{
+			Name = "Standard King",
+			ImageUrl = "/images/room-standard.jpg",
+			RateType = "Standard rate",
+			// "City view"
+			Features = new[] { "1 king bed" },
+			// Approx. 26 m² • 
+			Amenities = new[] { "First floor", "Room only • Daily housekeeping" },
+			PricePerNight = 165,
+			TotalBeforeTaxes = 495,
+			RefundStatus = "Non-refundable",
+			CancellationPolicy = "Pay now",
+			SavingsMessage = ""
+		}
+	};
+
+	protected override async Task OnInitializedAsync()
+	{
+		// Load rooms from service if needed
+		// For now using mock data
+	}
+
+	void SelectRoom(RoomOption room)
+	{
+		selectedRoom = room;
+		StateHasChanged();
+	}
+
+	void BackToDetails()
+	{
+		if (clientId.HasValue)
+		{
+			Navigation.NavigateTo($"/booking/new/{clientId.Value}");
+		}
+		else
+		{
+			Navigation.NavigateTo("/booking/new");
+		}
+	}
+
+	void ContinueToPayment()
+	{
+		if (selectedRoom != null)
+		{
+			// Navigate to payment/guest info page
+			Navigation.NavigateTo("/booking/payment");
+		}
+	}
+
+	string GetDashboardLink()
+	{
+		if (clientId.HasValue)
+		{
+			return $"/client/profile/{clientId.Value}";
+		}
+		return "/";
+	}
+
+	public class RoomOption
+	{
+		public string Name { get; set; } = "";
+		public string ImageUrl { get; set; } = "";
+		public string RateType { get; set; } = "";
+		public string[] Features { get; set; } = Array.Empty<string>();
+		public string[] Amenities { get; set; } = Array.Empty<string>();
+		public decimal PricePerNight { get; set; }
+		public decimal TotalBeforeTaxes { get; set; }
+		public string RefundStatus { get; set; } = "";
+		public string CancellationPolicy { get; set; } = "";
+		public string SavingsMessage { get; set; } = "";
+		public string IncludedFeatures => "Includes breakfast for 2";
+	}
+}

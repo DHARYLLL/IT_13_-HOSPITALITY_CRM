@@ -1,4 +1,4 @@
-@page "/booking/new"
+﻿@page "/booking/new"
 @page "/booking/new/{clientId:int}"
 @inject NavigationManager Navigation
 @inject Hospitality.Services.RoomService RoomService
@@ -7,156 +7,149 @@
 <link rel="stylesheet" href="css/newbooking.css" />
 
 <div class="booking-page">
+	<!-- Top Navigation Bar - Consistent with Client Profile -->
+	<nav class="top-nav">
+		<div class="nav-left">
+			<div class="brand">
+				<img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
+				<span class="brand-name">InnSight</span>
+				<span class="brand-sub">Guest Portal</span>
+			</div>
+		</div>
+		<div class="nav-center">
+			<a href="@GetDashboardLink()" class="nav-link @(IsActive("Dashboard"))">Dashboard</a>
+			<a href="#" class="nav-link">Stays</a>
+			<a href="#" class="nav-link">Loyalty</a>
+			<a href="#" class="nav-link">Messages</a>
+			<a href="#" class="nav-link">Reports</a>
+		</div>
+		<div class="nav-right">
+			<span class="points-badge">Gold • @LoyaltyPoints pts</span>
+			<div class="user-menu">
+				<span class="user-name">dharyl</span>
+				<div class="user-avatar-small">D</div>
+			</div>
+		</div>
+	</nav>
+
 	<div class="booking-container">
 		<!-- Left Panel - Form -->
 		<div class="booking-left">
-			<div class="back-link">
-				<a href="javascript:void(0)" @onclick="GoBack">? Back to dashboard</a>
+			<div class="page-title-section">
+				<h1 class="page-title">Book a stay</h1>
+				<p class="page-subtitle">Choose your dates and room preferences to see available options.</p>
 			</div>
 
-			<div class="booking-header">
-				<h1>New booking</h1>
-				<p class="subtitle">Choose your dates and room to complete a reservation in a few steps.</p>
-			</div>
-
-			<div class="progress-indicator">
-				<button class="generate-btn">? Generate next screen</button>
-			</div>
-
-			<div class="step-indicator">
-				<span class="step-text">Step 1 of 2</span>
-				<span class="step-title">When and who is staying?</span>
-			</div>
-
-			<!-- Dates Section -->
-			<div class="form-section">
-				<div class="section-header">
-					<h3>Dates</h3>
-					<p class="section-hint">Flexible? Select a range and we will show fixed rates.</p>
+			<!-- Stay Details Section -->
+			<div class="form-card">
+				<div class="card-header">
+					<div class="card-icon">📅</div>
+					<div class="card-title-group">
+						<h3>Stay details</h3>
+						<span class="step-badge">Step 1 of 3</span>
+					</div>
+					<button class="collapse-btn">Choose dates & guests</button>
 				</div>
 
-				<div class="date-inputs">
-					<div class="date-field">
-						<label>Local time</label>
-						<input type="date" @bind="checkInDate" class="date-input" />
-						<span class="date-label">Check-in</span>
+				<div class="form-content">
+					<!-- Where and when -->
+					<div class="form-group">
+						<label class="form-label">Where and when</label>
+						<div class="input-row">
+							<div class="input-field full-width">
+								<label class="field-label">Destination <span class="required">Required</span></label>
+								<input type="text" class="text-input" value="InnSight Waterfront" readonly />
+							</div>
+						</div>
+						<div class="input-row">
+							<div class="input-field">
+								<label class="field-label">Check-in</label>
+								<input type="date" @bind="checkInDate" class="date-input" />
+								<span class="date-display">@checkInDate.ToString("ddd, MMM dd")</span>
+							</div>
+							<div class="input-field">
+								<label class="field-label">Check-out</label>
+								<input type="date" @bind="checkOutDate" class="date-input" />
+								<span class="date-display">@checkOutDate.ToString("ddd, MMM dd")</span>
+							</div>
+						</div>
 					</div>
-					<div class="date-field">
-						<label>Automatically calculate nights</label>
-						<input type="date" @bind="checkOutDate" class="date-input" />
-						<span class="date-label">Check-out</span>
-					</div>
-				</div>
 
-				<div class="stay-info">
-					<span class="nights-badge">@NightsCount nights</span>
-					<span class="stay-type">Flexible #1 stay</span>
-					<span class="stay-type">Business stay</span>
-				</div>
-			</div>
+					<!-- Guests & Rooms -->
+					<div class="form-group">
+						<div class="input-row">
+							<div class="input-field">
+								<label class="field-label">Adults</label>
+								<div class="counter-input">
+									<button class="counter-btn" @onclick="() => ChangeAdults(-1)">−</button>
+									<span class="counter-value">@adults adult@(adults != 1 ? "s" : "")</span>
+									<button class="counter-btn" @onclick="() => ChangeAdults(1)">+</button>
+								</div>
+							</div>
+							<div class="input-field">
+								<label class="field-label">Rooms</label>
+								<div class="counter-input">
+									<button class="counter-btn" @onclick="() => ChangeRooms(-1)">−</button>
+									<span class="counter-value">@rooms room@(rooms != 1 ? "s" : "")</span>
+									<button class="counter-btn" @onclick="() => ChangeRooms(1)">+</button>
+								</div>
+							</div>
+						</div>
+						<div class="input-row">
+							<div class="input-field full-width">
+								<span class="field-note">@adults adult@(adults != 1 ? "s" : "")</span>
+							</div>
+						</div>
+					</div>
 
-			<!-- Guests & Rooms Section -->
-			<div class="form-section">
-				<div class="section-header">
-					<h3>Guests & rooms</h3>
-					<p class="section-hint">Adjust who is traveling with you.</p>
-				</div>
+					<!-- Room & rate preferences -->
+					<div class="form-group">
+						<label class="form-label">Room & rate preferences</label>
+						<div class="input-row">
+							<div class="input-field">
+								<label class="field-label">Preferred room type</label>
+								<select @bind="roomType" class="select-input">
+									<option value="Deluxe King Suite">Deluxe King Suite</option>
+									<option value="Standard Room">Standard Room</option>
+									<option value="Executive Suite">Executive Suite</option>
+								</select>
+							</div>
+							<div class="input-field">
+								<label class="field-label">Rate preference <span class="info-text">Best for you</span></label>
+								<select @bind="ratePreference" class="select-input">
+									<option value="Member flexible rate">Member flexible rate</option>
+									<option value="Non-refundable">Non-refundable</option>
+								</select>
+							</div>
+						</div>
 
-				<div class="counter-row">
-					<div class="counter-label">
-						<span class="label-text">Adult</span>
-						<span class="label-sub">@adults adult@(adults != 1 ? "s" : "") � 0 children</span>
+						<!-- Special Requests -->
+						<div class="input-field full-width">
+							<label class="field-label">Special requests <span class="info-text">Optional</span></label>
+							<textarea @bind="specialRequests" class="textarea-input" rows="2"
+							   placeholder="Add preferences like high floor, late arrival, or accessibility needs."></textarea>
+						</div>
 					</div>
-					<div class="counter-controls">
-						<button class="counter-btn" @onclick="() => ChangeAdults(-1)">-</button>
-						<span class="counter-value">@adults</span>
-						<button class="counter-btn" @onclick="() => ChangeAdults(1)">+</button>
-					</div>
-				</div>
-
-				<div class="counter-row">
-					<div class="counter-label">
-						<span class="label-text">Rooms</span>
-						<span class="label-sub">@rooms room@(rooms != 1 ? "s" : "")</span>
-					</div>
-					<div class="counter-controls">
-						<button class="counter-btn" @onclick="() => ChangeRooms(-1)">-</button>
-						<span class="counter-value">@rooms</span>
-						<button class="counter-btn" @onclick="() => ChangeRooms(1)">+</button>
-					</div>
-				</div>
-			</div>
-
-			<!-- Room Preference Section -->
-			<div class="form-section">
-				<div class="section-header">
-					<h3>Room preference</h3>
-					<p class="section-hint">You'll see available rooms in the next step.</p>
-				</div>
-
-				<div class="select-row">
-					<div class="select-field">
-						<label>Room type</label>
-						<select @bind="roomType" class="select-input">
-							<option value="Deluxe King Suite + City View">Deluxe King Suite + City View</option>
-							<option value="Standard Room">Standard Room</option>
-							<option value="Executive Suite">Executive Suite</option>
-						</select>
-					</div>
-					<div class="select-field">
-						<label>Rate preference</label>
-						<select @bind="ratePreference" class="select-input">
-							<option value="Best flexible">Best flexible</option>
-							<option value="Non-refundable">Non-refundable</option>
-						</select>
-					</div>
-				</div>
-
-				<div class="toggle-row">
-					<div class="toggle-label">
-						<span class="label-text">Include breakfast</span>
-						<span class="label-sub">High floor</span>
-					</div>
-					<label class="toggle-switch">
-						<input type="checkbox" @bind="includeBreakfast" />
-						<span class="toggle-slider"></span>
-					</label>
-				</div>
-
-				<div class="toggle-row">
-					<div class="toggle-label">
-						<span class="label-text">Non-smoking room</span>
-					</div>
-					<label class="toggle-switch">
-						<input type="checkbox" @bind="nonSmoking" />
-						<span class="toggle-slider"></span>
-					</label>
 				</div>
 			</div>
 
-			<!-- Special Requests Section -->
-			<div class="form-section">
-				<div class="section-header">
-					<h3>Special requests (optional)</h3>
-					<p class="section-hint">We'll do our best to accommodate them.</p>
+			<!-- Trip Info Banner -->
+			<div class="trip-info">
+				<div class="trip-dates">
+					<span class="trip-icon">📅</span>
+					<span>@checkInDate.ToString("ddd, MMM dd") – @checkOutDate.ToString("ddd, MMM dd")</span>
 				</div>
-				<textarea @bind="specialRequests" class="textarea-input" 
-				    placeholder="E.g. late check-in after 10 PM, feather-free pillows..."></textarea>
+				<span class="trip-note">Changes are free until 24 hours before check-in</span>
 			</div>
 
-			<!-- Footer Actions -->
-			<div class="form-footer">
-				<div class="footer-text">
-					<p><strong>Next step</strong></p>
-					<p class="footer-sub">View flexible rooms, nightly rates, and cancellation policies on the next screen.</p>
-					<a href="#" class="footer-link">View flexible cancellation policy</a>
-				</div>
-				<div class="footer-actions">
-					<button class="btn-draft">Save draft</button>
-					<button class="btn-continue" @onclick="ContinueToRoomSelection">
-						Continue to room selection ?
-					</button>
-				</div>
+			<!-- Action Buttons -->
+			<div class="action-buttons">
+				<button class="btn-secondary" @onclick="SaveDraft">
+					⏰ Save & decide later
+				</button>
+				<button class="btn-primary" @onclick="SearchRooms">
+					🔍 Search available rooms
+				</button>
 			</div>
 		</div>
 
@@ -164,43 +157,80 @@
 		<div class="booking-right">
 			<div class="summary-card">
 				<div class="summary-header">
-					<div class="summary-icon">??</div>
-					<h3>Booking summary</h3>
-					<a href="#" class="gold-link">Gold member perks applied</a>
+					<div class="summary-icon">📊</div>
+					<h3>Stay summary</h3>
 				</div>
 
-				<div class="summary-booking">
-					<h4>@roomType</h4>
-					<p class="summary-dates">@NightsCount nights � @checkInDate.ToString("MMM dd")�@checkOutDate.ToString("dd") � @adults adults</p>
-					<a href="#" class="flexible-link">?? Flexible cancellation</a>
+				<div class="summary-section">
+					<h4 class="summary-title">Selected details</h4>
+					<div class="summary-item">
+						<span class="summary-label">InnSight Waterfront • San Francisco</span>
+					</div>
+					<div class="summary-item">
+						<span class="summary-label">Deluxe King Suite + Bay view</span>
+					</div>
+					<div class="summary-item">
+						<span class="summary-label">@adults adult@(adults != 1 ? "s" : "") • @rooms room@(rooms != 1 ? "s" : "")</span>
+					</div>
 				</div>
 
-				<div class="summary-pricing">
-					<p class="pricing-label">Estimated total</p>
-					<p class="pricing-sub">Based on current public rates.</p>
-					<div class="price-total">$@EstimatedTotal.ToString("N2")</div>
-
-					<div class="price-breakdown">
-						<div class="price-row">
-							<span>Room (@NightsCount nights)</span>
-							<span>$@RoomRate.ToString("N2")</span>
+				<div class="summary-section">
+					<div class="date-cards-row">
+						<div class="date-card check-in">
+							<div class="date-label">Check-in</div>
+							<div class="date-value">@checkInDate.ToString("ddd, MMM dd")</div>
+							<div class="date-time">• @checkInDate.ToString("h:mm tt")</div>
 						</div>
-						<div class="price-row">
-							<span>Breakfast package</span>
-							<span>$@BreakfastPrice.ToString("N2")</span>
-						</div>
-						<div class="price-row">
-							<span>Taxes & fees</span>
-							<span>$@TaxesFees.ToString("N2")</span>
+						<div class="date-card check-out">
+							<div class="date-label">Check-out</div>
+							<div class="date-value">@checkOutDate.ToString("ddd, MMM dd")</div>
+							<div class="date-time">• @checkOutDate.ToString("h:mm tt")</div>
 						</div>
 					</div>
-
-					<p class="pricing-note">You can still change your room type and dates before confirming payment.</p>
 				</div>
 
-				<div class="summary-actions">
-					<button class="btn-download">?? Download rate details</button>
-					<button class="btn-share">?? Share with traveler</button>
+				<div class="summary-section">
+					<div class="offer-badge">
+						<span class="badge-icon">🎁</span>
+						<div class="badge-content">
+							<div class="badge-title">Gold weekend offer applied</div>
+							<div class="badge-desc">You earned 1,248 points + 24 points on eligible August weekend stays</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="summary-section pricing-section">
+					<div class="pricing-label">Estimated nightly rate (Before tax)</div>
+					<div class="price-range">
+						@* <span class="price-from">$248</span>
+						<span class="price-arrow">→</span> *@
+						<span class="price-to">$294</span>
+					</div>
+				</div>
+
+				<div class="summary-section">
+					<h4 class="summary-title">Points & payment</h4>
+					<div class="points-info">
+						<div class="points-row">
+							<span>Earn → 288 points</span>
+						</div>
+						<div class="points-sub">You can earn 288 points + 2,500 to Platinum</div>
+					</div>
+					<button class="points-btn">Use points later</button>
+				</div>
+
+				<div class="summary-total">
+					<div class="total-label">Final amount shown on the next step before confirming.</div>
+					<div class="total-amount">$716.50</div>
+				</div>
+
+				<div class="summary-section">
+					<h4 class="summary-title">Policies</h4>
+					<ul class="policy-list">
+						<li>Member rate: 14.7 hours before arrival</li>
+						<li>Late checkout subject to availability for Gold members</li>
+						<li>A credit card is required to guarantee your booking</li>
+					</ul>
 				</div>
 			</div>
 		</div>
@@ -214,16 +244,17 @@
 	DateTime checkOutDate = DateTime.Today.AddDays(4);
 	int adults = 2;
 	int rooms = 1;
-	string roomType = "Deluxe King Suite + City View";
-	string ratePreference = "Best flexible";
+	string roomType = "Deluxe King Suite";
+	string ratePreference = "Member flexible rate";
 	bool includeBreakfast = false;
 	bool nonSmoking = false;
 	string specialRequests = "";
+	int LoyaltyPoints = 12465;
 
 	int NightsCount => (checkOutDate - checkInDate).Days;
-	decimal RoomRate => NightsCount * 240m;
+	decimal RoomRate => NightsCount * 248m;
 	decimal BreakfastPrice => includeBreakfast ? 45m : 0m;
-	decimal TaxesFees => 85m;
+	decimal TaxesFees => 96.50m;
 	decimal EstimatedTotal => RoomRate + BreakfastPrice + TaxesFees;
 
 	void ChangeAdults(int delta)
@@ -236,21 +267,35 @@
 		rooms = Math.Max(1, rooms + delta);
 	}
 
-	void GoBack()
+	string GetDashboardLink()
 	{
 		if (clientId.HasValue)
 		{
-			Navigation.NavigateTo($"/client/profile/{clientId.Value}");
+			return $"/client/profile/{clientId.Value}";
+		}
+		return "/";
+	}
+
+	string IsActive(string page)
+	{
+		return page == "Dashboard" ? "" : "";
+	}
+
+	void SaveDraft()
+	{
+		// Save draft logic
+	}
+
+	void SearchRooms()
+	{
+		// Navigate to room selection with client ID if available
+		if (clientId.HasValue)
+		{
+			Navigation.NavigateTo($"/booking/rooms/{clientId.Value}");
 		}
 		else
 		{
-			Navigation.NavigateTo("/");
+			Navigation.NavigateTo("/booking/rooms");
 		}
-	}
-
-	void ContinueToRoomSelection()
-	{
-		// Navigate to room selection or confirmation
-		Navigation.NavigateTo("/rooms");
 	}
 }

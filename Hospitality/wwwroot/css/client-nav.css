@@ -1,0 +1,243 @@
+/* Shared Client Navigation - Consistent across all client pages */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap');
+
+/* Client Navigation Bar */
+.client-nav,
+.booking-nav,
+.top-nav {
+	background: white;
+	border-bottom: 1px solid #e8e8ea;
+	padding: 16px 32px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	position: sticky;
+	top: 0;
+	z-index: 100;
+}
+
+/* Left Section - Brand */
+.nav-brand,
+.brand,
+.nav-left {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex: 1;
+}
+
+.brand-icon {
+	font-size: 28px;
+}
+
+.brand img {
+	height: 36px;
+	width: auto;
+	object-fit: contain;
+}
+
+.brand-text {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+}
+
+.brand-name {
+	font-size: 18px;
+	font-weight: 700;
+	font-family: 'Playfair Display', serif;
+	color: #1d1d1f;
+}
+
+.brand-sub {
+	font-size: 13px;
+	font-family: 'Open Sans', sans-serif;
+	color: #6e6e73;
+}
+
+/* Center Section - Navigation Links */
+.nav-links,
+.nav-center {
+	display: flex;
+	gap: 40px;
+	align-items: center;
+	justify-content: center;
+	flex: 1;
+}
+
+.nav-link {
+	font-size: 14px;
+	font-weight: 500;
+	font-family: 'Open Sans', sans-serif;
+	color: #6e6e73;
+	text-decoration: none;
+	padding: 8px 0;
+	border-bottom: 3px solid transparent;
+	transition: all 0.2s;
+	position: relative;
+}
+
+.nav-link:hover {
+	color: #5e1369;
+	border-bottom-color: #5e1369;
+}
+
+.nav-link.active {
+	color: #5e1369;
+	border-bottom-color: #5e1369;
+	font-weight: 600;
+}
+
+/* Right Section - User Info */
+.nav-user,
+.nav-right,
+.user-menu {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	flex: 1;
+	justify-content: flex-end;
+}
+
+/* Points Badge */
+.user-badge,
+.points-badge {
+	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	color: white;
+	padding: 6px 16px;
+	border-radius: 20px;
+	font-size: 12px;
+	font-weight: 600;
+	font-family: 'Open Sans', sans-serif;
+	white-space: nowrap;
+}
+
+/* Notification Button */
+.notification-btn {
+	background: none;
+	border: none;
+	font-size: 20px;
+	cursor: pointer;
+	padding: 4px;
+	transition: transform 0.2s;
+	position: relative;
+}
+
+.notification-btn:hover {
+	transform: scale(1.1);
+}
+
+.notification-btn .badge-dot {
+	position: absolute;
+	top: 0;
+	right: 0;
+	background: #ef4444;
+	color: white;
+	font-size: 10px;
+	padding: 2px 5px;
+	border-radius: 10px;
+	font-weight: 600;
+}
+
+/* User Avatar & Name */
+.user-avatar,
+.user-menu {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.user-name {
+	font-size: 14px;
+	font-weight: 500;
+	font-family: 'Open Sans', sans-serif;
+	color: #1d1d1f;
+}
+
+.avatar-circle,
+.user-avatar-small {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	color: white;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	font-weight: 600;
+	font-family: 'Open Sans', sans-serif;
+	cursor: pointer;
+	transition: transform 0.2s;
+}
+
+.avatar-circle:hover,
+.user-avatar-small:hover {
+	transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+	.client-nav,
+	.booking-nav,
+	.top-nav {
+		padding: 12px 20px;
+	}
+
+	.nav-links,
+	.nav-center {
+		display: none;
+	}
+
+	.brand-name {
+		font-size: 16px;
+	}
+
+	.brand-sub {
+		font-size: 11px;
+	}
+
+	.nav-user,
+	.nav-right {
+		gap: 12px;
+	}
+
+	.user-name {
+		display: none;
+	}
+}
+
+@media (max-width: 768px) {
+	.client-nav,
+	.booking-nav,
+	.top-nav {
+		padding: 10px 16px;
+	}
+
+	.brand-icon {
+		font-size: 24px;
+	}
+
+	.brand img {
+		height: 28px;
+	}
+
+	.brand-text {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0;
+	}
+
+	.user-badge,
+	.points-badge {
+		padding: 4px 10px;
+		font-size: 10px;
+	}
+
+	.avatar-circle,
+	.user-avatar-small {
+		width: 32px;
+		height: 32px;
+		font-size: 12px;
+	}
+}
