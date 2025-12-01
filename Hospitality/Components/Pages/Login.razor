@@ -41,15 +41,56 @@
 	{
 		errorMessage="";
 		if(string.IsNullOrWhiteSpace(email)|| string.IsNullOrWhiteSpace(password)) { errorMessage="Email and password required."; return; }
+		
 		isLoading=true;
-		var user = await UserService.LoginAsync(email,password);
-		isLoading=false;
-		if(user==null) { errorMessage="Invalid credentials."; return; }
-		var role = user.RoleName;
-		if(role==Hospitality.Models.UserRoles.Admin) Navigation.NavigateTo("/admin");
-		else if(role==Hospitality.Models.UserRoles.Staff) Navigation.NavigateTo("/staff");
-		else if(role==Hospitality.Models.UserRoles.Client) Navigation.NavigateTo($"/client/profile/{user.UserId}");
-		else errorMessage="Unknown role.";
+		try 
+		{
+			Console.WriteLine($"Attempting login for email: {email}");
+			var user = await UserService.LoginAsync(email,password);
+			
+			if(user==null) 
+			{ 
+				Console.WriteLine("Login failed: Invalid credentials");
+				errorMessage="Invalid credentials."; 
+				return; 
+			}
+			
+			Console.WriteLine($"Login successful for user ID: {user.UserId}, Role: {user.RoleName}");
+			var role = user.RoleName;
+			
+			if(role==Hospitality.Models.UserRoles.Admin) 
+			{
+				Console.WriteLine("Navigating to admin dashboard");
+				Navigation.NavigateTo("/admin");
+			}
+			else if(role==Hospitality.Models.UserRoles.Staff) 
+			{
+				Console.WriteLine("Navigating to staff dashboard");
+				Navigation.NavigateTo("/staff");
+			}
+			else if(role==Hospitality.Models.UserRoles.Client) 
+			{
+				var profileUrl = $"/client/profile/{user.UserId}";
+				Console.WriteLine($"Navigating to client profile: {profileUrl}");
+				Navigation.NavigateTo(profileUrl);
+				
+				// Fallback option - if profile doesn't load, user can navigate to /client/simple/{id}
+			}
+			else 
+			{
+				Console.WriteLine($"Unknown role: {role}");
+				errorMessage="Unknown role.";
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Login error: {ex.Message}");
+			errorMessage = $"Login failed: {ex.Message}";
+		}
+		finally
+		{
+			isLoading=false;
+		}
 	}
 	void HandleSignup()=> Navigation.NavigateTo("/signup");
 }

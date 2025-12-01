@@ -122,24 +122,42 @@
 	{
 		errorMessage = "";
 		if (!IsFormValid()) { errorMessage = "Please fill required fields."; return; }
-		if (await UserService.EmailExistsAsync(email)) { errorMessage = "Email already registered."; return; }
-		var roleId = await UserService.GetRoleIdByNameAsync("client") ??0; // auto client role
-		var user = new Hospitality.Models.User
+		
+		try
 		{
-			role_id = roleId,
-			user_fname = firstName,
-			user_mname = string.IsNullOrWhiteSpace(middleName) ? null : System.Text.Encoding.UTF8.GetBytes(middleName),
-			user_lname = string.IsNullOrWhiteSpace(lastName) ? null : System.Text.Encoding.UTF8.GetBytes(lastName),
-			user_brith_date = birthDate,
-			user_email = email,
-			user_contact_number = contactNumber,
-			user_password = password,
-			roleName = "client"
-		};
-		var id = await UserService.RegisterAsync(user);
-		user.userId = id;
-		// redirect to profile (create route /client/profile?id=)
-		Navigation.NavigateTo($"/client/profile/{id}");
+			if (await UserService.EmailExistsAsync(email)) { errorMessage = "Email already registered."; return; }
+			
+			var roleId = await UserService.GetRoleIdByNameAsync("client") ?? 0; // auto client role
+			
+			var user = new Hospitality.Models.User
+			{
+				role_id = roleId,
+				user_fname = firstName,
+				user_mname = string.IsNullOrWhiteSpace(middleName) ? null : middleName,
+				user_lname = string.IsNullOrWhiteSpace(lastName) ? null : lastName,
+				user_brith_date = birthDate,
+				user_email = email,
+				user_contact_number = contactNumber,
+				user_password = password,
+				roleName = "client"
+			};
+			
+			var id = await UserService.RegisterAsync(user);
+			user.userId = id;
+			
+			Console.WriteLine($"User registered successfully with ID: {id}");
+			
+			// Verify client record was created
+			await Task.Delay(100); // Small delay to ensure database consistency
+			
+			// redirect to profile
+			Navigation.NavigateTo($"/client/profile/{id}");
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Signup error: {ex.Message}");
+			errorMessage = $"Registration failed: {ex.Message}";
+		}
 	}
 
 	void HandleLogin() => Navigation.NavigateTo("/");

@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using Hospitality.Services; // added
+using Hospitality.Services;
 
 namespace Hospitality
 {
@@ -17,14 +17,18 @@ namespace Hospitality
 
             builder.Services.AddMauiBlazorWebView();
 
+            // Register HTTP client using the available MAUI method
+            builder.Services.AddSingleton<HttpClient>();
+ 
             // Register application services
             builder.Services.AddSingleton<UserService>();
-            builder.Services.AddSingleton<RoomService>(); // added
-   builder.Services.AddSingleton<BookingService>();
+            builder.Services.AddSingleton<RoomService>();
+            builder.Services.AddSingleton<BookingService>();
+            builder.Services.AddTransient<PayMongoService>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
-    		builder.Logging.AddDebug();
+            builder.Logging.AddDebug();
 #endif
 
             return builder.Build();

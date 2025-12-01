@@ -1,6 +1,7 @@
-using Hospitality.Database;
+﻿using Hospitality.Database;
 using Hospitality.Models;
 using Microsoft.Data.SqlClient;
+using System.Text;
 
 namespace Hospitality.Services
 {
@@ -10,24 +11,34 @@ namespace Hospitality.Services
         {
             User? user = null;
 
-            using (SqlConnection con = DbConnection.GetConnection())
+            try
             {
-                await con.OpenAsync();
-
-                string query = @"SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, R.role_name
-                                 FROM users U JOIN Roles R ON U.role_id = R.role_id
-                                 WHERE U.user_email = @email AND U.user_password = @password";
-
-                using var cmd = new SqlCommand(query, con);
-                cmd.Parameters.AddWithValue("@email", email);
-                cmd.Parameters.AddWithValue("@password", password); // NOTE: hash before storing/compare in production
-
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                if (await reader.ReadAsync())
+                using (SqlConnection con = DbConnection.GetConnection())
                 {
-                    user = MapUser(reader);
+                    await con.OpenAsync();
+
+                    string query = @"SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, 
+                                    U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, R.role_name
+                                     FROM users U JOIN Roles R ON U.role_id = R.role_id
+                                     WHERE U.user_email = @email AND U.user_password = @password";
+
+                    using var cmd = new SqlCommand(query, con);
+                    cmd.Parameters.AddWithValue("@email", email);
+                    cmd.Parameters.AddWithValue("@password", password);
+
+                    using var reader = await cmd.ExecuteReaderAsync();
+
+                    if (await reader.ReadAsync())
+                    {
+                        user = MapUser(reader);
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging but do not rethrow to avoid crashing the UI
+                System.Diagnostics.Debug.WriteLine($"Login error: {ex}");
+                return null;
             }
 
             return user;
@@ -35,35 +46,69 @@ namespace Hospitality.Services
 
         public async Task<int> RegisterAsync(User user)
         {
-            using var con = DbConnection.GetConnection();
-            await con.OpenAsync();
-
-            string sql = @"INSERT INTO users (role_id, user_fname, user_mname, user_lname, user_brith_date, user_email, user_contact_number, user_password)
-                           VALUES (@role_id,@fname,@mname,@lname,@birth,@email,@contact,@password); SELECT SCOPE_IDENTITY();";
-
-            using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@role_id", user.role_id);
-            cmd.Parameters.AddWithValue("@fname", (object?)user.user_fname ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@mname", (object?)user.user_mname ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@lname", (object?)user.user_lname ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@birth", (object?)user.user_brith_date ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@email", user.user_email);
-            cmd.Parameters.AddWithValue("@contact", (object?)user.user_contact_number ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@password", user.user_password); // hash in real app
-
-            var idObj = await cmd.ExecuteScalarAsync();
-            int newUserId = Convert.ToInt32(idObj);
-
-            // Insert into clients table if client role
-            if (string.Equals(user.roleName, "client", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                string clientSql = "INSERT INTO clients (user_id) VALUES (@user_id);";
-                using var clientCmd = new SqlCommand(clientSql, con);
-                clientCmd.Parameters.AddWithValue("@user_id", newUserId);
-                await clientCmd.ExecuteNonQueryAsync();
-            }
+                using var con = DbConnection.GetConnection();
+                await con.OpenAsync();
 
-            return newUserId;
+                using var tx = await con.BeginTransactionAsync();
+
+                string sql = @"INSERT INTO users (role_id, user_fname, user_mname, user_lname, user_brith_date, user_email, user_contact_number, user_password)
+                               VALUES (@role_id,@fname,@mname,@lname,@birth,@email,@contact,@password); SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+                using var cmd = new SqlCommand(sql, con, (SqlTransaction)tx);
+                cmd.Parameters.AddWithValue("@role_id", user.role_id);
+                cmd.Parameters.AddWithValue("@fname", (object?)user.user_fname ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@mname", (object?)user.user_mname ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@lname", (object?)user.user_lname ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@birth", (object?)user.user_brith_date ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@email", (object?)user.user_email ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@contact", (object?)user.user_contact_number ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@password", (object?)user.user_password ?? DBNull.Value);
+
+                var idObj = await cmd.ExecuteScalarAsync();
+                int newUserId = (idObj is int i) ? i : Convert.ToInt32(idObj);
+
+                // Determine role name if not supplied
+                string? roleName = user.roleName;
+                if (string.IsNullOrWhiteSpace(roleName))
+                {
+                    using var roleCmd = new SqlCommand("SELECT role_name FROM Roles WHERE role_id=@rid", con, (SqlTransaction)tx);
+                    roleCmd.Parameters.AddWithValue("@rid", user.role_id);
+                    var rn = await roleCmd.ExecuteScalarAsync();
+                    roleName = rn?.ToString();
+                }
+
+                if (!string.IsNullOrWhiteSpace(roleName))
+                {
+                    var roleLower = roleName.ToLowerInvariant();
+                    if (roleLower == "client")
+                    {
+                        // Insert into Clients(user_id)
+                        string clientSql = "INSERT INTO Clients (user_id) VALUES (@user_id);";
+                        using var clientCmd = new SqlCommand(clientSql, con, (SqlTransaction)tx);
+                        clientCmd.Parameters.AddWithValue("@user_id", newUserId);
+                        await clientCmd.ExecuteNonQueryAsync();
+                    }
+                    else if (roleLower == "staff" || roleLower == "admin")
+                    {
+                        // Insert into Employees(user_id)
+                        string employeeSql = "INSERT INTO Employees (user_id) VALUES (@user_id);";
+                        using var empCmd = new SqlCommand(employeeSql, con, (SqlTransaction)tx);
+                        empCmd.Parameters.AddWithValue("@user_id", newUserId);
+                        await empCmd.ExecuteNonQueryAsync();
+                    }
+                }
+
+                await ((SqlTransaction)tx).CommitAsync();
+                return newUserId;
+            }
+            catch (Exception ex)
+            {
+                // Log the exception for debugging
+                System.Diagnostics.Debug.WriteLine($"Registration error: {ex}");
+                throw;
+            }
         }
 
         public async Task<bool> EmailExistsAsync(string email)
@@ -174,44 +219,116 @@ namespace Hospitality.Services
             using var con = DbConnection.GetConnection();
             await con.OpenAsync();
 
-            string sql = @"SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, R.role_name
-                           FROM users U JOIN Roles R ON U.role_id=R.role_id WHERE U.user_id=@id";
+            Console.WriteLine($"🔍 Querying user with ID: {userId}");
+
+            string sql = @"
+                SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, 
+                U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, 
+                R.role_name
+                FROM users U
+                JOIN Roles R ON U.role_id = R.role_id
+                WHERE U.user_id = @id";
 
             using var cmd = new SqlCommand(sql, con);
             cmd.Parameters.AddWithValue("@id", userId);
 
             using var reader = await cmd.ExecuteReaderAsync();
 
-            if (await reader.ReadAsync()) return MapUser(reader);
-
-            return null;
+            if (await reader.ReadAsync())
+            {
+                Console.WriteLine("✅ User found!");
+                try
+                {
+                    return MapUser(reader);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Error mapping user: {ex.Message}");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("❌ User NOT found!");
+                return null;
+            }
         }
 
         public async Task<User?> GetUserByEmailAsync(string email)
         {
             using var con = DbConnection.GetConnection();
             await con.OpenAsync();
-            string sql = @"SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, R.role_name
- FROM users U JOIN Roles R ON U.role_id=R.role_id WHERE U.user_email=@email";
+
+            Console.WriteLine($"🔍 Querying user with email: {email}");
+
+            string sql = @"
+                SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, 
+                U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, 
+                R.role_name
+                FROM users U
+                JOIN Roles R ON U.role_id = R.role_id
+                WHERE U.user_email = @email";
+
             using var cmd = new SqlCommand(sql, con);
             cmd.Parameters.AddWithValue("@email", email);
+
             using var reader = await cmd.ExecuteReaderAsync();
-            if (await reader.ReadAsync()) return MapUser(reader);
-            return null;
+
+            if (await reader.ReadAsync())
+            {
+                Console.WriteLine("✅ User found!");
+                try
+                {
+                    return MapUser(reader);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"❌ Error mapping user: {ex.Message}");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine("❌ User NOT found!");
+                return null;
+            }
         }
 
-        private static User MapUser(SqlDataReader reader) => new()
+        private static User MapUser(SqlDataReader reader)
         {
-            userId = reader.GetInt32(reader.GetOrdinal("user_id")),
-            role_id = reader.GetInt32(reader.GetOrdinal("role_id")),
-            user_fname = reader["user_fname"] as string,
-            user_mname = reader["user_mname"] as byte[],
-            user_lname = reader["user_lname"] as byte[],
-            user_brith_date = reader["user_brith_date"] as DateTime?,
-            user_email = reader["user_email"] as string,
-            user_contact_number = reader["user_contact_number"] as string,
-            user_password = reader["user_password"] as string,
-            roleName = reader["role_name"].ToString()?.ToLowerInvariant()
-        };
+            string? ReadString(string name)
+            {
+                var ordinal = reader.GetOrdinal(name);
+                if (reader.IsDBNull(ordinal)) return null;
+                var obj = reader.GetValue(ordinal);
+                if (obj is string s) return s;
+                if (obj is byte[] b) return Encoding.UTF8.GetString(b);
+                return obj?.ToString();
+            }
+
+            DateTime? ReadDate(string name)
+            {
+                var ordinal = reader.GetOrdinal(name);
+                if (reader.IsDBNull(ordinal)) return null;
+                var obj = reader.GetValue(ordinal);
+                if (obj is DateTime dt) return dt;
+                if (DateTime.TryParse(obj?.ToString(), out var parsed)) return parsed;
+                return null;
+            }
+
+            return new User
+            {
+                userId = reader.GetInt32(reader.GetOrdinal("user_id")),
+                role_id = reader.GetInt32(reader.GetOrdinal("role_id")),
+                user_fname = ReadString("user_fname"),
+                user_mname = ReadString("user_mname"),
+                user_lname = ReadString("user_lname"),
+                user_brith_date = ReadDate("user_brith_date"), // NOTE: match DB column name
+                user_email = ReadString("user_email"),
+                user_contact_number = ReadString("user_contact_number"),
+                user_password = ReadString("user_password"),
+                roleName = ReadString("role_name")?.ToLowerInvariant()
+            };
+        }
     }
 }

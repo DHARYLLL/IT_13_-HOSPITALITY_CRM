@@ -8,10 +8,10 @@ public class User
     public int RoleId => role_id;
     public string? user_fname { get; set; }
     public string? FirstName => user_fname;
-    public byte[]? user_mname { get; set; } // stored as varbinary (e.g., encrypted/masked middle name)
-    public byte[]? MiddleName => user_mname;
-    public byte[]? user_lname { get; set; } // stored as varbinary (e.g., encrypted/masked last name)
-    public byte[]? LastName => user_lname;
+    public string? user_mname { get; set; } 
+    public string? MiddleName => user_mname;
+    public string? user_lname { get; set; }
+    public string? LastName => user_lname;
     public DateTime? user_brith_date { get; set; }
     public DateTime? BirthDate => user_brith_date;
     public string? user_email { get; set; }

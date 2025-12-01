@@ -1,0 +1,655 @@
+@page "/booking/payment/{clientId:int}/{bookingId:int}"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.BookingService BookingService
+@inject Hospitality.Services.UserService UserService
+@inject Hospitality.Services.PayMongoService PayMongoService
+@inject IJSRuntime JSRuntime
+
+<link rel="stylesheet" href="css/payment.css" />
+
+<div class="payment-page">
+	<!-- Top Navigation Bar -->
+	<nav class="top-nav">
+		<div class="nav-left">
+			<div class="brand">
+				<img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
+				<span class="brand-name">InnSight</span>
+				<span class="brand-sub">Guest Portal</span>
+			</div>
+		</div>
+		<div class="nav-center">
+			<a href="@GetDashboardLink()" class="nav-link">Dashboard</a>
+			<a href="#" class="nav-link">Stays</a>
+			<a href="#" class="nav-link">Loyalty</a>
+			<a href="#" class="nav-link">Messages</a>
+		</div>
+		<div class="nav-right">
+			<span class="points-badge">Gold • @LoyaltyPoints pts</span>
+			<div class="user-menu">
+				<div class="user-avatar-small">@GetInitials()</div>
+			</div>
+		</div>
+	</nav>
+
+	<div class="payment-container">
+		<!-- Progress Indicator -->
+		@* <div class="progress-steps">
+			<div class="step completed">
+				<div class="step-circle">?</div>
+				<span class="step-label">Stay Details</span>
+			</div>
+			<div class="step completed">
+				<div class="step-circle">?</div>
+				<span class="step-label">Room Selection</span>
+			</div>
+			<div class="step active">
+				<div class="step-circle">3</div>
+				<span class="step-label">Payment</span>
+			</div>
+		</div> *@
+
+		<div class="payment-content">
+			<!-- Left Panel - Payment Form -->
+			<div class="payment-left">
+				<div class="page-header">
+					<h1 class="page-title">Complete your booking</h1>
+					<p class="page-subtitle">Secure payment powered by PayMongo</p>
+				</div>
+
+				@if (loading)
+				{
+					<div class="loading-container">
+						<div class="spinner"></div>
+						<p>Loading payment details...</p>
+					</div>
+				}
+				else
+				{
+					<!-- Error Message -->
+					@if (!string.IsNullOrEmpty(errorMessage))
+					{
+						<div class="error-banner" style="background: #ffe6e6; border: 1px solid #ff6b6b; padding: 15px; margin-bottom: 20px; border-radius: 8px; color: #d63031;">
+							<div style="display: flex; align-items: center; gap: 10px;">
+								<span style="font-size: 18px;">??</span>
+								<div>
+									<strong>Payment Error</strong>
+									<div style="margin-top: 5px;">@errorMessage</div>
+								</div>
+							</div>
+						</div>
+					}
+
+					<!-- Guest Information -->
+					<div class="form-section">
+						<div class="section-header">
+							<h3 class="section-title">Guest Information</h3>
+							<span class="section-subtitle">Confirm your details</span>
+						</div>
+						<div class="guest-info">
+							<div class="input-row">
+								<div class="input-field">
+									<label class="field-label">First Name <span class="required">*</span></label>
+									<input type="text" @bind="firstName" class="text-input" placeholder="Enter first name" required />
+								</div>
+								<div class="input-field">
+									<label class="field-label">Last Name <span class="required">*</span></label>
+									<input type="text" @bind="lastName" class="text-input" placeholder="Enter last name" required />
+								</div>
+							</div>
+							<div class="input-row">
+								<div class="input-field">
+									<label class="field-label">Email Address <span class="required">*</span></label>
+									<input type="email" @bind="email" class="text-input" placeholder="your.email@example.com" required />
+								</div>
+								<div class="input-field">
+									<label class="field-label">Phone Number <span class="required">*</span></label>
+									<input type="tel" @bind="phoneNumber" class="text-input" placeholder="+63 999 123 4567" required />
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<!-- Payment Method Selection -->
+					<div class="form-section">
+						<div class="section-header">
+							<h3 class="section-title">Payment Method</h3>
+							<span class="section-subtitle">Choose how you'd like to pay</span>
+						</div>
+						<div class="payment-methods">
+							<button type="button" class="payment-method @(selectedPaymentMethod == "card" ? "selected" : "")" @onclick="SelectCardPayment">
+								<div class="method-icon">??</div>
+								<div class="method-details">
+									<div class="method-name">Credit/Debit Card</div>
+									<div class="method-desc">Visa, Mastercard, JCB</div>
+								</div>
+								<div class="method-radio">
+									<input type="radio" name="paymentMethod" value="card" checked="@(selectedPaymentMethod == "card")" />
+								</div>
+							</button>
+							<button type="button" class="payment-method @(selectedPaymentMethod == "gcash" ? "selected" : "")" @onclick="SelectGCashPayment">
+								<div class="method-icon">??</div>
+								<div class="method-details">
+									<div class="method-name">GCash</div>
+									<div class="method-desc">Pay with your GCash wallet</div>
+								</div>
+								<div class="method-radio">
+									<input type="radio" name="paymentMethod" value="gcash" checked="@(selectedPaymentMethod == "gcash")" />
+								</div>
+							</button>
+							<button type="button" class="payment-method @(selectedPaymentMethod == "paymaya" ? "selected" : "")" @onclick="SelectPayMayaPayment">
+								<div class="method-icon">??</div>
+								<div class="method-details">
+									<div class="method-name">PayMaya</div>
+									<div class="method-desc">Pay with your PayMaya account</div>
+								</div>
+								<div class="method-radio">
+									<input type="radio" name="paymentMethod" value="paymaya" checked="@(selectedPaymentMethod == "paymaya")" />
+								</div>
+							</button>
+						</div>
+					</div>
+
+					<!-- Card Details (shown when card is selected) -->
+					@if (selectedPaymentMethod == "card")
+					{
+						<div class="form-section card-details">
+							<div class="section-header">
+								<h3 class="section-title">Card Details</h3>
+								<div class="security-badge">
+									<span class="security-icon">??</span>
+									<span class="security-text">Secured by PayMongo</span>
+								</div>
+							</div>
+							<div class="card-form">
+								<div class="input-field full-width">
+									<label class="field-label">Card Number <span class="required">*</span></label>
+									<div class="card-input-wrapper">
+										<input type="text" @bind="cardNumber" @oninput="FormatCardNumber" class="text-input card-input" 
+											   placeholder="1234 5678 9012 3456" maxlength="19" />
+										<div class="card-icons">
+											<img src="images/visa.png" alt="Visa" class="card-icon" />
+											<img src="images/mastercard.png" alt="Mastercard" class="card-icon" />
+										</div>
+									</div>
+								</div>
+								<div class="input-row">
+									<div class="input-field">
+										<label class="field-label">Expiry Date <span class="required">*</span></label>
+										<input type="text" @bind="expiryDate" @oninput="FormatExpiryDate" class="text-input" 
+											   placeholder="MM/YY" maxlength="5" />
+									</div>
+									<div class="input-field">
+										<label class="field-label">CVC <span class="required">*</span></label>
+										<input type="text" @bind="cvc" class="text-input" placeholder="123" maxlength="4" />
+									</div>
+								</div>
+								<div class="input-field full-width">
+									<label class="field-label">Cardholder Name <span class="required">*</span></label>
+									<input type="text" @bind="cardholderName" class="text-input" placeholder="Name on card" />
+								</div>
+							</div>
+						</div>
+					}
+
+					<!-- Terms and Conditions -->
+					<div class="form-section">
+						<div class="terms-section">
+							<label class="checkbox-container">
+								<input type="checkbox" @bind="agreeToTerms" />
+								<span class="checkmark"></span>
+								<span class="checkbox-text">
+									I agree to the <a href="#" class="terms-link">Terms and Conditions</a> 
+									and <a href="#" class="terms-link">Privacy Policy</a>
+								</span>
+							</label>
+							<label class="checkbox-container">
+								<input type="checkbox" @bind="subscribeToOffers" />
+								<span class="checkmark"></span>
+								<span class="checkbox-text">
+									I would like to receive special offers and updates via email
+								</span>
+							</label>
+						</div>
+					</div>
+
+					<!-- Debug Information -->
+					@if (showDebugInfo)
+					{
+						<div class="debug-section" style="background: #f0f8ff; border: 1px solid #0066cc; padding: 15px; margin: 20px 0; border-radius: 8px;">
+							<h4 style="color: #0066cc; margin-bottom: 10px;">Debug Information</h4>
+							<div style="font-family: monospace; font-size: 12px; line-height: 1.4;">
+								<div>Can Process Payment: @CanProcessPayment()</div>
+								<div>Processing Payment: @processingPayment</div>
+								<div>Agree to Terms: @agreeToTerms</div>
+								<div>Selected Payment Method: @selectedPaymentMethod</div>
+								<div>Basic Info Valid: @IsBasicInfoValid()</div>
+								<div>Card Info Valid: @IsCardInfoValid()</div>
+								<div>First Name: '@firstName'</div>
+								<div>Last Name: '@lastName'</div>
+								<div>Email: '@email'</div>
+								<div>Phone: '@phoneNumber'</div>
+								@if (selectedPaymentMethod == "card")
+								{
+									<div>Card Number: '@cardNumber'</div>
+									<div>Expiry Date: '@expiryDate'</div>
+									<div>CVC: '@cvc'</div>
+									<div>Cardholder Name: '@cardholderName'</div>
+								}
+							</div>
+						</div>
+					}
+
+					<!-- Payment Buttons -->
+					<div class="payment-actions">
+						<button class="btn-secondary" @onclick="GoBack">
+							? Back to Rooms
+						</button>
+						<button class="btn-secondary" @onclick="ToggleDebugInfo" style="margin-right: 10px;">
+							?? @(showDebugInfo ? "Hide" : "Show") Debug
+						</button>
+						<button class="btn-primary @(CanProcessPayment() ? "" : "disabled")" 
+								@onclick="ProcessPayment" 
+								disabled="@(!CanProcessPayment() || processingPayment)"
+								style="min-width: 200px;">
+							@if (processingPayment)
+							{
+								<span class="spinner-small"></span>
+								<span>Processing...</span>
+							}
+							else
+							{
+								<span>Complete Payment • $@totalAmount.ToString("N2")</span>
+							}
+						</button>
+					</div>
+				}
+			</div>
+
+			<!-- Right Panel - Booking Summary -->
+			<div class="payment-right">
+				<div class="summary-card">
+					<div class="summary-header">
+						<div class="summary-icon">??</div>
+						<h3>Booking Summary</h3>
+					</div>
+
+					@if (booking != null)
+					{
+						<!-- Hotel Details -->
+						<div class="summary-section">
+							<div class="hotel-info">
+								<div class="hotel-image">
+									<img src="images/hotel-placeholder.jpg" alt="InnSight Hotel" />
+								</div>
+								<div class="hotel-details">
+									<h4 class="hotel-name">InnSight Hotel</h4>
+									<div class="hotel-location">?? Waterfront, San Francisco</div>
+									<div class="hotel-rating">????? 4.8 (2,847 reviews)</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Stay Details -->
+						<div class="summary-section">
+							<h4 class="section-title">Stay Details</h4>
+							<div class="stay-info">
+								<div class="info-row">
+									<span class="info-label">Room Type</span>
+									<span class="info-value">@booking.room_name</span>
+								</div>
+								<div class="info-row">
+									<span class="info-label">Check-in</span>
+									<span class="info-value">@booking.check_in_date.ToString("ddd, MMM dd") • 3:00 PM</span>
+								</div>
+								<div class="info-row">
+									<span class="info-label">Check-out</span>
+									<span class="info-value">@booking.check_out_date.ToString("ddd, MMM dd") • 11:00 AM</span>
+								</div>
+								<div class="info-row">
+									<span class="info-label">Guests</span>
+									<span class="info-value">@booking.person_count adult@(booking.person_count != 1 ? "s" : "")</span>
+								</div>
+								<div class="info-row">
+									<span class="info-label">Nights</span>
+									<span class="info-value">@GetNights() night@(GetNights() != 1 ? "s" : "")</span>
+								</div>
+							</div>
+						</div>
+
+						<!-- Price Breakdown -->
+						<div class="summary-section">
+							<h4 class="section-title">Price Breakdown</h4>
+							<div class="price-breakdown">
+								<div class="price-row">
+									<span class="price-label">@booking.room_name x @GetNights() nights</span>
+									<span class="price-value">$@((booking.room_price ?? 0) * GetNights()).ToString("N2")</span>
+								</div>
+								<div class="price-row">
+									<span class="price-label">Taxes & Fees</span>
+									<span class="price-value">$@taxesAndFees.ToString("N2")</span>
+								</div>
+								<div class="price-row discount">
+									<span class="price-label">Gold Member Discount</span>
+									<span class="price-value">-$@goldDiscount.ToString("N2")</span>
+								</div>
+								<div class="price-row total">
+									<span class="price-label">Total</span>
+									<span class="price-value">$@totalAmount.ToString("N2")</span>
+								</div>
+							</div>
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+@code {
+	[Parameter] public int clientId { get; set; }
+	[Parameter] public int bookingId { get; set; }
+
+	// User and booking data
+	Hospitality.Models.User? user;
+	Hospitality.Models.Booking? booking;
+
+	// Loading states
+	bool loading = true;
+	bool processingPayment = false;
+	string errorMessage = "";
+	bool showDebugInfo = false;
+
+	// Guest information
+	string firstName = "";
+	string lastName = "";
+	string email = "";
+	string phoneNumber = "";
+
+	// Payment details
+	string selectedPaymentMethod = "card";
+	string cardNumber = "";
+	string expiryDate = "";
+	string cvc = "";
+	string cardholderName = "";
+
+	// Terms and conditions
+	bool agreeToTerms = false;
+	bool subscribeToOffers = false;
+
+	// Pricing
+	decimal taxesAndFees = 96.50m;
+	decimal goldDiscount = 24.80m;
+	decimal totalAmount = 0;
+	int LoyaltyPoints = 0;
+
+	protected override async Task OnInitializedAsync()
+	{
+		loading = true;
+		errorMessage = "";
+		
+		try
+		{
+			Console.WriteLine($"Payment page initialized with clientId: {clientId}, bookingId: {bookingId}");
+			
+			user = await UserService.GetUserByIdAsync(clientId);
+			
+			if (user != null)
+			{
+				firstName = user.user_fname ?? "";
+				lastName = user.user_lname ?? "";
+				email = user.user_email ?? "";
+				phoneNumber = user.user_contact_number ?? "";
+				Console.WriteLine($"Loaded user: {firstName} {lastName}, Email: {email}");
+			}
+
+			// Load actual booking data from database
+			try
+			{
+				booking = await BookingService.GetBookingByIdAsync(bookingId);
+				Console.WriteLine($"Loaded booking: {booking?.booking_id}, Room: {booking?.room_name}");
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"Error loading booking: {ex.Message}");
+				// Fallback to demo booking if database lookup fails
+				booking = new Hospitality.Models.Booking
+				{
+					booking_id = bookingId,
+					client_id = clientId,
+					room_name = "Deluxe King Suite",
+					check_in_date = DateTime.Today.AddDays(1),
+					check_out_date = DateTime.Today.AddDays(4),
+					person_count = 2,
+					room_price = 248m,
+					booking_status = "pending"
+				};
+				Console.WriteLine("Using fallback demo booking data");
+			}
+
+			CalculateTotalAmount();
+			Console.WriteLine($"Total amount calculated: ${totalAmount:N2}");
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading payment data: {ex.Message}");
+			errorMessage = $"Error loading payment details: {ex.Message}";
+		}
+		finally
+		{
+			loading = false;
+		}
+	}
+
+	string Decode(byte[]? data)
+	{
+		if (data == null || data.Length == 0) return string.Empty;
+		try { return System.Text.Encoding.UTF8.GetString(data); }
+		catch { return string.Empty; }
+	}
+
+	string GetInitials()
+	{
+		if (user == null) return "G";
+		var parts = new List<string>();
+		if (!string.IsNullOrWhiteSpace(user.user_fname)) parts.Add(user.user_fname.Substring(0, 1));
+		if (user.user_lname != null && user.user_lname.Length > 0)
+		{
+			try
+			{
+				var ln = user.user_lname ?? "";
+				if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0, 1));
+			}
+			catch { }
+		}
+		return string.Join("", parts).ToUpperInvariant();
+	}
+
+	string GetDashboardLink()
+	{
+		return $"/client/profile/{clientId}";
+	}
+
+	int GetNights()
+	{
+		if (booking == null) return 0;
+		return (int)(booking.check_out_date - booking.check_in_date).TotalDays;
+	}
+
+	void CalculateTotalAmount()
+	{
+		if (booking?.room_price == null) return;
+		var subtotal = booking.room_price.Value * GetNights();
+		totalAmount = subtotal + taxesAndFees - goldDiscount;
+	}
+
+	void SelectCardPayment() => selectedPaymentMethod = "card";
+	void SelectGCashPayment() => selectedPaymentMethod = "gcash";
+	void SelectPayMayaPayment() => selectedPaymentMethod = "paymaya";
+
+	void ToggleDebugInfo() => showDebugInfo = !showDebugInfo;
+
+	void FormatCardNumber()
+	{
+		cardNumber = new string(cardNumber.Where(char.IsDigit).ToArray());
+		if (cardNumber.Length > 16) cardNumber = cardNumber.Substring(0, 16);
+		
+		var formatted = string.Empty;
+		for (int i = 0; i < cardNumber.Length; i++)
+		{
+			if (i > 0 && i % 4 == 0) formatted += " ";
+			formatted += cardNumber[i];
+		}
+		cardNumber = formatted;
+	}
+
+	void FormatExpiryDate()
+	{
+		var digits = new string(expiryDate.Where(char.IsDigit).ToArray());
+		if (digits.Length >= 2)
+		{
+			if (digits.Length == 2)
+				expiryDate = digits;
+			else if (digits.Length >= 3)
+				expiryDate = digits.Substring(0, 2) + "/" + digits.Substring(2, Math.Min(2, digits.Length - 2));
+		}
+		else
+		{
+			expiryDate = digits;
+		}
+	}
+
+	bool IsBasicInfoValid()
+	{
+		return !string.IsNullOrWhiteSpace(firstName) && 
+			   !string.IsNullOrWhiteSpace(lastName) && 
+			   !string.IsNullOrWhiteSpace(email) && 
+			   !string.IsNullOrWhiteSpace(phoneNumber);
+	}
+
+	bool IsCardInfoValid()
+	{
+		if (selectedPaymentMethod != "card") return true;
+		
+		return !string.IsNullOrWhiteSpace(cardNumber) && 
+			   !string.IsNullOrWhiteSpace(expiryDate) && 
+			   !string.IsNullOrWhiteSpace(cvc) && 
+			   !string.IsNullOrWhiteSpace(cardholderName);
+	}
+
+	bool CanProcessPayment()
+	{
+		if (processingPayment || !agreeToTerms) return false;
+		return IsBasicInfoValid() && IsCardInfoValid();
+	}
+
+	async Task ProcessPayment()
+	{
+		Console.WriteLine("ProcessPayment method called");
+		
+		if (!CanProcessPayment()) 
+		{
+			Console.WriteLine("Cannot process payment - validation failed");
+			errorMessage = "Please fill in all required fields and agree to the terms.";
+			StateHasChanged();
+			return;
+		}
+
+		processingPayment = true;
+		errorMessage = "";
+		StateHasChanged();
+		
+		try
+		{
+			Console.WriteLine($"Starting payment processing for booking {bookingId}");
+			Console.WriteLine($"Payment method: {selectedPaymentMethod}");
+			Console.WriteLine($"Total amount: ${totalAmount:N2}");
+			
+			// Simulate payment processing based on method
+			if (selectedPaymentMethod == "card")
+			{
+				Console.WriteLine("Processing card payment...");
+				await ProcessCardPayment();
+			}
+			else if (selectedPaymentMethod == "gcash")
+			{
+				Console.WriteLine("Processing GCash payment...");
+				await ProcessGCashPayment();
+			}
+			else if (selectedPaymentMethod == "paymaya")
+			{
+				Console.WriteLine("Processing PayMaya payment...");
+				await ProcessPayMayaPayment();
+			}
+			else
+			{
+				throw new InvalidOperationException($"Unsupported payment method: {selectedPaymentMethod}");
+			}
+
+			Console.WriteLine("Payment processing completed successfully");
+			
+			// Update booking status
+			Console.WriteLine("Updating booking status to confirmed...");
+			// TODO: Add booking status update method if needed
+			
+			// Navigate to confirmation page
+			var confirmationUrl = $"/booking/confirmation/{clientId}/{bookingId}";
+			Console.WriteLine($"Navigating to confirmation: {confirmationUrl}");
+			Navigation.NavigateTo(confirmationUrl);
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Payment error: {ex.Message}");
+			errorMessage = $"Payment failed: {ex.Message}. Please try again or use a different payment method.";
+		}
+		finally
+		{
+			processingPayment = false;
+			StateHasChanged();
+		}
+	}
+
+	async Task ProcessCardPayment()
+	{
+		Console.WriteLine("Processing credit card payment");
+		
+		// For demo purposes, simulate processing time
+		await Task.Delay(2000);
+		
+		// In a real implementation, you would:
+		// 1. Create payment method with PayMongo
+		// 2. Create payment intent
+		// 3. Attach payment method to intent
+		// 4. Handle 3D Secure if required
+		// 5. Confirm payment
+		
+		// For now, we'll simulate a successful payment
+		Console.WriteLine("Card payment processed successfully");
+	}
+
+	async Task ProcessGCashPayment()
+	{
+		Console.WriteLine("Processing GCash payment");
+		
+		// For demo purposes, simulate processing time
+		await Task.Delay(1500);
+		
+		// In a real implementation, you would create a GCash payment intent
+		Console.WriteLine("GCash payment processed successfully");
+	}
+
+	async Task ProcessPayMayaPayment()
+	{
+		Console.WriteLine("Processing PayMaya payment");
+		
+		// For demo purposes, simulate processing time
+		await Task.Delay(1500);
+		
+		// In a real implementation, you would create a PayMaya payment intent
+		Console.WriteLine("PayMaya payment processed successfully");
+	}
+
+	void GoBack()
+	{
+		Navigation.NavigateTo($"/booking/rooms/{clientId}");
+	}
+}

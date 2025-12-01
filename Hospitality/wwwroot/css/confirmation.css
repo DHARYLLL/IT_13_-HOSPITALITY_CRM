@@ -1,0 +1,224 @@
+/* Booking Confirmation Page Styles */
+@import url('client-nav.css');
+
+.confirmation-content {
+	max-width: 800px;
+	margin: 0 auto;
+	padding: 40px 24px;
+	text-align: center;
+}
+
+.success-card {
+	background: white;
+	border-radius: 16px;
+	padding: 48px 32px;
+	margin-bottom: 32px;
+	border: 1px solid #e5e5e7;
+}
+
+.success-icon {
+	font-size: 64px;
+	margin-bottom: 24px;
+}
+
+.success-title {
+	font-size: 32px;
+	font-weight: 700;
+	font-family: 'Playfair Display', serif;
+	color: #059669;
+	margin: 0 0 16px 0;
+}
+
+.success-subtitle {
+	font-size: 18px;
+	color: #6e6e73;
+	font-family: 'Open Sans', sans-serif;
+	margin: 0 0 32px 0;
+	line-height: 1.5;
+}
+
+.booking-reference {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8px;
+	background: #f0fdf4;
+	border: 2px solid #bbf7d0;
+	border-radius: 12px;
+	padding: 16px 24px;
+}
+
+.reference-label {
+	font-size: 12px;
+	font-weight: 500;
+	color: #059669;
+	font-family: 'Open Sans', sans-serif;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+}
+
+.reference-number {
+	font-size: 24px;
+	font-weight: 700;
+	color: #059669;
+	font-family: 'Playfair Display', serif;
+}
+
+.confirmation-details {
+	background: white;
+	border-radius: 16px;
+	border: 1px solid #e5e5e7;
+	overflow: hidden;
+	text-align: left;
+}
+
+.details-section {
+	padding: 32px;
+	border-bottom: 1px solid #e5e5e7;
+}
+
+.details-section:last-child {
+	border-bottom: none;
+}
+
+.details-section h3 {
+	font-size: 20px;
+	font-weight: 600;
+	font-family: 'Lora', serif;
+	color: #1d1d1f;
+	margin: 0 0 24px 0;
+}
+
+.detail-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 20px;
+}
+
+.detail-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 12px 0;
+	border-bottom: 1px solid #f5f5f7;
+}
+
+.detail-label {
+	font-size: 14px;
+	font-weight: 500;
+	color: #6e6e73;
+	font-family: 'Open Sans', sans-serif;
+}
+
+.detail-value {
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d1d1f;
+	font-family: 'Open Sans', sans-serif;
+	text-align: right;
+}
+
+.detail-value.payment-amount {
+	font-size: 18px;
+	color: #059669;
+	font-family: 'Playfair Display', serif;
+}
+
+.next-steps {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+.step-item {
+	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+}
+
+.step-icon {
+	font-size: 20px;
+	width: 40px;
+	text-align: center;
+	margin-top: 4px;
+}
+
+.step-content {
+	flex: 1;
+}
+
+.step-title {
+	font-size: 15px;
+	font-weight: 600;
+	color: #1d1d1f;
+	font-family: 'Lora', serif;
+	margin-bottom: 4px;
+}
+
+.step-desc {
+	font-size: 13px;
+	color: #6e6e73;
+	font-family: 'Open Sans', sans-serif;
+	line-height: 1.4;
+}
+
+.confirmation-actions {
+	padding: 32px;
+	display: flex;
+	gap: 16px;
+	justify-content: center;
+	background: #fafafa;
+}
+
+.btn-secondary,
+.btn-primary {
+	padding: 12px 24px;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 600;
+	font-family: 'Open Sans', sans-serif;
+	cursor: pointer;
+	transition: all 0.2s;
+	border: none;
+}
+
+.btn-secondary {
+	background: white;
+	border: 1px solid #d2d2d7;
+	color: #1d1d1f;
+}
+
+.btn-secondary:hover {
+	background: #f5f5f7;
+}
+
+.btn-primary {
+	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	color: white;
+	box-shadow: 0 4px 12px rgba(94, 19, 105, 0.3);
+}
+
+.btn-primary:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgba(94, 19, 105, 0.4);
+}
+
+@media (max-width: 768px) {
+	.confirmation-actions {
+		flex-direction: column;
+	}
+
+	.detail-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.detail-item {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 4px;
+	}
+
+	.detail-value {
+		text-align: left;
+	}
+}

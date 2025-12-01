@@ -11,7 +11,8 @@ public class RoomService
         var rooms = new List<Room>();
         using var con = DbConnection.GetConnection();
         await con.OpenAsync();
-        string sql = @"SELECT room_id, room_name, room_number, room_floor, room_price, room_available, room_status FROM rooms";
+        // Use a single, consistent SELECT matching DB schema
+        string sql = @"SELECT room_id, room_name, room_number, room_floor, room_price, room_available, room_status, room_picture, room_amenities FROM rooms";
         using var cmd = new SqlCommand(sql, con);
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
@@ -24,7 +25,9 @@ public class RoomService
                 room_floor = reader.GetInt32(reader.GetOrdinal("room_floor")),
                 room_price = reader.GetDecimal(reader.GetOrdinal("room_price")),
                 room_available = reader.GetString(reader.GetOrdinal("room_available")),
-                room_status = reader.GetString(reader.GetOrdinal("room_status"))
+                room_status = reader.GetString(reader.GetOrdinal("room_status")),
+                room_picture = reader.IsDBNull(reader.GetOrdinal("room_picture")) ? null : (byte[])reader["room_picture"],
+                room_amenities = reader.IsDBNull(reader.GetOrdinal("room_amenities")) ? null : reader.GetString(reader.GetOrdinal("room_amenities"))
             });
         }
         return rooms;
@@ -34,8 +37,8 @@ public class RoomService
     {
         using var con = DbConnection.GetConnection();
         await con.OpenAsync();
-        string sql = @"INSERT INTO rooms (room_name, room_number, room_floor, room_price, room_available, room_status)
- VALUES (@name,@number,@floor,@price,@available,@status); SELECT SCOPE_IDENTITY();";
+        string sql = @"INSERT INTO rooms (room_name, room_number, room_floor, room_price, room_available, room_status, room_picture, room_amenities)
+ VALUES (@name,@number,@floor,@price,@available,@status,@photo,@amenities); SELECT CAST(SCOPE_IDENTITY() AS int);";
         using var cmd = new SqlCommand(sql, con);
         cmd.Parameters.AddWithValue("@name", room.room_name);
         cmd.Parameters.AddWithValue("@number", room.room_number);
@@ -43,15 +46,17 @@ public class RoomService
         cmd.Parameters.AddWithValue("@price", room.room_price);
         cmd.Parameters.AddWithValue("@available", room.room_available);
         cmd.Parameters.AddWithValue("@status", room.room_status);
+        cmd.Parameters.AddWithValue("@photo", (object?)room.room_picture ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@amenities", (object?)room.room_amenities ?? DBNull.Value);
         var idObj = await cmd.ExecuteScalarAsync();
-        return Convert.ToInt32(idObj);
+        return (idObj is int i) ? i : Convert.ToInt32(idObj);
     }
 
     public async Task UpdateRoomAsync(Room room)
     {
         using var con = DbConnection.GetConnection();
         await con.OpenAsync();
-        string sql = @"UPDATE rooms SET room_name=@name, room_number=@number, room_floor=@floor, room_price=@price, room_available=@available, room_status=@status WHERE room_id=@id";
+        string sql = @"UPDATE rooms SET room_name=@name, room_number=@number, room_floor=@floor, room_price=@price, room_available=@available, room_status=@status, room_picture=@photo, room_amenities=@amenities WHERE room_id=@id";
         using var cmd = new SqlCommand(sql, con);
         cmd.Parameters.AddWithValue("@name", room.room_name);
         cmd.Parameters.AddWithValue("@number", room.room_number);
@@ -59,6 +64,8 @@ public class RoomService
         cmd.Parameters.AddWithValue("@price", room.room_price);
         cmd.Parameters.AddWithValue("@available", room.room_available);
         cmd.Parameters.AddWithValue("@status", room.room_status);
+        cmd.Parameters.AddWithValue("@photo", (object?)room.room_picture ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@amenities", (object?)room.room_amenities ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@id", room.room_id);
         await cmd.ExecuteNonQueryAsync();
     }

@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @inject Hospitality.Services.RoomService RoomService
 @inject Hospitality.Services.BookingService BookingService
+@inject Hospitality.Services.UserService UserService
 
 <link rel="stylesheet" href="css/newbooking.css" />
 
@@ -21,13 +22,12 @@
 			<a href="#" class="nav-link">Stays</a>
 			<a href="#" class="nav-link">Loyalty</a>
 			<a href="#" class="nav-link">Messages</a>
-			<a href="#" class="nav-link">Reports</a>
 		</div>
 		<div class="nav-right">
 			<span class="points-badge">Gold • @LoyaltyPoints pts</span>
 			<div class="user-menu">
-				<span class="user-name">dharyl</span>
-				<div class="user-avatar-small">D</div>
+				@* <span class="user-name">Guest</span> *@
+				<div class="user-avatar-small">@GetInitials()</div>
 			</div>
 		</div>
 	</nav>
@@ -52,25 +52,53 @@
 				</div>
 
 				<div class="form-content">
+					@if (!string.IsNullOrEmpty(validationMessage))
+					{
+						<div class="validation-message error">
+							<span class="error-icon">⚠️</span>
+							@validationMessage
+						</div>
+					}
+
 					<!-- Where and when -->
 					<div class="form-group">
 						<label class="form-label">Where and when</label>
 						<div class="input-row">
 							<div class="input-field full-width">
 								<label class="field-label">Destination <span class="required">Required</span></label>
-								<input type="text" class="text-input" value="InnSight Waterfront" readonly />
+								<input type="text" class="text-input" value="InnSight Hotel" readonly/>
 							</div>
 						</div>
 						<div class="input-row">
 							<div class="input-field">
 								<label class="field-label">Check-in</label>
 								<input type="date" @bind="checkInDate" class="date-input" />
-								<span class="date-display">@checkInDate.ToString("ddd, MMM dd")</span>
+								<input type="time" @bind="checkInTime" class="time-input" />
+								<span class="date-display">
+									@if (checkInDate.HasValue && checkInTime.HasValue)
+									{
+										@($"{checkInDate.Value:ddd, MMM dd} • {checkInTime.Value:HH:mm}")
+									}
+									else
+									{
+										<text>Select check-in date and time</text>
+									}
+								</span>
 							</div>
 							<div class="input-field">
 								<label class="field-label">Check-out</label>
 								<input type="date" @bind="checkOutDate" class="date-input" />
-								<span class="date-display">@checkOutDate.ToString("ddd, MMM dd")</span>
+								<input type="time" @bind="checkOutTime" class="time-input" />
+								<span class="date-display">
+									@if (checkOutDate.HasValue && checkOutTime.HasValue)
+									{
+										@($"{checkOutDate.Value:ddd, MMM dd} • {checkOutTime.Value:HH:mm}")
+									}
+									else
+									{
+										<text>Select check-out date and time</text>
+									}
+								</span>
 							</div>
 						</div>
 					</div>
@@ -97,7 +125,7 @@
 						</div>
 						<div class="input-row">
 							<div class="input-field full-width">
-								<span class="field-note">@adults adult@(adults != 1 ? "s" : "")</span>
+								<span class="field-note">@adults adult@(adults != 1 ? "s" : "") • @NightsCount night@(NightsCount != 1 ? "s" : "")</span>
 							</div>
 						</div>
 					</div>
@@ -137,7 +165,16 @@
 			<div class="trip-info">
 				<div class="trip-dates">
 					<span class="trip-icon">📅</span>
-					<span>@checkInDate.ToString("ddd, MMM dd") – @checkOutDate.ToString("ddd, MMM dd")</span>
+					<span>
+						@if (checkInDate.HasValue && checkOutDate.HasValue && checkInTime.HasValue && checkOutTime.HasValue)
+						{
+							@($"{checkInDate.Value:ddd, MMM dd} {checkInTime.Value:HH:mm} – {checkOutDate.Value:ddd, MMM dd} {checkOutTime.Value:HH:mm}")
+						}
+						else
+						{
+							<text>Select your travel dates and times</text>
+						}
+					</span>
 				</div>
 				<span class="trip-note">Changes are free until 24 hours before check-in</span>
 			</div>
@@ -164,13 +201,13 @@
 				<div class="summary-section">
 					<h4 class="summary-title">Selected details</h4>
 					<div class="summary-item">
-						<span class="summary-label">InnSight Waterfront • San Francisco</span>
+						<span class="summary-label">@destination</span>
 					</div>
 					<div class="summary-item">
-						<span class="summary-label">Deluxe King Suite + Bay view</span>
+						<span class="summary-label">@roomType</span>
 					</div>
 					<div class="summary-item">
-						<span class="summary-label">@adults adult@(adults != 1 ? "s" : "") • @rooms room@(rooms != 1 ? "s" : "")</span>
+						<span class="summary-label">@adults adult@(adults != 1 ? "s" : "") • @rooms room@(rooms != 1 ? "s" : "") • @NightsCount night@(NightsCount != 1 ? "s" : "")</span>
 					</div>
 				</div>
 
@@ -178,13 +215,49 @@
 					<div class="date-cards-row">
 						<div class="date-card check-in">
 							<div class="date-label">Check-in</div>
-							<div class="date-value">@checkInDate.ToString("ddd, MMM dd")</div>
-							<div class="date-time">• @checkInDate.ToString("h:mm tt")</div>
+							<div class="date-value">
+								@if (checkInDate.HasValue)
+								{
+									@checkInDate.Value.ToString("ddd, MMM dd")
+								}
+								else
+								{
+									<text>Select date</text>
+								}
+							</div>
+							<div class="date-time">
+								@if (checkInTime.HasValue)
+								{
+									@("• " + checkInTime.Value.ToString("HH:mm"))
+								}
+								else
+								{
+									<text>• Select time</text>
+								}
+							</div>
 						</div>
 						<div class="date-card check-out">
 							<div class="date-label">Check-out</div>
-							<div class="date-value">@checkOutDate.ToString("ddd, MMM dd")</div>
-							<div class="date-time">• @checkOutDate.ToString("h:mm tt")</div>
+							<div class="date-value">
+								@if (checkOutDate.HasValue)
+								{
+									@checkOutDate.Value.ToString("ddd, MMM dd")
+								}
+								else
+								{
+									<text>Select date</text>
+								}
+							</div>
+							<div class="date-time">
+								@if (checkOutTime.HasValue)
+								{
+									@("• " + checkOutTime.Value.ToString("HH:mm"))
+								}
+								else
+								{
+									<text>• Select time</text>
+								}
+							</div>
 						</div>
 					</div>
 				</div>
@@ -202,9 +275,7 @@
 				<div class="summary-section pricing-section">
 					<div class="pricing-label">Estimated nightly rate (Before tax)</div>
 					<div class="price-range">
-						@* <span class="price-from">$248</span>
-						<span class="price-arrow">→</span> *@
-						<span class="price-to">$294</span>
+						<span class="price-to">$@EstimatedNightlyRate.ToString("N0")</span>
 					</div>
 				</div>
 
@@ -212,16 +283,16 @@
 					<h4 class="summary-title">Points & payment</h4>
 					<div class="points-info">
 						<div class="points-row">
-							<span>Earn → 288 points</span>
+							<span>Earn → @EstimatedPoints points</span>
 						</div>
-						<div class="points-sub">You can earn 288 points + 2,500 to Platinum</div>
+						<div class="points-sub">You can earn @EstimatedPoints points + 2,500 to Platinum</div>
 					</div>
 					<button class="points-btn">Use points later</button>
 				</div>
 
 				<div class="summary-total">
 					<div class="total-label">Final amount shown on the next step before confirming.</div>
-					<div class="total-amount">$716.50</div>
+					<div class="total-amount">$@EstimatedTotal.ToString("N2")</div>
 				</div>
 
 				<div class="summary-section">
@@ -240,8 +311,11 @@
 @code {
 	[Parameter] public int? clientId { get; set; }
 
-	DateTime checkInDate = DateTime.Today.AddDays(1);
-	DateTime checkOutDate = DateTime.Today.AddDays(4);
+	DateTime? checkInDate = null; 
+	DateTime? checkOutDate = null; 
+	TimeOnly? checkInTime = null; 
+	TimeOnly? checkOutTime = null; 
+	string destination = "InnSight Hotel";
 	int adults = 2;
 	int rooms = 1;
 	string roomType = "Deluxe King Suite";
@@ -249,13 +323,79 @@
 	bool includeBreakfast = false;
 	bool nonSmoking = false;
 	string specialRequests = "";
-	int LoyaltyPoints = 12465;
+	int LoyaltyPoints = 0;
+	string validationMessage = "";
 
-	int NightsCount => (checkOutDate - checkInDate).Days;
-	decimal RoomRate => NightsCount * 248m;
-	decimal BreakfastPrice => includeBreakfast ? 45m : 0m;
-	decimal TaxesFees => 96.50m;
-	decimal EstimatedTotal => RoomRate + BreakfastPrice + TaxesFees;
+	Hospitality.Models.User? user;
+
+	protected override async Task OnInitializedAsync()
+	{
+		// Set default dates if not provided
+		if (!checkInDate.HasValue)
+		{
+			checkInDate = DateTime.Today.AddDays(1);
+		}
+		if (!checkOutDate.HasValue)
+		{
+			checkOutDate = DateTime.Today.AddDays(3);
+		}
+		if (!checkInTime.HasValue)
+		{
+			checkInTime = new TimeOnly(15, 0); // 3:00 PM default check-in
+		}
+		if (!checkOutTime.HasValue)
+		{
+			checkOutTime = new TimeOnly(11, 0); // 11:00 AM default check-out
+		}
+
+		// Load user data if clientId is provided
+		if (clientId.HasValue)
+		{
+			try
+			{
+				user = await UserService.GetUserByIdAsync(clientId.Value);
+				if (user != null)
+				{
+					LoyaltyPoints = 12450; // Could be loaded from user data
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"Error loading user data: {ex.Message}");
+			}
+		}
+	}
+
+	int NightsCount => (checkInDate.HasValue && checkOutDate.HasValue) ? (checkOutDate.Value - checkInDate.Value).Days : 0;
+	decimal EstimatedNightlyRate => 248m;
+	decimal EstimatedTotal => (EstimatedNightlyRate * NightsCount) + 96.50m; // Add taxes
+	int EstimatedPoints => (int)(EstimatedNightlyRate * NightsCount * 0.1m);
+
+	// Add missing Decode method
+	string Decode(byte[]? data)
+	{
+		if (data == null || data.Length == 0) return string.Empty;
+		try { return System.Text.Encoding.UTF8.GetString(data); }
+		catch { return string.Empty; }
+	}
+
+	string GetInitials()
+	{
+		if (user == null) return "G";
+		var parts = new List<string>();
+		if (!string.IsNullOrWhiteSpace(user.user_fname)) parts.Add(user.user_fname.Substring(0, 1));
+		if (user.user_lname != null && user.user_lname.Length > 0)
+		{
+			try
+			{
+				var ln = user.user_lname?? "";
+				if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0, 1));
+			}
+			catch { }
+		}
+		return string.Join("", parts).ToUpperInvariant();
+	}
+
 
 	void ChangeAdults(int delta)
 	{
@@ -284,18 +424,85 @@
 	void SaveDraft()
 	{
 		// Save draft logic
+		Console.WriteLine("Saving booking draft...");
 	}
 
 	void SearchRooms()
 	{
-		// Navigate to room selection with client ID if available
-		if (clientId.HasValue)
+		// Clear any previous validation messages
+		validationMessage = "";
+		
+		// Validate required fields
+		if (!checkInDate.HasValue || !checkOutDate.HasValue)
 		{
-			Navigation.NavigateTo($"/booking/rooms/{clientId.Value}");
+			validationMessage = "Please select both check-in and check-out dates.";
+			StateHasChanged();
+			return;
 		}
-		else
+
+		if (checkInDate.Value >= checkOutDate.Value)
 		{
-			Navigation.NavigateTo("/booking/rooms");
+			validationMessage = "Check-out date must be after check-in date.";
+			StateHasChanged();
+			return;
 		}
+
+		if (checkInDate.Value < DateTime.Today)
+		{
+			validationMessage = "Check-in date cannot be in the past.";
+			StateHasChanged();
+			return;
+		}
+
+		// Navigate to room selection with all parameters including guest count and dates
+		var checkInStr = checkInDate.Value.ToString("yyyy-MM-dd");
+		var checkOutStr = checkOutDate.Value.ToString("yyyy-MM-dd");
+		
+		Console.WriteLine($"Navigating to room selection: adults={adults}, rooms={rooms}, checkIn={checkInStr}, checkOut={checkOutStr}");
+		
+		try
+		{
+			if (clientId.HasValue)
+			{
+				var url = $"/booking/rooms/{clientId.Value}/{adults}/{rooms}/{checkInStr}/{checkOutStr}";
+				Console.WriteLine($"Navigation URL: {url}");
+				Navigation.NavigateTo(url);
+			}
+			else
+			{
+				var url = $"/booking/rooms/1/{adults}/{rooms}/{checkInStr}/{checkOutStr}";
+				Console.WriteLine($"Navigation URL (guest): {url}");
+				Navigation.NavigateTo(url);
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Navigation error: {ex.Message}");
+			validationMessage = "Error navigating to room selection. Please try again.";
+			StateHasChanged();
+		}
+	}
+
+	// Quick test method for debugging
+	void QuickTestFlow()
+	{
+		Console.WriteLine("Quick test flow initiated");
+		
+		// Set some default values for testing
+		if (!checkInDate.HasValue) checkInDate = DateTime.Today.AddDays(1);
+		if (!checkOutDate.HasValue) checkOutDate = DateTime.Today.AddDays(3);
+		if (!checkInTime.HasValue) checkInTime = new TimeOnly(15, 0);
+		if (!checkOutTime.HasValue) checkOutTime = new TimeOnly(11, 0);
+		
+		adults = 2;
+		rooms = 1;
+		
+		// Directly navigate to room selection with test parameters
+		var checkInStr = checkInDate.Value.ToString("yyyy-MM-dd");
+		var checkOutStr = checkOutDate.Value.ToString("yyyy-MM-dd");
+		var testUrl = $"/booking/rooms/{clientId}/{adults}/{rooms}/{checkInStr}/{checkOutStr}";
+		
+		Console.WriteLine($"Quick test navigation to: {testUrl}");
+		Navigation.NavigateTo(testUrl);
 	}
 }

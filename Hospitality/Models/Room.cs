@@ -1,6 +1,6 @@
 namespace Hospitality.Models;
 
-// Room model separated from Razor page, aligned to database schema columns
+// Room model aligned to database schema columns
 public class Room
 {
  public int room_id { get; set; }
@@ -11,7 +11,11 @@ public class Room
  public string room_available { get; set; } = "Yes"; // e.g., Yes / No
  public string room_status { get; set; } = "Available";
 
- // Optional PascalCase aliases (read-only) for UI convenience
+ // Optional fields
+ public byte[]? room_picture { get; set; } // varbinary(max)
+ public string? room_amenities { get; set; } // comma-separated or JSON
+
+ // Read-only aliases for UI convenience
  public int Id => room_id;
  public string Name => room_name;
  public int Number => room_number;

@@ -220,8 +220,8 @@
 				{
 					role_id = roleId,
 					user_fname = formFirstName,
-					user_mname = string.IsNullOrWhiteSpace(formMiddleName) ? null : System.Text.Encoding.UTF8.GetBytes(formMiddleName),
-					user_lname = string.IsNullOrWhiteSpace(formLastName) ? null : System.Text.Encoding.UTF8.GetBytes(formLastName),
+					user_mname = string.IsNullOrWhiteSpace(formMiddleName) ? null : formMiddleName,
+					user_lname = string.IsNullOrWhiteSpace(formLastName) ? null : formLastName,
 					user_brith_date = birth,
 					user_email = formEmail,
 					user_contact_number = formContact,
@@ -237,9 +237,33 @@
 	}
 
 	void CloseModal() { showModal = false; ResetForm(); }
-	string GetInitials(Hospitality.Models.User u) { var parts = new List<string>(); if (!string.IsNullOrWhiteSpace(u.user_fname)) parts.Add(u.user_fname.Substring(0,1)); if (u.user_lname != null && u.user_lname.Length >0) { try { var ln = System.Text.Encoding.UTF8.GetString(u.user_lname); if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0,1)); } catch { } } return string.Join("", parts).ToUpper(); }
-	string GetFullName(Hospitality.Models.User u) { var ln = u.user_lname == null ? "" : SafeDecode(u.user_lname); var mn = u.user_mname == null ? "" : SafeDecode(u.user_mname); return string.Join(" ", new[] { u.user_fname, mn, ln }.Where(s => !string.IsNullOrWhiteSpace(s))); }
-	string SafeDecode(byte[] data) { try { return System.Text.Encoding.UTF8.GetString(data); } catch { return string.Empty; } }
+	string GetInitials(Hospitality.Models.User u) 
+	{ 
+		var parts = new List<string>();
+		if (!string.IsNullOrWhiteSpace(u.user_fname))
+			parts.Add(u.user_fname.Substring(0, 1));
+		if (!string.IsNullOrWhiteSpace(u.user_lname))
+			parts.Add(u.user_lname.Substring(0, 1));
+
+		return string.Join("", parts).ToUpper();
+	}
+	string GetFullName(Hospitality.Models.User u) 
+	{ 
+		var mn = string.IsNullOrWhiteSpace(u.user_mname) ? "" : u.user_mname;
+		var ln = string.IsNullOrWhiteSpace(u.user_lname) ? "" : u.user_lname;
+
+		return string.Join(" ", new[] { u.user_fname, mn, ln }.Where(s => !string.IsNullOrWhiteSpace(s)));
+	}
+	string SafeDecode(byte[] data) 
+	{ try 
+		{ 
+			return System.Text.Encoding.UTF8.GetString(data); 
+		} 
+		catch 
+		{
+			return string.Empty; 
+		} 
+	}
 
 	async Task PrevPage() { if (CanPrev) { page--; await LoadPageAsync(); } }
 	async Task NextPage() { if (CanNext) { page++; await LoadPageAsync(); } }

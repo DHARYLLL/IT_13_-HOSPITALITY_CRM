@@ -1,7 +1,9 @@
 ﻿@page "/booking/rooms"
 @page "/booking/rooms/{clientId:int}"
+@page "/booking/rooms/{clientId:int}/{adults:int}/{rooms:int}/{checkIn}/{checkOut}"
 @inject NavigationManager Navigation
 @inject Hospitality.Services.RoomService RoomService
+@inject Hospitality.Services.BookingService BookingService
 
 <link rel="stylesheet" href="css/roomselection.css" />
 
@@ -20,11 +22,10 @@
 			<a href="#" class="nav-link">Stays</a>
 			<a href="#" class="nav-link">Loyalty</a>
 			<a href="#" class="nav-link">Messages</a>
-			<a href="#" class="nav-link">Reports</a>
 		</div>
 		<div class="nav-right">
-			<span class="user-name">Alex Johnson</span>
-			<div class="user-avatar-small">A</div>
+			<span class="user-name">Guest</span>
+			<div class="user-avatar-small">G</div>
 			<span class="points-badge">Gold member</span>
 		</div>
 	</nav>
@@ -58,64 +59,92 @@
 					<span class="step-badge">Step 2 of 3</span>
 				</div>
 
+				@if (!string.IsNullOrEmpty(errorMessage))
+				{
+					<div class="error-message">
+						<span class="error-icon">⚠️</span>
+						@errorMessage
+					</div>
+				}
+
 				<div class="room-options-info">
-					<span class="room-count">3 options for @adults guests • @checkInDate.ToString("ddd, MMM dd") – @checkOutDate.ToString("ddd, MMM dd")</span>
+					<span class="room-count">@availableRooms.Count options for @adults adult@(adults != 1 ? "s" : "") • @checkInDate.ToString("ddd, MMM dd") – @checkOutDate.ToString("ddd, MMM dd")</span>
+					<span class="selection-progress">@selectedRooms.Count of @rooms room@(rooms != 1 ? "s" : "") selected</span>
 					<div class="filter-tabs">
-						<button class="filter-tab active">Recommended</button>
-						@* <button class="filter-tab">Most flexible</button>
-						<button class="filter-tab">Best value</button> *@
+						<button class="filter-tab active">Available</button>
 					</div>
 				</div>
 
-				<!-- Room Cards -->
-				@foreach (var room in availableRooms)
+				@if (loading)
 				{
-					<div class="room-card">
-						<div class="room-image">
-							<img src="@room.ImageUrl" alt="@room.Name" />
-						</div>
-						<div class="room-details">
-							<div class="room-header">
-								<h4 class="room-name">@room.Name</h4>
-								@* @if (!string.IsNullOrEmpty(room.RateType))
+					<p>Loading available rooms...</p>
+				}
+				else if (availableRooms.Count == 0)
+				{
+					<p>No rooms available for the selected dates.</p>
+				}
+				else
+				{
+					<!-- Room Cards -->
+					@foreach (var room in availableRooms)
+					{
+						var isSelected = selectedRooms.Any(r => r.room_id == room.room_id);
+						var canSelect = !isSelected && selectedRooms.Count < rooms;
+						
+						<div class="room-card @(isSelected ? "selected" : "") @(!canSelect && !isSelected ? "disabled" : "")">
+							<div class="room-image">
+								@if (room.room_picture != null)
 								{
-									<span class="rate-badge">@room.RateType</span>
-								} *@
-							</div>
-							<div class="room-features">
-								@foreach (var feature in room.Features)
+									<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" alt="@room.room_name" />
+								}
+								else
 								{
-									<span class="feature">@feature</span>
+									<div class="room-placeholder">Room @room.room_number</div>
 								}
 							</div>
-							<div class="room-amenities">
-								@foreach (var amenity in room.Amenities)
-								{
-									<span class="amenity">@amenity</span>
-								}
-							</div>
-							@* @if (!string.IsNullOrEmpty(room.CancellationPolicy))
-							{
-								<div class="cancellation-info">
-									<span class="refund-badge">@room.RefundStatus</span>
-									<span class="policy-text">@room.CancellationPolicy</span>
+							<div class="room-details">
+								<div class="room-header">
+									<h4 class="room-name">@room.room_name</h4>
+									<span class="room-number">Room @room.room_number</span>
 								</div>
-							} *@
-						</div>
-						<div class="room-pricing">
-							<div class="price-info">
-								<div class="price-main">$@room.PricePerNight/night</div>
-								@* <div class="price-total">$@room.TotalBeforeTaxes total before taxes</div> *@
-								@* @if (!string.IsNullOrEmpty(room.SavingsMessage))
+								<div class="room-features">
+									<span class="feature">Floor @room.room_floor</span>
+									<span class="feature">@room.room_status</span>
+								</div>
+								@if (!string.IsNullOrWhiteSpace(room.room_amenities))
 								{
-									<div class="savings-message">@room.SavingsMessage</div>
-								} *@
+									<div class="room-amenities">
+										@foreach (var amenity in room.room_amenities.Split(',', StringSplitOptions.RemoveEmptyEntries))
+										{
+											<span class="amenity">@amenity.Trim()</span>
+										}
+									</div>
+								}
 							</div>
-							<button class="select-room-btn" @onclick="() => SelectRoom(room)">
-								Select room
-							</button>
+							<div class="room-pricing">
+								<div class="price-info">
+									<div class="price-main">$@room.room_price.ToString("N2")/night</div>
+									<div class="price-total">$@((room.room_price * NightsCount).ToString("N2")) total for @NightsCount nights</div>
+								</div>
+								<button class="select-room-btn @(isSelected ? "selected" : "") @(!canSelect && !isSelected ? "disabled" : "")" 
+										@onclick="() => SelectRoom(room)"
+										disabled="@(!canSelect && !isSelected)">
+									@if (isSelected)
+									{
+										<text>✓ Selected</text>
+									}
+									else if (canSelect)
+									{
+										<text>Select room</text>
+									}
+									else
+									{
+										<text>Limit reached</text>
+									}
+								</button>
+							</div>
 						</div>
-					</div>
+					}
 				}
 
 				<!-- Footer Actions -->
@@ -123,8 +152,20 @@
 					<button class="adjust-filters-btn">
 						⚙️ Adjust filters
 					</button>
-					<button class="continue-btn" @onclick="ContinueToPayment">
-						Continue to guest & payment →
+					<button class="continue-btn" @onclick="ContinueToPayment" disabled="@(selectedRooms.Count != rooms)">
+						@if (selectedRooms.Count == rooms)
+						{
+							<span>Continue to guest & payment →</span>
+						}
+						else
+						{
+							<span>Select @(rooms - selectedRooms.Count) more room@((rooms - selectedRooms.Count) > 1 ? "s" : "") to continue</span>
+						}
+					</button>
+					
+					@* Debug bypass button for testing *@
+					<button class="debug-btn" @onclick="DebugContinueToPayment" style="margin-left: 10px; background: orange; color: white; padding: 10px; border: none; border-radius: 5px;">
+						🚨 Debug: Skip to Payment
 					</button>
 				</div>
 
@@ -151,10 +192,10 @@
 				<div class="summary-section">
 					<h4 class="summary-title">Selected details</h4>
 					<div class="summary-item">
-						<span class="summary-label">HarborKey Waterfront • San Francisco</span>
+						<span class="summary-label">InnSight Waterfront</span>
 					</div>
 					<div class="summary-item">
-						<span class="summary-label">@adults guests • @rooms room • @NightsCount nights</span>
+						<span class="summary-label">@adults adult@(adults != 1 ? "s" : "") • @rooms room@(rooms != 1 ? "s" : "") • @NightsCount night@(NightsCount != 1 ? "s" : "")</span>
 					</div>
 				</div>
 
@@ -171,30 +212,36 @@
 					</div>
 				</div>
 
-				@if (selectedRoom != null)
+				@if (selectedRooms.Any())
 				{
 					<div class="summary-section">
-						<h4 class="summary-title">Room selection</h4>
-						<div class="selected-room-info">
-							<div class="selected-room-name">@selectedRoom.Name</div>
-							<div class="selected-room-rate">@selectedRoom.RateType • @selectedRoom.IncludedFeatures</div>
-						</div>
+						<h4 class="summary-title">Room selection (@selectedRooms.Count/@rooms)</h4>
+						@foreach (var room in selectedRooms)
+						{
+							<div class="selected-room-info">
+								<div class="selected-room-name">@room.room_name</div>
+								<div class="selected-room-rate">Room @room.room_number • Floor @room.room_floor • $@room.room_price.ToString("N2")/night</div>
+							</div>
+						}
 					</div>
 
 					<div class="summary-section">
 						<h4 class="summary-title">Pricing</h4>
 						<div class="pricing-breakdown">
-							<div class="pricing-row">
-								<span>Nightly rate (average)</span>
-								<span class="price-amount">$@selectedRoom.PricePerNight</span>
-							</div>
+							@foreach (var room in selectedRooms)
+							{
+								<div class="pricing-row">
+									<span>@room.room_name (Room @room.room_number)</span>
+									<span class="price-amount">$@((room.room_price * NightsCount).ToString("N2"))</span>
+								</div>
+							}
 							<div class="pricing-row">
 								<span>Estimated taxes & fees</span>
-								@* <span class="price-amount">$@EstimatedTaxes</span> *@
+								<span class="price-amount">$@EstimatedTaxes.ToString("N2")</span>
 							</div>
 							<div class="pricing-row total">
-								<span>Total for @NightsCount nights</span>
-								<span class="price-amount">$@TotalPrice</span>
+								<span>Total for @NightsCount night@(NightsCount != 1 ? "s" : "")</span>
+								<span class="price-amount">$@TotalPrice.ToString("N2")</span>
 							</div>
 						</div>
 						<p class="pricing-note">Final amount confirmed on the next step before you book.</p>
@@ -225,81 +272,71 @@
 
 @code { 
 	[Parameter] public int? clientId { get; set; }
+	[Parameter] public int adults { get; set; } = 2;
+	[Parameter] public int rooms { get; set; } = 1;
+	[Parameter] public string? checkIn { get; set; }
+	[Parameter] public string? checkOut { get; set; }
 
 	DateTime checkInDate = DateTime.Today.AddDays(1);
 	DateTime checkOutDate = DateTime.Today.AddDays(4);
-	int adults = 2;
-	int rooms = 1;
 	bool goldBenefitsApplied = true;
+	bool loading = true;
 
-	RoomOption? selectedRoom = null;
+	List<Hospitality.Models.Room> selectedRooms = new();
+	List<Hospitality.Models.Room> availableRooms = new();
+	string errorMessage = "";
 
 	int NightsCount => (checkOutDate - checkInDate).Days;
 	decimal EstimatedTaxes => 96.50m;
-	decimal TotalPrice => selectedRoom != null ? selectedRoom.TotalBeforeTaxes + EstimatedTaxes : 0;
-	int PointsEarned => 2100;
+	decimal TotalPrice => selectedRooms.Sum(r => r.room_price * NightsCount) + EstimatedTaxes;
+	int PointsEarned => (int)(selectedRooms.Sum(r => r.room_price * NightsCount) * 0.1m);
 	int CurrentPoints => 12450;
 	int PointsToNextTier => 2550;
 
-	List<RoomOption> availableRooms = new List<RoomOption>
-	{
-		new RoomOption
-		{
-			Name = "Deluxe King Suite",
-			ImageUrl = "/images/room-deluxe.jpg",
-			// RateType = "Member flexible rate",
-			// "City & bay view", "Access to lounge"
-			Features = new[] { "1 king bed" },
-			// "Approx. 38 m² • Upper floors • Floor-to-ceiling windows • Late checkout for Gold"
-			Amenities = new[] { "Includes breakfast for 2 • Welcome drink" },
-			PricePerNight = 204,
-			// TotalBeforeTaxes = 612,
-			// RefundStatus = "Free cancellation",
-			// CancellationPolicy = "Pay at property • No prepayment required",
-			// SavingsMessage = "You save 15% with Gold"
-		},
-		new RoomOption
-		{
-			Name = "Harbor View King",
-			ImageUrl = "/images/room-harbor.jpg",
-			// RateType = "Member advance purchase",
-			// "Partial bay view", "Balcony"
-			// Features = new[] { "1 king bed" },
-			// "Approx. 30 m² • Mid floors • Private balcony"
-			// Points on eligible spend • Same-day changes
-			Amenities = new[] { "Room only" },
-			PricePerNight = 188,
-			TotalBeforeTaxes = 564,
-			RefundStatus = "Partially refundable",
-			CancellationPolicy = "Changes with fee",
-			SavingsMessage = "Save more by booking early"
-		},
-		new RoomOption
-		{
-			Name = "Standard King",
-			ImageUrl = "/images/room-standard.jpg",
-			RateType = "Standard rate",
-			// "City view"
-			Features = new[] { "1 king bed" },
-			// Approx. 26 m² • 
-			Amenities = new[] { "First floor", "Room only • Daily housekeeping" },
-			PricePerNight = 165,
-			TotalBeforeTaxes = 495,
-			RefundStatus = "Non-refundable",
-			CancellationPolicy = "Pay now",
-			SavingsMessage = ""
-		}
-	};
-
 	protected override async Task OnInitializedAsync()
 	{
-		// Load rooms from service if needed
-		// For now using mock data
+		// Parse dates from parameters if provided
+		if (!string.IsNullOrEmpty(checkIn) && DateTime.TryParse(checkIn, out var parsedCheckIn))
+		{
+			checkInDate = parsedCheckIn;
+		}
+		if (!string.IsNullOrEmpty(checkOut) && DateTime.TryParse(checkOut, out var parsedCheckOut))
+		{
+			checkOutDate = parsedCheckOut;
+		}
+
+		await LoadAvailableRooms();
 	}
 
-	void SelectRoom(RoomOption room)
+	async Task LoadAvailableRooms()
 	{
-		selectedRoom = room;
+		loading = true;
+		try
+		{
+			availableRooms = await BookingService.GetAvailableRoomsAsync(checkInDate, checkOutDate, adults);
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading available rooms: {ex.Message}");
+		}
+		finally
+		{
+			loading = false;
+		}
+	}
+
+	void SelectRoom(Hospitality.Models.Room room)
+	{
+		if (selectedRooms.Any(r => r.room_id == room.room_id))
+		{
+			// Room already selected, remove it
+			selectedRooms.Remove(selectedRooms.First(r => r.room_id == room.room_id));
+		}
+		else if (selectedRooms.Count < rooms)
+		{
+			// Add room if we haven't reached the limit
+			selectedRooms.Add(room);
+		}
 		StateHasChanged();
 	}
 
@@ -315,12 +352,127 @@
 		}
 	}
 
-	void ContinueToPayment()
+	async Task ContinueToPayment()
 	{
-		if (selectedRoom != null)
+		Console.WriteLine($"ContinueToPayment called. Selected rooms: {selectedRooms.Count}, Required rooms: {rooms}, ClientId: {clientId}");
+		
+		// Clear any previous error messages
+		errorMessage = "";
+		
+		if (selectedRooms.Count != rooms)
 		{
-			// Navigate to payment/guest info page
-			Navigation.NavigateTo("/booking/payment");
+			errorMessage = $"Please select {rooms} room{(rooms > 1 ? "s" : "")} before continuing.";
+			Console.WriteLine($"Not all rooms selected. Selected: {selectedRooms.Count}, Required: {rooms}");
+			StateHasChanged();
+			return;
+		}
+
+		try
+		{
+			Console.WriteLine("Starting booking creation process...");
+
+			if (clientId.HasValue)
+			{
+				Console.WriteLine($"Creating booking for user ID: {clientId.Value}");
+				
+				// Get the actual client_id from the database with better error handling
+				int actualClientId;
+				try
+				{
+					actualClientId = await GetClientIdFromUserIdAsync(clientId.Value);
+					Console.WriteLine($"Found client_id: {actualClientId} for user_id: {clientId.Value}");
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Error getting client_id: {ex.Message}");
+					
+					// Try to create a client record if it doesn't exist
+					try
+					{
+						Console.WriteLine("Attempting to create missing client record...");
+						await CreateClientRecordAsync(clientId.Value);
+						actualClientId = await GetClientIdFromUserIdAsync(clientId.Value);
+						Console.WriteLine($"Successfully created and retrieved client_id: {actualClientId}");
+					}
+					catch (Exception createEx)
+					{
+						Console.WriteLine($"Error creating client record: {createEx.Message}");
+						// Final fallback: use user_id as client_id
+						actualClientId = clientId.Value;
+						Console.WriteLine($"Using fallback client_id (user_id): {actualClientId}");
+					}
+				}
+
+				// Create booking in database
+				var bookingId = await BookingService.CreateBookingAsync(
+					actualClientId,
+					checkInDate,
+					checkOutDate,
+					adults,
+					$"Rooms selected: {string.Join(", ", selectedRooms.Select(r => r.room_name))}"
+				);
+
+				Console.WriteLine($"Booking created with ID: {bookingId}");
+
+				// Add all selected rooms to the booking
+				foreach (var room in selectedRooms)
+				{
+					await BookingService.AddRoomToBookingAsync(bookingId, room.room_id);
+					Console.WriteLine($"Added room {room.room_id} ({room.room_name}) to booking {bookingId}");
+				}
+
+				// Navigate to payment page
+				var paymentUrl = $"/booking/payment/{clientId.Value}/{bookingId}";
+				Console.WriteLine($"Navigating to payment: {paymentUrl}");
+				Navigation.NavigateTo(paymentUrl);
+			}
+			else
+			{
+				Console.WriteLine("No clientId provided, creating demo booking");
+				// For demo without login, create a temporary booking with temp client
+				var tempClientId = 1; // Default demo client
+				var tempBookingId = new Random().Next(1000, 9999);
+				
+				// Create a demo booking
+				try
+				{
+					var bookingId = await BookingService.CreateBookingAsync(
+						tempClientId,
+						checkInDate,
+						checkOutDate,
+						adults,
+						$"Demo booking - Rooms: {string.Join(", ", selectedRooms.Select(r => r.room_name))}"
+					);
+
+					// Add selected rooms to demo booking
+					foreach (var room in selectedRooms)
+					{
+						await BookingService.AddRoomToBookingAsync(bookingId, room.room_id);
+					}
+
+					var demoPaymentUrl = $"/booking/payment/1/{bookingId}";
+					Console.WriteLine($"Navigating to demo payment: {demoPaymentUrl}");
+					Navigation.NavigateTo(demoPaymentUrl);
+				}
+				catch (Exception demoEx)
+				{
+					Console.WriteLine($"Error creating demo booking: {demoEx.Message}");
+					// Ultimate fallback
+					var fallbackPaymentUrl = $"/booking/payment/1/{tempBookingId}";
+					Console.WriteLine($"Using fallback payment URL: {fallbackPaymentUrl}");
+					Navigation.NavigateTo(fallbackPaymentUrl);
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error in ContinueToPayment: {ex.Message}");
+			Console.WriteLine($"Stack trace: {ex.StackTrace}");
+			
+			// Show more specific error message
+			errorMessage = $"Error: {ex.Message}. Please try refreshing the page or contact support.";
+			Console.WriteLine($"Showing error to user: {errorMessage}");
+			StateHasChanged();
 		}
 	}
 
@@ -333,18 +485,45 @@
 		return "/";
 	}
 
-	public class RoomOption
+	// Debug method to bypass database operations
+	void DebugContinueToPayment()
 	{
-		public string Name { get; set; } = "";
-		public string ImageUrl { get; set; } = "";
-		public string RateType { get; set; } = "";
-		public string[] Features { get; set; } = Array.Empty<string>();
-		public string[] Amenities { get; set; } = Array.Empty<string>();
-		public decimal PricePerNight { get; set; }
-		public decimal TotalBeforeTaxes { get; set; }
-		public string RefundStatus { get; set; } = "";
-		public string CancellationPolicy { get; set; } = "";
-		public string SavingsMessage { get; set; } = "";
-		public string IncludedFeatures => "Includes breakfast for 2";
+		Console.WriteLine("Debug: Bypassing database operations");
+		var debugClientId = clientId ?? 1;
+		var debugBookingId = new Random().Next(1000, 9999);
+		var debugPaymentUrl = $"/booking/payment/{debugClientId}/{debugBookingId}";
+		Console.WriteLine($"Debug: Navigating to {debugPaymentUrl}");
+		Navigation.NavigateTo(debugPaymentUrl);
+	}
+
+	private async Task CreateClientRecordAsync(int userId)
+	{
+		using var con = Hospitality.Database.DbConnection.GetConnection();
+		await con.OpenAsync();
+
+		string insertClientSql = "INSERT INTO Clients (user_id) VALUES (@userId)";
+		using var insertCmd = new Microsoft.Data.SqlClient.SqlCommand(insertClientSql, con);
+		insertCmd.Parameters.AddWithValue("@userId", userId);
+		await insertCmd.ExecuteNonQueryAsync();
+		
+		Console.WriteLine($"Created client record for user_id: {userId}");
+	}
+
+	private async Task<int> GetClientIdFromUserIdAsync(int userId)
+	{
+		using var con = Hospitality.Database.DbConnection.GetConnection();
+		await con.OpenAsync();
+
+		string clientIdSql = "SELECT client_id FROM clients WHERE user_id = @userId";
+		using var clientCmd = new Microsoft.Data.SqlClient.SqlCommand(clientIdSql, con);
+		clientCmd.Parameters.AddWithValue("@userId", userId);
+		var clientIdResult = await clientCmd.ExecuteScalarAsync();
+		
+		if (clientIdResult == null)
+		{
+			throw new InvalidOperationException($"No client record found for user_id: {userId}");
+		}
+
+		return Convert.ToInt32(clientIdResult);
 	}
 }
