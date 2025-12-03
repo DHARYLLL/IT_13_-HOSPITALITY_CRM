@@ -17,15 +17,21 @@
             </div>
         </div>
         <div class="nav-center">
-            <a href="/client/profile/@id" class="nav-link active">Dashboard</a>
-            <a href="/bookings" class="nav-link">Stays</a>
-            <a href="#" class="nav-link">Loyalty</a>
-            <a href="#" class="nav-link">Messages</a>
-        </div>
+        <a href="/client/profile/@id" class="nav-link active">Dashboard</a>
+   <a href="#" class="nav-link">Stays</a>
+            <a href="/client/loyalty/@id" class="nav-link">Loyalty</a>
+<a href="/client/messages/@id" class="nav-link">Messages</a>
+      </div>
         <div class="nav-right">
             <span class="points-badge">Gold • @LoyaltyPoints pts</span>
             <div class="user-menu">
-                <div class="user-avatar-small">@GetInitials()</div>
+                <div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
+                @if (isDropdownOpen)
+                {
+                    <div class="user-dropdown">
+                        <button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
+                    </div>
+                }
             </div>
         </div>
     </nav>
@@ -165,6 +171,34 @@
                             <p class="points-to-next">@PointsToNextTier points to reach Platinum</p>
                         </div>
                     </div>
+                </div>
+
+                <!-- Messages & Notifications Card -->
+                <div class="card messages-card" style="cursor: pointer;" @onclick="@(() => Navigation.NavigateTo($"/client/messages/{id}"))">
+                    <div class="card-header-split">
+                        <div class="card-icon-header">
+                            <span class="icon">📬</span>
+                            <h3>Messages</h3>
+                        </div>
+                        <span class="unread-badge">3 unread</span>
+                    </div>
+                    <ul class="messages-list">
+                        <li class="message-item">
+                            <div class="message-row">
+                                <span class="message-title">Exclusive Gold member offer</span>
+                                <span class="message-time">2 days ago</span>
+                            </div>
+                            <p class="message-body">Save 8% on weekend stays with bonus loyalty points...</p>
+                        </li>
+                        <li class="message-item">
+                            <div class="message-row">
+                                <span class="message-title">Booking confirmation</span>
+                                <span class="message-time">Yesterday</span>
+                            </div>
+                            <p class="message-body">Your stay at Harbourkey Waterfront is confirmed...</p>
+                        </li>
+                    </ul>
+                    <a href="/client/messages/@id" class="view-link" @onclick:stopPropagation="true">View all messages →</a>
                 </div>
             </div>
 
@@ -314,4 +348,14 @@
     int PointsToNextTier => Math.Max(0, 5000 - LoyaltyPoints);
 
     double GetCircleProgress() => LoyaltyPoints > 0 ? Math.Min(340, (LoyaltyPoints / 5000.0) * 340) : 0;
+
+
+    private bool isDropdownOpen = false;
+
+    private void ToggleDropdown()
+    {
+        isDropdownOpen = !isDropdownOpen;
+    }
+
+    void Logout() => Navigation.NavigateTo("/");
 }

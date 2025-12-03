@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 
 namespace Hospitality.Services
 {
@@ -10,19 +11,36 @@ namespace Hospitality.Services
         private readonly string _secretKey;
         private readonly string _publicKey;
 
-        public PayMongoService(HttpClient httpClient)
+        public PayMongoService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
-            // In a real application, these should come from secure configuration
-            _secretKey = "sk_test_your_secret_key_here"; // Replace with your actual secret key
-            _publicKey = "pk_test_your_public_key_here"; // Replace with your actual public key
+     
+            // Read keys from configuration with better error handling
+            _secretKey = configuration["PayMongo:SecretKey"] ?? "";
+            _publicKey = configuration["PayMongo:PublicKey"] ?? "";
 
-            // Set base address for PayMongo API
+   if (string.IsNullOrEmpty(_secretKey))
+            {
+  Console.WriteLine("?? WARNING: PayMongo SecretKey not configured. Payment features will not work.");
+          Console.WriteLine("?? TIP: Make sure appsettings.json is included as EmbeddedResource in the project file.");
+   // Don't throw exception - allow app to run but payment features won't work
+              return;
+    }
+
+    if (string.IsNullOrEmpty(_publicKey))
+            {
+                Console.WriteLine("?? WARNING: PayMongo PublicKey not configured.");
+                return;
+            }
+
+          // Set base address for PayMongo API
             _httpClient.BaseAddress = new Uri("https://api.paymongo.com/v1/");
 
-            // Set authorization header with secret key
-            var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_secretKey}:"));
+ // Set authorization header with secret key
+      var authValue = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{_secretKey}:"));
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authValue);
+    
+       Console.WriteLine("? PayMongo service initialized successfully");
         }
 
         public async Task<PaymentIntentResult> CreatePaymentIntentAsync(CreatePaymentIntentRequest request)
@@ -93,6 +111,75 @@ namespace Hospitality.Services
                 {
                     Success = false,
                     ErrorMessage = $"Payment processing error: {ex.Message}"
+                };
+            }
+        }
+
+        // Create Source for e-wallet payments (GCash, PayMaya, GrabPay)
+        public async Task<SourceResult> CreateSourceAsync(CreateSourceRequest request)
+        {
+            try
+            {
+                var payload = new
+                {
+                    data = new
+                    {
+                        attributes = new
+                        {
+                            amount = request.Amount,
+                            currency = request.Currency,
+                            type = request.Type,
+                            redirect = new
+                            {
+                                success = request.RedirectSuccessUrl,
+                                failed = request.RedirectFailedUrl
+                            },
+                            billing = request.Billing,
+                            metadata = request.Metadata
+                        }
+                    }
+                };
+
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                });
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("sources", content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    var result = JsonSerializer.Deserialize<SourceApiResponse>(responseContent, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+
+                    return new SourceResult
+                    {
+                        Success = true,
+                        SourceId = result?.Data?.Id ?? "",
+                        CheckoutUrl = result?.Data?.Attributes?.Redirect?.CheckoutUrl ?? "",
+                        Status = result?.Data?.Attributes?.Status ?? ""
+                    };
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    return new SourceResult
+                    {
+                        Success = false,
+                        ErrorMessage = $"PayMongo API Error: {errorContent}"
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new SourceResult
+                {
+                    Success = false,
+                    ErrorMessage = $"Source creation error: {ex.Message}"
                 };
             }
         }
@@ -185,62 +272,62 @@ namespace Hospitality.Services
                     };
                 }
                 else
-                {
-                    payload = new
-                    {
-                        data = new
-                        {
-                            attributes = new
-                            {
-                                type = request.Type,
-                                billing = request.BillingDetails
-                            }
-                        }
-                    };
-                }
+       {
+            payload = new
+           {
+         data = new
+               {
+attributes = new
+            {
+              type = request.Type,
+billing = request.BillingDetails
+   }
+      }
+           };
+  }
 
-                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+      var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+  {
+       PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 });
 
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var response = await _httpClient.PostAsync("payment_methods", content);
+      var content = new StringContent(json, Encoding.UTF8, "application/json");
+      var response = await _httpClient.PostAsync("payment_methods", content);
 
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    var result = JsonSerializer.Deserialize<PayMongoApiResponse>(responseContent, new JsonSerializerOptions
+      if (response.IsSuccessStatusCode)
+          {
+          var responseContent = await response.Content.ReadAsStringAsync();
+   var result = JsonSerializer.Deserialize<PayMongoApiResponse>(responseContent, new JsonSerializerOptions
                     {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    });
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+       });
 
-                    return new PaymentMethodResult
-                    {
-                        Success = true,
-                        PaymentMethodId = result?.Data?.Id ?? "",
-                        Type = result?.Data?.Attributes?.Type ?? ""
-                    };
-                }
+           return new PaymentMethodResult
+        {
+        Success = true,
+       PaymentMethodId = result?.Data?.Id ?? "",
+        Type = result?.Data?.Attributes?.Type ?? ""
+   };
+     }
                 else
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    return new PaymentMethodResult
-                    {
-                        Success = false,
-                        ErrorMessage = $"PayMongo API Error: {errorContent}"
-                    };
-                }
+         {
+           var errorContent = await response.Content.ReadAsStringAsync();
+       return new PaymentMethodResult
+          {
+        Success = false,
+        ErrorMessage = $"PayMongo API Error: {errorContent}"
+     };
+  }
             }
-            catch (Exception ex)
-            {
-                return new PaymentMethodResult
-                {
-                    Success = false,
-                    ErrorMessage = $"Payment method creation error: {ex.Message}"
-                };
+ catch (Exception ex)
+ {
+            return new PaymentMethodResult
+     {
+        Success = false,
+    ErrorMessage = $"Payment method creation error: {ex.Message}"
+   };
             }
-        }
+ }
     }
 
     // Request/Response Models
@@ -254,10 +341,28 @@ namespace Hospitality.Services
         public Dictionary<string, object> Metadata { get; set; } = new();
     }
 
+    public class CreateSourceRequest
+    {
+ public int Amount { get; set; }
+        public string Currency { get; set; } = "PHP";
+        public string Type { get; set; } = "gcash"; // gcash, paymaya, grab_pay
+        public string RedirectSuccessUrl { get; set; } = "";
+  public string RedirectFailedUrl { get; set; } = "";
+        public SourceBilling? Billing { get; set; }
+        public Dictionary<string, string> Metadata { get; set; } = new();
+    }
+
+    public class SourceBilling
+    {
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Phone { get; set; } = "";
+}
+
     public class CreatePaymentMethodRequest
     {
         public string Type { get; set; } = "";
-        public CardDetails? CardDetails { get; set; }
+  public CardDetails? CardDetails { get; set; }
         public BillingDetails? BillingDetails { get; set; }
     }
 
@@ -273,37 +378,46 @@ namespace Hospitality.Services
     {
         public string Name { get; set; } = "";
         public string Email { get; set; } = "";
-        public string Phone { get; set; } = "";
+      public string Phone { get; set; } = "";
         public Address? Address { get; set; }
     }
 
-    public class Address
+  public class Address
     {
-        public string Line1 { get; set; } = "";
+      public string Line1 { get; set; } = "";
         public string Line2 { get; set; } = "";
         public string City { get; set; } = "";
-        public string State { get; set; } = "";
+public string State { get; set; } = "";
         public string PostalCode { get; set; } = "";
-        public string Country { get; set; } = "PH";
+ public string Country { get; set; } = "PH";
     }
 
     public class PaymentIntentResult
     {
-        public bool Success { get; set; }
+     public bool Success { get; set; }
         public string PaymentIntentId { get; set; } = "";
         public string ClientSecret { get; set; } = "";
-        public string Status { get; set; } = "";
+     public string Status { get; set; } = "";
         public object? NextAction { get; set; }
+     public string ErrorMessage { get; set; } = "";
+    }
+
+public class SourceResult
+    {
+        public bool Success { get; set; }
+      public string SourceId { get; set; } = "";
+        public string CheckoutUrl { get; set; } = "";
+        public string Status { get; set; } = "";
         public string ErrorMessage { get; set; } = "";
     }
 
     public class PaymentResult
     {
-        public bool Success { get; set; }
+      public bool Success { get; set; }
         public string PaymentIntentId { get; set; } = "";
-        public string Status { get; set; } = "";
-        public object? NextAction { get; set; }
-        public string ErrorMessage { get; set; } = "";
+ public string Status { get; set; } = "";
+ public object? NextAction { get; set; }
+   public string ErrorMessage { get; set; } = "";
     }
 
     public class PaymentMethodResult
@@ -323,15 +437,41 @@ namespace Hospitality.Services
     public class PayMongoData
     {
         public string Id { get; set; } = "";
-        public string Type { get; set; } = "";
+ public string Type { get; set; } = "";
         public PayMongoAttributes? Attributes { get; set; }
     }
 
     public class PayMongoAttributes
     {
-        public string Status { get; set; } = "";
+      public string Status { get; set; } = "";
         public string ClientKey { get; set; } = "";
-        public string Type { get; set; } = "";
+     public string Type { get; set; } = "";
         public object? NextAction { get; set; }
     }
+
+    // Source API Response Models
+    public class SourceApiResponse
+    {
+        public SourceData? Data { get; set; }
+    }
+
+    public class SourceData
+    {
+ public string Id { get; set; } = "";
+      public string Type { get; set; } = "";
+  public SourceAttributes? Attributes { get; set; }
+    }
+
+    public class SourceAttributes
+    {
+        public string Status { get; set; } = "";
+        public RedirectInfo? Redirect { get; set; }
+    }
+
+public class RedirectInfo
+    {
+        public string CheckoutUrl { get; set; } = "";
+        public string Success { get; set; } = "";
+        public string Failed { get; set; } = "";
+  }
 }

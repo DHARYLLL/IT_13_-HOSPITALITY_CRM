@@ -1,0 +1,435 @@
+@page "/client/loyalty/{clientId:int}"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.LoyaltyService LoyaltyService
+@inject Hospitality.Services.UserService UserService
+@inject Hospitality.Services.BookingService BookingService
+
+<link rel="stylesheet" href="css/client-loyalty.css" />
+
+<div class="loyalty-page">
+	<!-- Top Navigation Bar -->
+	<nav class="top-nav">
+		<div class="nav-left">
+			<div class="brand">
+				<img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
+				<span class="brand-name">InnSight</span>
+				<span class="brand-sub">Guest Portal</span>
+			</div>
+		</div>
+		<div class="nav-center">
+			<a href="/client/profile/@clientId" class="nav-link">Dashboard</a>
+			<a href="#" class="nav-link">Stays</a>
+			<a href="/client/loyalty/@clientId" class="nav-link active">Loyalty</a>
+			<a href="#" class="nav-link">Messages</a>
+		</div>
+		<div class="nav-right">
+			<span class="points-badge">@(loyalty?.current_tier ?? "Guest") • @(loyalty?.total_points ?? 0) pts</span>
+			<div class="user-menu">
+				<div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
+				@if (isDropdownOpen)
+				{
+					<div class="user-dropdown">
+						<button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
+					</div>
+				}
+			</div>
+		</div>
+	</nav>
+
+	<div class="loyalty-container">
+		@if (loading)
+		{
+			<div class="loading-container">
+				<p>Loading your loyalty program...</p>
+			</div>
+		}
+		else if (loyalty != null)
+		{
+			<!-- Hero Section -->
+			<header class="loyalty-hero">
+				<div class="hero-content">
+					<h1 class="hero-title">Your loyalty & rewards</h1>
+					<p class="hero-subtitle">Track your points, tier progress, and available benefits.</p>
+				</div>
+				<div class="hero-badge">
+					<span class="badge-icon">@currentTier.Icon</span>
+					<span class="badge-label">Member since @loyalty.member_since.Year</span>
+				</div>
+			</header>
+
+			<!-- Main Content Grid -->
+			<div class="loyalty-grid">
+				<!-- Current Status Card -->
+				<div class="card status-card">
+					<div class="card-header">
+						<div class="card-icon">?</div>
+						<h3>Current status</h3>
+						<span class="tier-badge" style="background: @currentTier.Color">@currentTier.Icon @currentTier.Name tier</span>
+					</div>
+
+					<div class="status-content">
+						<!-- Points Circle -->
+						<div class="points-circle-wrapper">
+							<svg class="points-circle" viewBox="0 0 160 160">
+								<circle cx="80" cy="80" r="70" fill="none" stroke="#e8e8ea" stroke-width="12" />
+								<circle cx="80" cy="80" r="70" fill="none" stroke="@currentTier.Color" stroke-width="12"
+										stroke-dasharray="@GetCircleProgress() 440" stroke-dashoffset="0"
+										transform="rotate(-90 80 80)" stroke-linecap="round" />
+							</svg>
+							<div class="points-center">
+								<div class="points-number">@loyalty.total_points</div>
+								<div class="points-label">points</div>
+							</div>
+						</div>
+
+						<!-- Progress to Next Tier -->
+						<div class="tier-progress">
+							@if (nextTier != null && currentTier.Name != "Platinum")
+							{
+								<h4 class="progress-title">Progress to @nextTier.Name</h4>
+								<div class="progress-bar-container">
+									<div class="progress-bar" style="width: @GetTierProgress()%"></div>
+								</div>
+								<p class="progress-text">@PointsToNextTier points to reach @nextTier.Name tier</p>
+							}
+							else
+							{
+								<p class="progress-text max-tier">?? You've reached the highest tier!</p>
+							}
+						</div>
+					</div>
+				</div>
+
+				<!-- Benefits Card -->
+				<div class="card benefits-card">
+					<div class="card-header">
+						<div class="card-icon">??</div>
+						<h3>@currentTier.Name benefits</h3>
+					</div>
+
+					<div class="benefits-content">
+						<ul class="benefits-list">
+							@foreach (var benefit in currentTier.Benefits)
+							{
+								<li>
+									<span class="benefit-check">?</span>
+									<span>@benefit</span>
+								</li>
+							}
+						</ul>
+					</div>
+
+					@if (nextTier != null && currentTier.Name != "Platinum")
+					{
+						<div class="next-tier-preview">
+							<h4 class="preview-title">Unlock @nextTier.Name benefits</h4>
+							<ul class="preview-list">
+								@foreach (var benefit in nextTier.Benefits.Take(3))
+								{
+									<li>
+										<span class="preview-icon">@nextTier.Icon</span>
+										<span>@benefit</span>
+									</li>
+								}
+							</ul>
+							<p class="preview-note">+ @(nextTier.Benefits.Count - 3) more exclusive benefits</p>
+						</div>
+					}
+				</div>
+
+				<!-- Statistics Card -->
+				<div class="card stats-card">
+					<div class="card-header">
+						<div class="card-icon">??</div>
+						<h3>Lifetime statistics</h3>
+						<span class="time-label">Since @loyalty.member_since.ToString("MMM yyyy")</span>
+					</div>
+
+					<div class="stats-grid">
+						<div class="stat-item">
+							<div class="stat-number">@loyalty.lifetime_stays</div>
+							<div class="stat-label">Total stays</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number">$@loyalty.lifetime_spend.ToString("N0")</div>
+							<div class="stat-label">Total spend</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number">@loyalty.total_points</div>
+							<div class="stat-label">Points earned</div>
+						</div>
+						<div class="stat-item">
+							<div class="stat-number">@GetAverageNightlyRate()</div>
+							<div class="stat-label">Avg. rate/night</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Available Rewards -->
+				<div class="card rewards-card">
+					<div class="card-header">
+						<div class="card-icon">???</div>
+						<h3>Available rewards</h3>
+						<span class="rewards-count">@availableRewards.Count rewards</span>
+					</div>
+
+					@if (availableRewards.Count == 0)
+					{
+						<p class="empty-text">No rewards available at the moment.</p>
+					}
+					else
+					{
+						<div class="rewards-list">
+							@foreach (var reward in availableRewards)
+							{
+								var canRedeem = loyalty.total_points >= reward.points_required;
+								<div class="reward-item @(canRedeem ? "available" : "locked")">
+									<div class="reward-info">
+										<h4 class="reward-name">@reward.reward_name</h4>
+										<p class="reward-description">@reward.reward_description</p>
+										<div class="reward-cost">
+											<span class="cost-points">@reward.points_required points</span>
+											@if (!canRedeem)
+											{
+												<span class="cost-needed">Need @(reward.points_required - loyalty.total_points) more</span>
+											}
+										</div>
+									</div>
+									<button class="btn-redeem" 
+											disabled="@(!canRedeem)"
+											@onclick="() => RedeemReward(reward.reward_id)">
+										@(canRedeem ? "Redeem" : "?? Locked")
+									</button>
+								</div>
+							}
+						</div>
+					}
+				</div>
+
+				<!-- Recent Activity -->
+				<div class="card activity-card">
+					<div class="card-header">
+						<div class="card-icon">??</div>
+						<h3>Recent points activity</h3>
+						<a href="#" class="view-all-link">View all</a>
+					</div>
+
+					@if (recentTransactions.Count == 0)
+					{
+						<p class="empty-text">No recent activity.</p>
+					}
+					else
+					{
+						<div class="activity-list">
+							@foreach (var transaction in recentTransactions)
+							{
+								<div class="activity-item">
+									<div class="activity-icon @(transaction.transaction_type == "earn" ? "earn" : "redeem")">
+										@(transaction.transaction_type == "earn" ? "+" : "-")
+									</div>
+									<div class="activity-info">
+										<div class="activity-description">@transaction.description</div>
+										<div class="activity-date">@transaction.transaction_date.ToString("MMM dd, yyyy")</div>
+									</div>
+									<div class="activity-points @(transaction.transaction_type == "earn" ? "positive" : "negative")">
+										@(transaction.transaction_type == "earn" ? "+" : "-")@(transaction.points_earned > 0 ? transaction.points_earned : transaction.points_redeemed)
+									</div>
+								</div>
+							}
+						</div>
+					}
+				</div>
+			</div>
+
+			<!-- Tier Comparison Table -->
+			<div class="card tiers-comparison-card">
+				<div class="card-header">
+					<div class="card-icon">??</div>
+					<h3>All membership tiers</h3>
+				</div>
+
+				<div class="tiers-table-wrapper">
+					<table class="tiers-table">
+						<thead>
+							<tr>
+								<th>Tier</th>
+								<th>Points Required</th>
+								<th>Earning Rate</th>
+								<th>Key Benefits</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (var tier in LoyaltyTier.Tiers)
+							{
+								<tr class="@(tier.Name == currentTier.Name ? "current-tier" : "")">
+									<td>
+										<span class="tier-name-cell">
+											<span style="font-size: 1.5rem;">@tier.Icon</span>
+											<strong>@tier.Name</strong>
+											@if (tier.Name == currentTier.Name)
+											{
+												<span class="current-badge">Current</span>
+											}
+										</span>
+									</td>
+									<td>@tier.MinPoints @(tier.MaxPoints == int.MaxValue ? "+" : $"- {tier.MaxPoints}") pts</td>
+									<td>
+										@{
+											var rate = tier.Name switch
+											{
+												"Bronze" => "10 pts/$1",
+												"Silver" => "12 pts/$1",
+												"Gold" => "15 pts/$1",
+												"Platinum" => "20 pts/$1",
+												_ => "10 pts/$1"
+											};
+										}
+										@rate
+									</td>
+									<td>
+										<ul class="tier-benefits-mini">
+											@foreach (var benefit in tier.Benefits.Take(2))
+											{
+												<li>@benefit</li>
+											}
+										</ul>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+	</div>
+</div>
+
+@code {
+	[Parameter] public int clientId { get; set; }
+
+	Hospitality.Models.User? user;
+	Hospitality.Models.LoyaltyProgram? loyalty;
+	LoyaltyTier currentTier = LoyaltyTier.Tiers[0];
+	LoyaltyTier? nextTier;
+	List<LoyaltyReward> availableRewards = new();
+	List<LoyaltyTransaction> recentTransactions = new();
+	bool loading = true;
+	bool isDropdownOpen = false;
+
+	protected override async Task OnInitializedAsync()
+	{
+		loading = true;
+
+		try
+		{
+			// Load user data
+			user = await UserService.GetUserByIdAsync(clientId);
+
+			// Get actual client_id from user_id
+			int actualClientId = await GetClientIdFromUserIdAsync(clientId);
+
+			// Load loyalty program
+			loyalty = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
+			
+			if (loyalty != null)
+			{
+				currentTier = LoyaltyTier.GetTierByName(loyalty.current_tier);
+				nextTier = LoyaltyTier.GetNextTier(loyalty.current_tier);
+			}
+
+			// Load available rewards
+			availableRewards = await LoyaltyService.GetAvailableRewardsAsync();
+
+			// Load recent transactions
+			recentTransactions = await LoyaltyService.GetTransactionHistoryAsync(actualClientId, 10);
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading loyalty data: {ex.Message}");
+		}
+		finally
+		{
+			loading = false;
+		}
+	}
+
+	private async Task<int> GetClientIdFromUserIdAsync(int userId)
+	{
+		using var con = Hospitality.Database.DbConnection.GetConnection();
+		await con.OpenAsync();
+
+		string sql = "SELECT client_id FROM Clients WHERE user_id = @userId";
+		using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con);
+		cmd.Parameters.AddWithValue("@userId", userId);
+		var result = await cmd.ExecuteScalarAsync();
+
+		if (result == null)
+		{
+			// Create client record if it doesn't exist
+			string insertSql = "INSERT INTO Clients (user_id) VALUES (@userId); SELECT CAST(SCOPE_IDENTITY() AS INT);";
+			using var insertCmd = new Microsoft.Data.SqlClient.SqlCommand(insertSql, con);
+			insertCmd.Parameters.AddWithValue("@userId", userId);
+			result = await insertCmd.ExecuteScalarAsync();
+		}
+
+		return Convert.ToInt32(result);
+	}
+
+	string GetInitials()
+	{
+		if (user == null) return "G";
+		var parts = new List<string>();
+		if (!string.IsNullOrWhiteSpace(user.user_fname)) parts.Add(user.user_fname.Substring(0, 1));
+		if (!string.IsNullOrWhiteSpace(user.user_lname)) parts.Add(user.user_lname.Substring(0, 1));
+		return string.Join("", parts).ToUpper();
+	}
+
+	int PointsToNextTier => nextTier != null && loyalty != null ? Math.Max(0, nextTier.MinPoints - loyalty.total_points) : 0;
+
+	double GetCircleProgress()
+	{
+		if (loyalty == null || nextTier == null) return 0;
+		var progress = (loyalty.total_points - currentTier.MinPoints) / (double)(nextTier.MinPoints - currentTier.MinPoints);
+		return Math.Min(440, progress * 440);
+	}
+
+	double GetTierProgress()
+	{
+		if (loyalty == null || nextTier == null) return 0;
+		var progress = (loyalty.total_points - currentTier.MinPoints) / (double)(nextTier.MinPoints - currentTier.MinPoints);
+		return Math.Min(100, progress * 100);
+	}
+
+	string GetAverageNightlyRate()
+	{
+		if (loyalty == null || loyalty.lifetime_stays == 0) return "$0";
+		var avg = loyalty.lifetime_spend / loyalty.lifetime_stays;
+		return $"${avg:N0}";
+	}
+
+	async Task RedeemReward(int rewardId)
+	{
+		if (loyalty == null) return;
+
+		try
+		{
+			int actualClientId = await GetClientIdFromUserIdAsync(clientId);
+			bool success = await LoyaltyService.RedeemPointsAsync(actualClientId, rewardId);
+			
+			if (success)
+			{
+				// Reload loyalty data
+				loyalty = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
+				recentTransactions = await LoyaltyService.GetTransactionHistoryAsync(actualClientId, 10);
+				StateHasChanged();
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error redeeming reward: {ex.Message}");
+		}
+	}
+
+	void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
+	void Logout() => Navigation.NavigateTo("/");
+}

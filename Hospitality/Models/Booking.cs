@@ -13,8 +13,8 @@ public class Booking
     public TimeOnly? check_in_time { get; set; }
     public TimeOnly? check_out_time { get; set; }
     
-    // Additional fields that might be needed
-    public string booking_status { get; set; } = "Confirmed";
+    // Booking status and metadata
+    public string? booking_status { get; set; }
     public int guest_count { get; set; } // Alias for person_count
     
     // Related room data (from joins)
@@ -22,6 +22,14 @@ public class Booking
     public int? room_number { get; set; }
     public int? room_floor { get; set; }
     public decimal? room_price { get; set; }
+    
+    // Guest information (for reports)
+    public string? client_first_name { get; set; }
+    public string? client_last_name { get; set; }
+    public string? client_email { get; set; }
+    
+    // Computed fields
+    public decimal? total_amount { get; set; }
 
     // PascalCase aliases for convenience
     public int BookingId => booking_id;

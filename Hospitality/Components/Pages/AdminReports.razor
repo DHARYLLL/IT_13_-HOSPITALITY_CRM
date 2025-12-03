@@ -1,0 +1,468 @@
+@page "/admin/reports"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.BookingService BookingService
+@inject Hospitality.Services.RoomService RoomService
+@using System.Globalization
+
+<link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-reports.css" />
+
+<div class="admin-page">
+	<!-- Sidebar -->
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				<span>Admin console</span>
+			</div>
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/admin" class="nav-item"><span class="nav-icon">??</span><span>Employees</span></a>
+			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon">??</span><span>Dashboard</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon">??</span><span>Rooms</span></a>
+			<a href="/admin/reports" class="nav-item active"><span class="nav-icon">??</span><span>Reports & Analytics</span></a>
+		</nav>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Bookings & revenue reports</h1>
+				<p class="page-subtitle">Monitor occupancy, revenue, and guest activity across your InnSight properties.</p>
+			</div>
+			<div class="header-actions">
+				<button class="btn-filter" @onclick="() => ChangeDateRange(30)">
+					<span class="filter-icon">??</span> Last @dateRangeDays days
+				</button>
+				<button class="btn-filter">
+					<span class="filter-icon">??</span> All properties
+				</button>
+				<button class="btn-export" @onclick="ExportCSV">
+					<span class="export-icon">??</span> Export CSV
+				</button>
+			</div>
+		</header>
+
+		@if (loading)
+		{
+			<div class="loading-container">
+				<div class="spinner"></div>
+				<p>Loading reports...</p>
+			</div>
+		}
+		else
+		{
+			<!-- Key Metrics Cards -->
+			<div class="metrics-grid">
+				<div class="metric-card">
+					<div class="metric-header">
+						<span class="metric-label">Total revenue</span>
+						@if (revenueGrowth > 0)
+						{
+							<span class="metric-change positive">+$@revenueGrowth.ToString("N0") <small>Earned</small></span>
+						}
+					</div>
+					<div class="metric-value">$@totalRevenue.ToString("N0")</div>
+					<div class="metric-footer">From booked nights, fees, and taxes.</div>
+				</div>
+
+				<div class="metric-card">
+					<div class="metric-header">
+						<span class="metric-label">Bookings</span>
+					</div>
+					<div class="metric-value">@totalBookings</div>
+					<div class="metric-footer">Confirmed reservations across all locations.</div>
+				</div>
+
+				<div class="metric-card">
+					<div class="metric-header">
+						<span class="metric-label">Occupancy rate</span>
+						@if (occupancyRate >= 80)
+						{
+							<span class="metric-badge high">High this week</span>
+						}
+						else if (occupancyRate >= 60)
+						{
+							<span class="metric-badge medium">Moderate</span>
+						}
+						else
+						{
+							<span class="metric-badge low">Low occupancy</span>
+						}
+					</div>
+					<div class="metric-value">@occupancyRate%</div>
+					<div class="metric-footer">Weighted across all room types.</div>
+				</div>
+
+				<div class="metric-card">
+					<div class="metric-header">
+						<span class="metric-label">Average daily rate</span>
+					</div>
+					<div class="metric-value">$@averageDailyRate.ToString("N0")</div>
+					<div class="metric-footer">Reflects discounts and loyalty promotions.</div>
+					<div class="metric-adr">ADR</div>
+				</div>
+			</div>
+
+			<!-- Charts Section -->
+			<div class="charts-grid">
+				<!-- Revenue by Day Chart -->
+				<div class="chart-card">
+					<div class="chart-header">
+						<div>
+							<h3 class="chart-title">?? Revenue by day</h3>
+							<p class="chart-subtitle">Total revenue by date for the selected period (Last @dateRangeDays days).</p>
+						</div>
+						<div class="chart-legend">
+							<span class="legend-item">
+								<span class="legend-dot room-revenue"></span> Room revenue
+							</span>
+							<span class="legend-item">
+								<span class="legend-dot cancellation"></span> Cancellation fees
+							</span>
+						</div>
+					</div>
+					<div class="chart-content">
+						<div class="chart-placeholder">
+							<div class="chart-bars">
+								@foreach (var day in revenueByDay.TakeLast(14))
+								{
+									<div class="chart-bar-group">
+										<div class="chart-bar" style="height: @(GetBarHeight(day.Revenue))%">
+											<div class="bar-tooltip">$@day.Revenue.ToString("N0")</div>
+										</div>
+										<span class="chart-label">@day.DayLabel</span>
+									</div>
+								}
+							</div>
+						</div>
+						<div class="chart-footer">
+							<span class="chart-note">Peak revenue: <strong>$@peakRevenue.ToString("N0")</strong></span>
+							<span class="chart-note-right">Avg per day: <strong>$@avgPerDay.ToString("N0")</strong></span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Key Performance Chart -->
+				<div class="chart-card">
+					<div class="chart-header">
+						<div>
+							<h3 class="chart-title">?? Key performance</h3>
+							<p class="chart-subtitle">Insights on guest occupancy and loyalty.</p>
+						</div>
+					</div>
+					<div class="kpi-grid">
+						<div class="kpi-item">
+							<div class="kpi-label">RevPAR</div>
+							<div class="kpi-value">$@revPAR.ToString("N0")</div>
+							<div class="kpi-change positive">+@((revPAR / averageDailyRate * 100 - 100).ToString("N1"))%</div>
+							<div class="kpi-note">Revenue per available room</div>
+						</div>
+						<div class="kpi-item">
+							<div class="kpi-label">Cancellation rate</div>
+							<div class="kpi-value">@cancellationRate.ToString("N1")%</div>
+							@if (cancellationRate > 10)
+							{
+								<div class="kpi-change negative">+@((cancellationRate - 6.6m).ToString("N1")) pts</div>
+							}
+							else
+							{
+								<div class="kpi-change positive">-@((6.6m - cancellationRate).ToString("N1")) pts</div>
+							}
+							<div class="kpi-note">Share of cancelled bookings</div>
+						</div>
+						<div class="kpi-item">
+							<div class="kpi-label">Avg stay duration</div>
+							<div class="kpi-value">@avgStayDuration.ToString("N1")</div>
+							<div class="kpi-change positive">+0.5 nights</div>
+							<div class="kpi-note">Average nights per booking</div>
+						</div>
+						<div class="kpi-item">
+							<div class="kpi-label">Total guests</div>
+							<div class="kpi-value">@totalGuests</div>
+							<div class="kpi-change positive">+@((totalGuests * 0.12).ToString("N0"))</div>
+							<div class="kpi-note">Unique guests served</div>
+						</div>
+					</div>
+					<button class="btn-export-report" @onclick="ExportPerformanceReport">
+						<span>??</span> Export report
+					</button>
+				</div>
+			</div>
+
+			<!-- Recent Bookings Detail -->
+			<div class="bookings-detail-card">
+				<div class="detail-header">
+					<div>
+						<h3 class="detail-title">?? Recent bookings detail</h3>
+						<p class="detail-subtitle">Latest reservations affecting this reporting period.</p>
+					</div>
+					<div class="detail-filters">
+						<button class="filter-btn @(statusFilter == "All" ? "active" : "")" @onclick='() => SetStatusFilter("All")'>Status: @statusFilter</button>
+						<button class="filter-btn @(channelFilter == "All" ? "active" : "")" @onclick='() => SetChannelFilter("All")'>Channel: @channelFilter</button>
+					</div>
+				</div>
+				<div class="bookings-table-wrapper">
+					<table class="bookings-table">
+						<thead>
+							<tr>
+								<th>Booking ID</th>
+								<th>Guest</th>
+								<th>Room</th>
+								<th>Check-in</th>
+								<th>Nights</th>
+								<th>Status</th>
+								<th>Total</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (var booking in GetFilteredBookings())
+							{
+								<tr>
+									<td class="booking-id">#@booking.BookingId.ToString("D7")</td>
+									<td>
+										<div class="guest-info">
+											<div class="guest-avatar">@GetInitials(booking.GuestName)</div>
+											<div>
+												<div class="guest-name">@booking.GuestName</div>
+												<div class="guest-email">@booking.GuestEmail</div>
+											</div>
+										</div>
+									</td>
+									<td>@booking.RoomType</td>
+									<td>@booking.CheckInDate.ToString("MMM dd, yyyy")</td>
+									<td>@booking.Nights</td>
+									<td><span class="status-badge status-@booking.Status.ToLower().Replace(" ", "-")">@booking.Status</span></td>
+									<td class="total-amount">$@booking.Total.ToString("N2")</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				<div class="table-footer">
+					<span class="table-info">Showing @GetFilteredBookings().Count() of @recentBookings.Count bookings</span>
+					<div class="pagination-controls">
+						<button class="page-btn" disabled>? Previous</button>
+						<button class="page-btn active">1</button>
+						<button class="page-btn">2</button>
+						<button class="page-btn">3</button>
+						<button class="page-btn">Next ?</button>
+					</div>
+				</div>
+			</div>
+		}
+	</main>
+</div>
+
+@code {
+	bool loading = true;
+	int dateRangeDays = 30;
+	string statusFilter = "All";
+	string channelFilter = "All";
+
+	// Metrics
+	decimal totalRevenue = 0;
+	decimal revenueGrowth = 0;
+	int totalBookings = 0;
+	int occupancyRate = 0;
+	decimal averageDailyRate = 0;
+	decimal revPAR = 0;
+	decimal cancellationRate = 0;
+	decimal avgStayDuration = 0;
+	int totalGuests = 0;
+	decimal peakRevenue = 0;
+	decimal avgPerDay = 0;
+
+	List<DayRevenue> revenueByDay = new();
+	List<RecentBooking> recentBookings = new();
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadReportData();
+	}
+
+	async Task LoadReportData()
+	{
+		loading = true;
+		StateHasChanged();
+
+		try
+		{
+			// Load real booking and room data using existing methods
+			var rooms = await RoomService.GetRoomsAsync();
+			
+			// For now, use sample data until we have more booking data
+			LoadSampleData();
+			
+			// Override with real room count
+			if (rooms.Any())
+			{
+				// Calculate real occupancy based on room status
+				var occupiedRooms = rooms.Count(r => r.room_status == "Occupied" || r.room_status == "Reserved");
+				var totalRooms = rooms.Count;
+				occupancyRate = totalRooms > 0 ? (int)((double)occupiedRooms / totalRooms * 100) : 0;
+				
+				// Calculate average room rate
+				if (rooms.Any())
+				{
+					averageDailyRate = rooms.Average(r => r.room_price);
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Error loading report data: {ex.Message}");
+			// Fallback to sample data
+			LoadSampleData();
+		}
+		finally
+		{
+			loading = false;
+			StateHasChanged();
+		}
+	}
+
+	void CalculateMetrics(List<Hospitality.Models.Booking> bookings, List<Hospitality.Models.Room> rooms)
+	{
+		// This method is currently unused - keeping for future implementation
+	}
+
+	void GenerateRevenueData(List<Hospitality.Models.Booking> bookings)
+	{
+		//  This method is currently unused - keeping for future implementation
+	}
+
+	async Task LoadRecentBookings(List<Hospitality.Models.Booking> bookings)
+	{
+		// This method is currently unused - keeping for future implementation
+		await Task.CompletedTask;
+	}
+
+	void LoadSampleData()
+	{
+		totalRevenue = 148920;
+		revenueGrowth = 9885;
+		totalBookings = 612;
+		occupancyRate = 87;
+		averageDailyRate = 236;
+		revPAR = 205;
+		cancellationRate = 6.6m;
+		avgStayDuration = 2.8m;
+		totalGuests = 458;
+		
+		// Generate sample revenue
+		var random = new Random();
+		revenueByDay.Clear();
+		for (int i = 30; i >= 0; i--)
+		{
+			var date = DateTime.Today.AddDays(-i);
+			revenueByDay.Add(new DayRevenue
+			{
+				Date = date,
+				DayLabel = date.ToString("MMM dd"),
+				Revenue = random.Next(1500, 6500)
+			});
+		}
+		
+		peakRevenue = 6230;
+		avgPerDay = 2810;
+		
+		// Sample bookings
+		recentBookings = GenerateSampleBookings();
+	}
+
+	List<RecentBooking> GenerateSampleBookings()
+	{
+		return new List<RecentBooking>
+		{
+			new() { BookingId = 152, GuestName = "Mark Johnson", GuestEmail = "mark.j@email.com", RoomType = "Deluxe King Suite", CheckInDate = DateTime.Today.AddDays(5), Nights = 3, Status = "Confirmed", Total = 724.50m, Channel = "Website" },
+			new() { BookingId = 151, GuestName = "Sarah Williams", GuestEmail = "sarah.w@email.com", RoomType = "Executive Suite", CheckInDate = DateTime.Today.AddDays(3), Nights = 2, Status = "Confirmed", Total = 498.00m, Channel = "Direct" },
+			new() { BookingId = 150, GuestName = "David Chen", GuestEmail = "david.c@email.com", RoomType = "Standard Room", CheckInDate = DateTime.Today, Nights = 5, Status = "Checked in", Total = 1240.00m, Channel = "App" },
+			new() { BookingId = 149, GuestName = "Emily Davis", GuestEmail = "emily.d@email.com", RoomType = "Deluxe King Suite", CheckInDate = DateTime.Today.AddDays(-2), Nights = 1, Status = "Completed", Total = 248.00m, Channel = "Website" },
+			new() { BookingId = 148, GuestName = "Michael Brown", GuestEmail = "michael.b@email.com", RoomType = "Executive Suite", CheckInDate = DateTime.Today.AddDays(7), Nights = 4, Status = "Confirmed", Total = 996.00m, Channel = "Direct" }
+		};
+	}
+
+	double GetBarHeight(decimal revenue)
+	{
+		var maxRevenue = revenueByDay.Any() ? revenueByDay.Max(d => d.Revenue) : 1;
+		return maxRevenue > 0 ? (double)(revenue / maxRevenue * 100) : 0;
+	}
+
+	string GetInitials(string name)
+	{
+		if (string.IsNullOrWhiteSpace(name)) return "G";
+		var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		return parts.Length >= 2 ? $"{parts[0][0]}{parts[1][0]}" : name.Substring(0, Math.Min(2, name.Length));
+	}
+
+	IEnumerable<RecentBooking> GetFilteredBookings()
+	{
+		var filtered = recentBookings.AsEnumerable();
+		
+		if (statusFilter != "All")
+		{
+			filtered = filtered.Where(b => b.Status == statusFilter);
+		}
+		
+		if (channelFilter != "All")
+		{
+			filtered = filtered.Where(b => b.Channel == channelFilter);
+		}
+		
+		return filtered.Take(10);
+	}
+
+	void SetStatusFilter(string status)
+	{
+		statusFilter = status;
+		StateHasChanged();
+	}
+
+	void SetChannelFilter(string channel)
+	{
+		channelFilter = channel;
+		StateHasChanged();
+	}
+
+	void ChangeDateRange(int days)
+	{
+		dateRangeDays = days;
+		_ = LoadReportData();
+	}
+
+	void ExportCSV()
+	{
+		Console.WriteLine("?? Exporting CSV report...");
+		// Implement CSV export logic
+	}
+
+	void ExportPerformanceReport()
+	{
+		Console.WriteLine("?? Exporting performance report...");
+		// Implement PDF export logic
+	}
+
+	// Models
+	class DayRevenue
+	{
+		public DateTime Date { get; set; }
+		public string DayLabel { get; set; } = "";
+		public decimal Revenue { get; set; }
+	}
+
+	class RecentBooking
+	{
+		public int BookingId { get; set; }
+		public string GuestName { get; set; } = "";
+		public string GuestEmail { get; set; } = "";
+		public string RoomType { get; set; } = "";
+		public DateTime CheckInDate { get; set; }
+		public int Nights { get; set; }
+		public string Status { get; set; } = "";
+		public decimal Total { get; set; }
+		public string Channel { get; set; } = "";
+	}
+}

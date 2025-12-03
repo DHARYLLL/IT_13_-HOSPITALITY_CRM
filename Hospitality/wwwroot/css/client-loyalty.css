@@ -1,0 +1,626 @@
+/* Client Loyalty Page - Modern Design */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap');
+@import url('client-nav.css');
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+.loyalty-page {
+	min-height: 100vh;
+	background: linear-gradient(180deg, #f8f8fa 0%, #ffffff 100%);
+	font-family: 'Open Sans', sans-serif;
+}
+
+/* Container */
+.loyalty-container {
+	max-width: 1400px;
+	margin: 0 auto;
+	padding: 32px 24px;
+}
+
+/* Hero Section */
+.loyalty-hero {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 32px;
+	padding: 24px;
+	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	border-radius: 16px;
+	color: white;
+}
+
+.hero-content h1 {
+	font-size: 32px;
+	font-weight: 700;
+	font-family: 'Playfair Display', serif;
+	margin: 0 0 8px 0;
+}
+
+.hero-subtitle {
+	font-size: 14px;
+	opacity: 0.9;
+}
+
+.hero-badge {
+	text-align: center;
+}
+
+.badge-icon {
+	font-size: 48px;
+	display: block;
+	margin-bottom: 8px;
+}
+
+.badge-label {
+	font-size: 12px;
+	opacity: 0.9;
+}
+
+/* Main Grid */
+.loyalty-grid {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 24px;
+	margin-bottom: 24px;
+}
+
+/* Cards */
+.card {
+	background: white;
+	border-radius: 16px;
+	padding: 24px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+	border: 1px solid #f0f0f2;
+}
+
+.card-header {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 24px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid #f0f0f2;
+}
+
+.card-icon {
+	font-size: 24px;
+}
+
+.card-header h3 {
+	font-size: 18px;
+	font-weight: 600;
+	font-family: 'Lora', serif;
+	color: #1d1d1f;
+	margin: 0;
+	flex: 1;
+}
+
+.tier-badge {
+	padding: 6px 12px;
+	border-radius: 16px;
+	font-size: 12px;
+	font-weight: 600;
+	color: white;
+}
+
+.time-label {
+	font-size: 12px;
+	color: #86868b;
+	font-weight: 500;
+}
+
+.rewards-count {
+	font-size: 12px;
+	color: #5e1369;
+	font-weight: 600;
+	background: #f8f4f9;
+	padding: 4px 12px;
+	border-radius: 12px;
+}
+
+/* Status Card */
+.status-card {
+	grid-column: span 1;
+}
+
+.status-content {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 24px;
+}
+
+.points-circle-wrapper {
+	position: relative;
+	width: 160px;
+	height: 160px;
+}
+
+.points-circle {
+	width: 100%;
+	height: 100%;
+}
+
+.points-center {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	text-align: center;
+}
+
+.points-number {
+	font-size: 36px;
+	font-weight: 700;
+	font-family: 'Playfair Display', serif;
+	color: #1d1d1f;
+}
+
+.points-label {
+	font-size: 14px;
+	color: #86868b;
+	font-weight: 500;
+}
+
+.tier-progress {
+	width: 100%;
+	text-align: center;
+}
+
+.progress-title {
+	font-size: 14px;
+	font-weight: 600;
+	font-family: 'Lora', serif;
+	color: #1d1d1f;
+	margin: 0 0 12px 0;
+}
+
+.progress-bar-container {
+	width: 100%;
+	height: 8px;
+	background: #e8e8ea;
+	border-radius: 4px;
+	overflow: hidden;
+	margin-bottom: 8px;
+}
+
+.progress-bar {
+	height: 100%;
+	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	border-radius: 4px;
+	transition: width 0.3s ease;
+}
+
+.progress-text {
+	font-size: 13px;
+	color: #6e6e73;
+	margin: 0;
+}
+
+.progress-text.max-tier {
+	color: #5e1369;
+	font-weight: 600;
+}
+
+/* Benefits Card */
+.benefits-card {
+	grid-column: span 1;
+}
+
+.benefits-list {
+	list-style: none;
+	padding: 0;
+	margin: 0 0 24px 0;
+}
+
+.benefits-list li {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 12px 0;
+	border-bottom: 1px solid #f5f5f7;
+	font-size: 14px;
+	color: #1d1d1f;
+	line-height: 1.5;
+}
+
+.benefits-list li:last-child {
+	border-bottom: none;
+}
+
+.benefit-check {
+	color: #059669;
+	font-size: 16px;
+	font-weight: 700;
+	flex-shrink: 0;
+}
+
+.next-tier-preview {
+	background: linear-gradient(135deg, #f8f4f9 0%, #faf5ff 100%);
+	border: 1px solid #e5d3e8;
+	border-radius: 12px;
+	padding: 16px;
+}
+
+.preview-title {
+	font-size: 14px;
+	font-weight: 600;
+	font-family: 'Lora', serif;
+	color: #5e1369;
+	margin: 0 0 12px 0;
+}
+
+.preview-list {
+	list-style: none;
+	padding: 0;
+	margin: 0 0 8px 0;
+}
+
+.preview-list li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 0;
+	font-size: 13px;
+	color: #6e6e73;
+}
+
+.preview-icon {
+	font-size: 16px;
+}
+
+.preview-note {
+	font-size: 12px;
+	color: #86868b;
+	margin: 0;
+	font-style: italic;
+}
+
+/* Statistics Card */
+.stats-card {
+	grid-column: span 2;
+}
+
+.stats-grid {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 24px;
+}
+
+.stat-item {
+	text-align: center;
+	padding: 16px;
+	background: #f8fafc;
+	border-radius: 12px;
+}
+
+.stat-number {
+	font-size: 28px;
+	font-weight: 700;
+	font-family: 'Playfair Display', serif;
+	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+	margin-bottom: 4px;
+}
+
+.stat-label {
+	font-size: 12px;
+	color: #86868b;
+	font-weight: 500;
+}
+
+/* Rewards Card */
+.rewards-card {
+	grid-column: span 2;
+}
+
+.rewards-list {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 16px;
+}
+
+.reward-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 16px;
+	padding: 16px;
+	border: 2px solid #e8e8ea;
+	border-radius: 12px;
+	transition: all 0.3s;
+}
+
+.reward-item.available {
+	border-color: #5e1369;
+	background: #faf5ff;
+}
+
+.reward-item.locked {
+	opacity: 0.6;
+}
+
+.reward-info {
+	flex: 1;
+}
+
+.reward-name {
+	font-size: 16px;
+	font-weight: 600;
+	font-family: 'Lora', serif;
+	color: #1d1d1f;
+	margin: 0 0 8px 0;
+}
+
+.reward-description {
+	font-size: 13px;
+	color: #6e6e73;
+	margin: 0 0 8px 0;
+	line-height: 1.4;
+}
+
+.reward-cost {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.cost-points {
+	font-size: 14px;
+	font-weight: 600;
+	color: #5e1369;
+}
+
+.cost-needed {
+	font-size: 12px;
+	color: #ef6c00;
+}
+
+.btn-redeem {
+	padding: 10px 20px;
+	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+	color: white;
+	border: none;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 14px;
+	cursor: pointer;
+	transition: all 0.2s;
+	flex-shrink: 0;
+}
+
+.btn-redeem:hover:not(:disabled) {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 16px rgba(94, 19, 105, 0.4);
+}
+
+.btn-redeem:disabled {
+	background: #cbd5e1;
+	cursor: not-allowed;
+}
+
+/* Activity Card */
+.activity-card {
+	grid-column: span 2;
+}
+
+.activity-list {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+}
+
+.activity-item {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 12px;
+	background: #f8fafc;
+	border-radius: 8px;
+}
+
+.activity-icon {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	font-weight: 700;
+	flex-shrink: 0;
+}
+
+.activity-icon.earn {
+	background: #d1fae5;
+	color: #059669;
+}
+
+.activity-icon.redeem {
+	background: #fee2e2;
+	color: #dc2626;
+}
+
+.activity-info {
+	flex: 1;
+}
+
+.activity-description {
+	font-size: 14px;
+	font-weight: 500;
+	color: #1d1d1f;
+	margin-bottom: 4px;
+}
+
+.activity-date {
+	font-size: 12px;
+	color: #86868b;
+}
+
+.activity-points {
+	font-size: 16px;
+	font-weight: 700;
+	flex-shrink: 0;
+}
+
+.activity-points.positive {
+	color: #059669;
+}
+
+.activity-points.negative {
+	color: #dc2626;
+}
+
+/* Tiers Comparison */
+.tiers-comparison-card {
+	grid-column: span 2;
+}
+
+.tiers-table-wrapper {
+	overflow-x: auto;
+}
+
+.tiers-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+
+.tiers-table thead {
+	border-bottom: 2px solid #f0f0f2;
+}
+
+.tiers-table th {
+	text-align: left;
+	padding: 12px;
+	font-weight: 600;
+	color: #86868b;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.tiers-table td {
+	padding: 16px 12px;
+	border-bottom: 1px solid #f0f0f2;
+	color: #1d1d1f;
+}
+
+.tiers-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.tiers-table tbody tr.current-tier {
+	background: #faf5ff;
+	border-left: 4px solid #5e1369;
+}
+
+.tier-name-cell {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.current-badge {
+	background: #5e1369;
+	color: white;
+	padding: 2px 8px;
+	border-radius: 8px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.tier-benefits-mini {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.tier-benefits-mini li {
+	font-size: 13px;
+	color: #6e6e73;
+	margin-bottom: 4px;
+	padding-left: 16px;
+	position: relative;
+}
+
+.tier-benefits-mini li:before {
+	content: "•";
+	position: absolute;
+	left: 0;
+	color: #5e1369;
+	font-weight: 700;
+}
+
+/* Empty State */
+.empty-text {
+	text-align: center;
+	padding: 40px 20px;
+	color: #86868b;
+	font-size: 14px;
+}
+
+.view-all-link {
+	color: #5e1369;
+	font-size: 14px;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.view-all-link:hover {
+	text-decoration: underline;
+}
+
+/* Loading */
+.loading-container {
+	text-align: center;
+	padding: 80px 24px;
+	color: #86868b;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+	.loyalty-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.stats-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+
+	.rewards-list {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 768px) {
+	.loyalty-hero {
+		flex-direction: column;
+		gap: 20px;
+		text-align: center;
+	}
+
+	.stats-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.activity-item {
+		flex-wrap: wrap;
+	}
+
+	.tiers-table {
+		font-size: 12px;
+	}
+
+	.tiers-table th,
+	.tiers-table td {
+		padding: 8px 6px;
+	}
+}

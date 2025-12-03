@@ -31,7 +31,7 @@
 
 		<div class="toolbar">
 			<div class="search-box"><span>🔍</span><input type="text" placeholder="Search rooms..." @bind="searchQuery" @bind:event="oninput" /></div>
-			<button class="btn-sort" @onclick="SortByNumber">Sort: @(sortAsc?"▲":"▼")</button>
+			<button class="btn-sort" @onclick="SortByNumber">Sort: @(sortAsc ? "▲" : "▼")</button>
 			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Room</button>
 		</div>
 
@@ -53,7 +53,8 @@
 						<h3 class="card-name">@room.room_name</h3>
 						<p class="card-role">Floor @room.room_floor</p>
 						<div class="room-price">$@room.room_price.ToString("N2") / night</div>
-						<div class="room-status-badge status-@room.room_status.ToLower()">@room.room_status (@room.room_available)</div>
+						<div class="room-status-badge status-@room.room_status.ToLower()">@room.room_status</div>
+						@* (@room.room_available) *@
 						@if (room.room_picture != null)
 						{
 							<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" style="width:120px;height:120px;border-radius:8px;object-fit:cover;margin:8px auto;display:block;" />
@@ -76,15 +77,15 @@
 				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">‹ Prev</button>
 				@foreach (var p in PageNumbers)
 				{
-					<button class="page-btn @(p==page?"active":"")" @onclick="() => GoPage(p)">@p</button>
+					<button class="page-btn @(p == page ? "active" : "")" @onclick="() => GoPage(p)">@p</button>
 				}
 				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ›</button>
 				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last »</button>
 				<span class="page-info">Page @(@page) of @totalPages • Total @FilteredRooms.Count()</span>
 				<select class="page-size" @onchange="PageSizeChanged">
-					<option value="8" selected="@(pageSize==8)">8</option>
-					<option value="16" selected="@(pageSize==16)">16</option>
-					<option value="32" selected="@(pageSize==32)">32</option>
+					<option value="8" selected="@(pageSize == 8)">8</option>
+					<option value="16" selected="@(pageSize == 16)">16</option>
+					<option value="32" selected="@(pageSize == 32)">32</option>
 				</select>
 			</div>
 		}
@@ -108,7 +109,7 @@
 					<div class="form-field"><label>Price *</label><input type="number" step="0.01" @bind="current.room_price" min="0" /></div>
 				</div>
 				<div class="form-grid">
-					<div class="form-field"><label>Available *</label><input type="text" @bind="current.room_available" /></div>
+					@* <div class="form-field"><label>Available *</label><input type="text" @bind="current.room_available" /></div> *@
 					<div class="form-field"><label>Status *</label><select @bind="current.room_status"><option value="Available">Available</option><option value="Occupied">Occupied</option><option value="Cleaning">Cleaning</option><option value="Maintenance">Maintenance</option><option value="Reserved">Reserved</option></select></div>
 				</div>
 
@@ -137,183 +138,187 @@
 }
 
 @code {
- List<Hospitality.Models.Room> rooms = new();
- string searchQuery = string.Empty;
- bool showModal = false;
- bool isEdit = false;
- Hospitality.Models.Room current = new();
- bool loading = true;
- bool loadError = false;
- bool sortAsc = true;
+	List<Hospitality.Models.Room> rooms = new();
+	string searchQuery = string.Empty;
+	bool showModal = false;
+	bool isEdit = false;
+	Hospitality.Models.Room current = new();
+	bool loading = true;
+	bool loadError = false;
+	bool sortAsc = true;
 
- IBrowserFile? uploadedPhoto;
- string? previewImage;
- string amenitiesText = string.Empty;
- string? uploadError;
+	IBrowserFile? uploadedPhoto;
+	string? previewImage;
+	string amenitiesText = string.Empty;
+	string? uploadError;
 
- int page =1;
- int pageSize =8;
- int totalPages => FilteredRooms.Count()==0 ?1 : (int)Math.Ceiling(FilteredRooms.Count() / (double)pageSize);
- List<int> PageNumbers => Enumerable.Range(1, totalPages).ToList();
- bool CanPrev => page >1;
- bool CanNext => page < totalPages;
- List<Hospitality.Models.Room> PagedRooms => FilteredRooms.Skip((page-1)*pageSize).Take(pageSize).ToList();
+	int page = 1;
+	int pageSize = 8;
+	int totalPages => FilteredRooms.Count() == 0 ? 1 : (int)Math.Ceiling(FilteredRooms.Count() / (double)pageSize);
+	List<int> PageNumbers => Enumerable.Range(1, totalPages).ToList();
+	bool CanPrev => page > 1;
+	bool CanNext => page < totalPages;
+	List<Hospitality.Models.Room> PagedRooms => FilteredRooms.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
- protected override async Task OnInitializedAsync() { await LoadRoomsAsync(); }
+	protected override async Task OnInitializedAsync() { await LoadRoomsAsync(); }
 
- async Task LoadRoomsAsync()
- {
- loading = true; 
- loadError = false;
- try 
- { 
- rooms = await RoomService.GetRoomsAsync();
- } catch (Exception ex)
- { 
- loadError = true; 
- Console.WriteLine($"Rooms load error: {ex}");
- }
- finally { loading = false; }
- }
+	async Task LoadRoomsAsync()
+	{
+		loading = true;
+		loadError = false;
+		try
+		{
+			rooms = await RoomService.GetRoomsAsync();
+		}
+		catch (Exception ex)
+		{
+			loadError = true;
+			Console.WriteLine($"Rooms load error: {ex}");
+		}
+		finally { loading = false; }
+	}
 
- IEnumerable<Hospitality.Models.Room> FilteredRooms => ApplySort(string.IsNullOrWhiteSpace(searchQuery)
- 	? rooms
- 	: rooms.Where(r => r.room_name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || r.room_number.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase)));
+	IEnumerable<Hospitality.Models.Room> FilteredRooms => ApplySort(string.IsNullOrWhiteSpace(searchQuery)
+		? rooms
+		: rooms.Where(r => r.room_name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || r.room_number.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase)));
 
- IEnumerable<Hospitality.Models.Room> ApplySort(IEnumerable<Hospitality.Models.Room> list) => sortAsc ? list.OrderBy(r => r.room_number) : list.OrderByDescending(r => r.room_number);
- void SortByNumber() { sortAsc = !sortAsc; }
+	IEnumerable<Hospitality.Models.Room> ApplySort(IEnumerable<Hospitality.Models.Room> list) => sortAsc ? list.OrderBy(r => r.room_number) : list.OrderByDescending(r => r.room_number);
+	void SortByNumber() { sortAsc = !sortAsc; }
 
- string GetStatusColor(string status) => status switch
- {
- 	"Available" => "#27ae60",
- 	"Occupied" => "#e74c3c",
- 	"Cleaning" => "#f39c12",
- 	"Maintenance" => "#95a5a6",
- 	"Reserved" => "#3498db",
- 	_ => "#5e1369"
- };
+	string GetStatusColor(string status) => status switch
+	{
+		"Available" => "#27ae60",
+		"Occupied" => "#e74c3c",
+		"Cleaning" => "#f39c12",
+		"Maintenance" => "#95a5a6",
+		"Reserved" => "#3498db",
+		_ => "#5e1369"
+	};
 
- void ShowAddModal() 
- {
- 	isEdit = false; 
- 	current = new() 
- 	{ 
- 		room_status = "Available", 
- 		room_available = "Yes", 
- 		room_floor =1, 
- 		room_price =100.00m 
- 	}; 
- 	amenitiesText = string.Empty;
- 	previewImage = null; uploadedPhoto = null; current.room_picture = null; current.room_amenities = null; uploadError = null;
- 	showModal = true; 
- }
- void Edit(Hospitality.Models.Room r) 
- { 
- 	isEdit = true; 
- 	current = new() 
- 		{ room_id = r.room_id, 
- 			room_name = r.room_name, 
- 			room_number = r.room_number, 
- 			room_floor = r.room_floor, 
- 			room_price = r.room_price, 
- 			room_status = r.room_status, 
- 			room_available = r.room_available,
- 			room_picture = r.room_picture,
- 			room_amenities = r.room_amenities
- 		}; 
- 	amenitiesText = r.room_amenities ?? string.Empty;
- 	previewImage = r.room_picture != null ? $"data:image/jpeg;base64,{Convert.ToBase64String(r.room_picture)}" : null;
- 	uploadedPhoto = null; uploadError = null;
- 	showModal = true; 
- }
+	void ShowAddModal()
+	{
+		isEdit = false;
+		current = new()
+		{
+			room_status = "Available",
+			// room_available = "Yes",
+			room_floor = 1,
+			room_price = 100.00m
+		};
+		amenitiesText = string.Empty;
+		previewImage = null; uploadedPhoto = null; current.room_picture = null; current.room_amenities = null; uploadError = null;
+		showModal = true;
+	}
+	void Edit(Hospitality.Models.Room r)
+	{
+		isEdit = true;
+		current = new()
+		{
+			room_id = r.room_id,
+			room_name = r.room_name,
+			room_number = r.room_number,
+			room_floor = r.room_floor,
+			room_price = r.room_price,
+			room_status = r.room_status,
+			// room_available = r.room_available,
+			room_picture = r.room_picture,
+			room_amenities = r.room_amenities
+		};
+		amenitiesText = r.room_amenities ?? string.Empty;
+		previewImage = r.room_picture != null ? $"data:image/jpeg;base64,{Convert.ToBase64String(r.room_picture)}" : null;
+		uploadedPhoto = null; uploadError = null;
+		showModal = true;
+	}
 
- async Task OnPhotoSelected(InputFileChangeEventArgs e) 
- { 
- 	uploadError = null;
- 	uploadedPhoto = e.File; 
- 	var contentType = uploadedPhoto.ContentType?.ToLowerInvariant();
- 	if (contentType != "image/jpeg" && contentType != "image/png")
- 	{
- 		uploadError = "Only JPEG/PNG allowed."; return;
- 	}
- 	// Increase file size limit (default ~512KB). Allow up to8MB.
- 	var maxSize =8 *1024 *1024;
- 	try
- 	{
- 		using var stream = uploadedPhoto.OpenReadStream(maxSize);
- 		using var ms = new MemoryStream();
- 		await stream.CopyToAsync(ms);
- 		current.room_picture = ms.ToArray();
- 		previewImage = $"data:{uploadedPhoto.ContentType};base64,{Convert.ToBase64String(current.room_picture)}"; 
- 	}
- 	catch (Exception ex)
- 	{
- 		uploadError = $"Upload failed: {ex.Message}";
- 	}
- }
- async Task Delete(Hospitality.Models.Room r) 
- {
- 	try 
- 	{
- 		await RoomService.DeleteRoomAsync(r.room_id);
- 		rooms.Remove(r);
- 	} 
- 	catch 
- 	{
- 		loadError = true;
- 	} 
- }
- void BookRoom(Hospitality.Models.Room r) 
- { 
- 	Console.WriteLine($"Booking room: {r.room_number}");
- }
- void CloseModal() 
- { 
- 	showModal = false; 
- 	current = new(); 
- }
- async Task Save() 
- { 
- 	if (string.IsNullOrWhiteSpace(current.room_name) || current.room_number <=0) return; 
- 	try 
- 	{ 
- 		current.room_amenities = string.IsNullOrWhiteSpace(amenitiesText) ? null : amenitiesText.Trim();
- 		if (isEdit) { 
- 			await RoomService.UpdateRoomAsync(current); 
- 			var existing = rooms.First(x => x.room_id == current.room_id); 
- 			existing.room_name = current.room_name; 
- 			existing.room_number = current.room_number; 
- 			existing.room_floor = current.room_floor; 
- 			existing.room_price = current.room_price; 
- 			existing.room_status = current.room_status; 
- 			existing.room_available = current.room_available; 
- 			existing.room_picture = current.room_picture; 
- 			existing.room_amenities = current.room_amenities; 
- 		} 
- 		else 
- 		{ 
- 			var newId = await RoomService.AddRoomAsync(current); 
- 			current.room_id = newId; 
- 			rooms.Add(current); 
- 		} 
- 		CloseModal(); 
- 	} catch (Exception ex)
- 	{ 
- 		loadError = true; Console.WriteLine($"Save room error: {ex}");
- 	} 	 
- }
+	async Task OnPhotoSelected(InputFileChangeEventArgs e)
+	{
+		uploadError = null;
+		uploadedPhoto = e.File;
+		var contentType = uploadedPhoto.ContentType?.ToLowerInvariant();
+		if (contentType != "image/jpeg" && contentType != "image/png")
+		{
+			uploadError = "Only JPEG/PNG allowed."; return;
+		}
+		// Increase file size limit (default ~512KB). Allow up to8MB.
+		var maxSize = 8 * 1024 * 1024;
+		try
+		{
+			using var stream = uploadedPhoto.OpenReadStream(maxSize);
+			using var ms = new MemoryStream();
+			await stream.CopyToAsync(ms);
+			current.room_picture = ms.ToArray();
+			previewImage = $"data:{uploadedPhoto.ContentType};base64,{Convert.ToBase64String(current.room_picture)}";
+		}
+		catch (Exception ex)
+		{
+			uploadError = $"Upload failed: {ex.Message}";
+		}
+	}
+	async Task Delete(Hospitality.Models.Room r)
+	{
+		try
+		{
+			await RoomService.DeleteRoomAsync(r.room_id);
+			rooms.Remove(r);
+		}
+		catch
+		{
+			loadError = true;
+		}
+	}
+	void BookRoom(Hospitality.Models.Room r)
+	{
+		Console.WriteLine($"Booking room: {r.room_number}");
+	}
+	void CloseModal()
+	{
+		showModal = false;
+		current = new();
+	}
+	async Task Save()
+	{
+		if (string.IsNullOrWhiteSpace(current.room_name) || current.room_number <= 0) return;
+		try
+		{
+			current.room_amenities = string.IsNullOrWhiteSpace(amenitiesText) ? null : amenitiesText.Trim();
+			if (isEdit)
+			{
+				await RoomService.UpdateRoomAsync(current);
+				var existing = rooms.First(x => x.room_id == current.room_id);
+				existing.room_name = current.room_name;
+				existing.room_number = current.room_number;
+				existing.room_floor = current.room_floor;
+				existing.room_price = current.room_price;
+				existing.room_status = current.room_status;
+				// existing.room_available = current.room_available;
+				existing.room_picture = current.room_picture;
+				existing.room_amenities = current.room_amenities;
+			}
+			else
+			{
+				var newId = await RoomService.AddRoomAsync(current);
+				current.room_id = newId;
+				rooms.Add(current);
+			}
+			CloseModal();
+		}
+		catch (Exception ex)
+		{
+			loadError = true; Console.WriteLine($"Save room error: {ex}");
+		}
+	}
 
- async Task PrevPage() { if (CanPrev) { page--; } }
- async Task NextPage() { if (CanNext) { page++; } }
- async Task FirstPage() { if (CanPrev) { page =1; } }
- async Task LastPage() { if (CanNext) { page = totalPages; } }
- async Task GoPage(int p) { if (p != page) { page = p; } }
- async Task PageSizeChanged(ChangeEventArgs e) 
- { 
- 	if (int.TryParse(e.Value?.ToString(), out var ps) && ps >0) { pageSize = ps; page =1; } 
- }
+	async Task PrevPage() { if (CanPrev) { page--; } }
+	async Task NextPage() { if (CanNext) { page++; } }
+	async Task FirstPage() { if (CanPrev) { page = 1; } }
+	async Task LastPage() { if (CanNext) { page = totalPages; } }
+	async Task GoPage(int p) { if (p != page) { page = p; } }
+	async Task PageSizeChanged(ChangeEventArgs e)
+	{
+		if (int.TryParse(e.Value?.ToString(), out var ps) && ps > 0) { pageSize = ps; page = 1; }
+	}
 
- void Logout() => Navigation.NavigateTo("/");
+	void Logout() => Navigation.NavigateTo("/");
 
- string currentUserRole = "admin"; // TODO: replace with actual injected auth context
+	string currentUserRole = "admin"; // TODO: replace with actual injected auth context
 }

@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Hospitality.Services;
+using Microsoft.Extensions.Configuration;
+using System.Reflection;
 
 namespace Hospitality
 {
@@ -17,13 +19,28 @@ namespace Hospitality
 
             builder.Services.AddMauiBlazorWebView();
 
-            // Register HTTP client using the available MAUI method
+            // Load configuration from appsettings.json
+            var assembly = Assembly.GetExecutingAssembly();
+            using var stream = assembly.GetManifestResourceStream("Hospitality.appsettings.json");
+
+            if (stream != null)
+            {
+                var config = new ConfigurationBuilder()
+                    .AddJsonStream(stream)
+                    .Build();
+
+                builder.Configuration.AddConfiguration(config);
+            }
+
+            // Register HTTP client
             builder.Services.AddSingleton<HttpClient>();
- 
+
             // Register application services
             builder.Services.AddSingleton<UserService>();
             builder.Services.AddSingleton<RoomService>();
             builder.Services.AddSingleton<BookingService>();
+            builder.Services.AddSingleton<LoyaltyService>();
+            builder.Services.AddSingleton<MessageService>();
             builder.Services.AddTransient<PayMongoService>();
 
 #if DEBUG

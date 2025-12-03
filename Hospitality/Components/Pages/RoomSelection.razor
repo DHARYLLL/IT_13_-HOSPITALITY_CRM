@@ -20,8 +20,8 @@
 		<div class="nav-center">
 			<a href="@GetDashboardLink()" class="nav-link">Dashboard</a>
 			<a href="#" class="nav-link">Stays</a>
-			<a href="#" class="nav-link">Loyalty</a>
-			<a href="#" class="nav-link">Messages</a>
+			<a href="@(clientId.HasValue ? $"/client/loyalty/{clientId.Value}" : "#")" class="nav-link">Loyalty</a>
+			<a href="@(clientId.HasValue ? $"/client/messages/{clientId.Value}" : "#")" class="nav-link">Messages</a>
 		</div>
 		<div class="nav-right">
 			<span class="user-name">Guest</span>
@@ -61,9 +61,12 @@
 
 				@if (!string.IsNullOrEmpty(errorMessage))
 				{
-					<div class="error-message">
-						<span class="error-icon">⚠️</span>
-						@errorMessage
+					<div class="error-message" style="background: #ffe6e6; border: 2px solid #ff6b6b; padding: 1rem 1.5rem; margin: 1rem 0; border-radius: 12px; display: flex; align-items: center; gap: 1rem;">
+						<span class="error-icon" style="font-size: 2rem;">⚠️</span>
+						<div style="flex: 1;">
+							<strong style="display: block; margin-bottom: 0.25rem; color: #d63031;">Booking Error</strong>
+							<span style="color: #d63031;">@errorMessage</span>
+						</div>
 					</div>
 				}
 
@@ -152,8 +155,14 @@
 					<button class="adjust-filters-btn">
 						⚙️ Adjust filters
 					</button>
-					<button class="continue-btn" @onclick="ContinueToPayment" disabled="@(selectedRooms.Count != rooms)">
-						@if (selectedRooms.Count == rooms)
+					<button class="continue-btn" 
+							@onclick="ContinueToPayment" 
+							disabled="@(selectedRooms.Count != rooms || processingBooking)">
+						@if (processingBooking)
+						{
+							<span>🔄 Processing...</span>
+						}
+						else if (selectedRooms.Count == rooms)
 						{
 							<span>Continue to guest & payment →</span>
 						}
@@ -281,6 +290,7 @@
 	DateTime checkOutDate = DateTime.Today.AddDays(4);
 	bool goldBenefitsApplied = true;
 	bool loading = true;
+	bool processingBooking = false;
 
 	List<Hospitality.Models.Room> selectedRooms = new();
 	List<Hospitality.Models.Room> availableRooms = new();
@@ -354,56 +364,60 @@
 
 	async Task ContinueToPayment()
 	{
-		Console.WriteLine($"ContinueToPayment called. Selected rooms: {selectedRooms.Count}, Required rooms: {rooms}, ClientId: {clientId}");
+		Console.WriteLine($"✅ ContinueToPayment called. Selected rooms: {selectedRooms.Count}, Required rooms: {rooms}, ClientId: {clientId}");
 		
 		// Clear any previous error messages
 		errorMessage = "";
+		processingBooking = true;
+		StateHasChanged();
 		
 		if (selectedRooms.Count != rooms)
 		{
 			errorMessage = $"Please select {rooms} room{(rooms > 1 ? "s" : "")} before continuing.";
-			Console.WriteLine($"Not all rooms selected. Selected: {selectedRooms.Count}, Required: {rooms}");
+			Console.WriteLine($"❌ Not all rooms selected. Selected: {selectedRooms.Count}, Required: {rooms}");
+			processingBooking = false;
 			StateHasChanged();
 			return;
 		}
 
 		try
 		{
-			Console.WriteLine("Starting booking creation process...");
+			Console.WriteLine("🔄 Starting booking creation process...");
 
 			if (clientId.HasValue)
 			{
-				Console.WriteLine($"Creating booking for user ID: {clientId.Value}");
+				Console.WriteLine($"👤 Creating booking for user ID: {clientId.Value}");
 				
 				// Get the actual client_id from the database with better error handling
 				int actualClientId;
 				try
 				{
 					actualClientId = await GetClientIdFromUserIdAsync(clientId.Value);
-					Console.WriteLine($"Found client_id: {actualClientId} for user_id: {clientId.Value}");
+					Console.WriteLine($"✅ Found client_id: {actualClientId} for user_id: {clientId.Value}");
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine($"Error getting client_id: {ex.Message}");
+					Console.WriteLine($"⚠️ Error getting client_id: {ex.Message}");
 					
 					// Try to create a client record if it doesn't exist
 					try
 					{
-						Console.WriteLine("Attempting to create missing client record...");
+						Console.WriteLine("🔧 Attempting to create missing client record...");
 						await CreateClientRecordAsync(clientId.Value);
 						actualClientId = await GetClientIdFromUserIdAsync(clientId.Value);
-						Console.WriteLine($"Successfully created and retrieved client_id: {actualClientId}");
+						Console.WriteLine($"✅ Successfully created and retrieved client_id: {actualClientId}");
 					}
 					catch (Exception createEx)
 					{
-						Console.WriteLine($"Error creating client record: {createEx.Message}");
+						Console.WriteLine($"❌ Error creating client record: {createEx.Message}");
 						// Final fallback: use user_id as client_id
 						actualClientId = clientId.Value;
-						Console.WriteLine($"Using fallback client_id (user_id): {actualClientId}");
+						Console.WriteLine($"⚠️ Using fallback client_id (user_id): {actualClientId}");
 					}
 				}
 
 				// Create booking in database
+				Console.WriteLine($"📝 Creating booking: clientId={actualClientId}, checkIn={checkInDate:yyyy-MM-dd}, checkOut={checkOutDate:yyyy-MM-dd}, adults={adults}");
 				var bookingId = await BookingService.CreateBookingAsync(
 					actualClientId,
 					checkInDate,
@@ -412,30 +426,30 @@
 					$"Rooms selected: {string.Join(", ", selectedRooms.Select(r => r.room_name))}"
 				);
 
-				Console.WriteLine($"Booking created with ID: {bookingId}");
+				Console.WriteLine($"✅ Booking created with ID: {bookingId}");
 
 				// Add all selected rooms to the booking
 				foreach (var room in selectedRooms)
 				{
+					Console.WriteLine($"🏨 Adding room {room.room_id} ({room.room_name}) to booking {bookingId}");
 					await BookingService.AddRoomToBookingAsync(bookingId, room.room_id);
-					Console.WriteLine($"Added room {room.room_id} ({room.room_name}) to booking {bookingId}");
 				}
 
 				// Navigate to payment page
 				var paymentUrl = $"/booking/payment/{clientId.Value}/{bookingId}";
-				Console.WriteLine($"Navigating to payment: {paymentUrl}");
+				Console.WriteLine($"🚀 Navigating to payment: {paymentUrl}");
 				Navigation.NavigateTo(paymentUrl);
 			}
 			else
 			{
-				Console.WriteLine("No clientId provided, creating demo booking");
+				Console.WriteLine("🎭 No clientId provided, creating demo booking");
 				// For demo without login, create a temporary booking with temp client
 				var tempClientId = 1; // Default demo client
-				var tempBookingId = new Random().Next(1000, 9999);
 				
 				// Create a demo booking
 				try
 				{
+					Console.WriteLine($"📝 Creating demo booking: clientId={tempClientId}, checkIn={checkInDate:yyyy-MM-dd}, checkOut={checkOutDate:yyyy-MM-dd}");
 					var bookingId = await BookingService.CreateBookingAsync(
 						tempClientId,
 						checkInDate,
@@ -444,34 +458,43 @@
 						$"Demo booking - Rooms: {string.Join(", ", selectedRooms.Select(r => r.room_name))}"
 					);
 
+					Console.WriteLine($"✅ Demo booking created with ID: {bookingId}");
+
 					// Add selected rooms to demo booking
 					foreach (var room in selectedRooms)
 					{
+						Console.WriteLine($"🏨 Adding room {room.room_id} to demo booking {bookingId}");
 						await BookingService.AddRoomToBookingAsync(bookingId, room.room_id);
 					}
 
 					var demoPaymentUrl = $"/booking/payment/1/{bookingId}";
-					Console.WriteLine($"Navigating to demo payment: {demoPaymentUrl}");
+					Console.WriteLine($"🚀 Navigating to demo payment: {demoPaymentUrl}");
 					Navigation.NavigateTo(demoPaymentUrl);
 				}
 				catch (Exception demoEx)
 				{
-					Console.WriteLine($"Error creating demo booking: {demoEx.Message}");
-					// Ultimate fallback
-					var fallbackPaymentUrl = $"/booking/payment/1/{tempBookingId}";
-					Console.WriteLine($"Using fallback payment URL: {fallbackPaymentUrl}");
-					Navigation.NavigateTo(fallbackPaymentUrl);
+					Console.WriteLine($"❌ Error creating demo booking: {demoEx.Message}");
+					Console.WriteLine($"📋 Stack trace: {demoEx.StackTrace}");
+					
+					// Show error to user
+					errorMessage = $"❌ Failed to create booking: {demoEx.Message}";
+					processingBooking = false;
+					StateHasChanged();
 				}
 			}
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine($"Error in ContinueToPayment: {ex.Message}");
-			Console.WriteLine($"Stack trace: {ex.StackTrace}");
+			Console.WriteLine($"❌ Error in ContinueToPayment: {ex.Message}");
+			Console.WriteLine($"📋 Stack trace: {ex.StackTrace}");
 			
 			// Show more specific error message
-			errorMessage = $"Error: {ex.Message}. Please try refreshing the page or contact support.";
-			Console.WriteLine($"Showing error to user: {errorMessage}");
+			errorMessage = $"❌ Error creating booking: {ex.Message}. Please try again or contact support.";
+			Console.WriteLine($"💬 Showing error to user: {errorMessage}");
+		}
+		finally
+		{
+			processingBooking = false;
 			StateHasChanged();
 		}
 	}

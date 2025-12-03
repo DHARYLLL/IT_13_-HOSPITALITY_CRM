@@ -20,8 +20,8 @@
 		<div class="nav-center">
 			<a href="@GetDashboardLink()" class="nav-link @(IsActive("Dashboard"))">Dashboard</a>
 			<a href="#" class="nav-link">Stays</a>
-			<a href="#" class="nav-link">Loyalty</a>
-			<a href="#" class="nav-link">Messages</a>
+			<a href="@(clientId.HasValue ? $"/client/loyalty/{clientId.Value}" : "#")" class="nav-link">Loyalty</a>
+			<a href="@(clientId.HasValue ? $"/client/messages/{clientId.Value}" : "#")" class="nav-link">Messages</a>
 		</div>
 		<div class="nav-right">
 			<span class="points-badge">Gold • @LoyaltyPoints pts</span>
@@ -65,7 +65,7 @@
 						<label class="form-label">Where and when</label>
 						<div class="input-row">
 							<div class="input-field full-width">
-								<label class="field-label">Destination <span class="required">Required</span></label>
+								<label class="field-label">Destination</label>
 								<input type="text" class="text-input" value="InnSight Hotel" readonly/>
 							</div>
 						</div>
