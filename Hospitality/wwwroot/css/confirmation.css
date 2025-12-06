@@ -1,224 +1,197 @@
 /* Booking Confirmation Page Styles */
-@import url('client-nav.css');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap');
 
-.confirmation-content {
-	max-width: 800px;
-	margin: 0 auto;
-	padding: 40px 24px;
-	text-align: center;
-}
+/* ============================================
+   PAYMENT SUCCESS ANIMATION PAGE
+   ============================================ */
 
-.success-card {
+.confirmation-page {
+	min-height: 100vh;
 	background: white;
-	border-radius: 16px;
-	padding: 48px 32px;
-	margin-bottom: 32px;
-	border: 1px solid #e5e5e7;
 }
 
-.success-icon {
-	font-size: 64px;
-	margin-bottom: 24px;
+.success-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: white;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 9999;
 }
 
-.success-title {
-	font-size: 32px;
-	font-weight: 700;
-	font-family: 'Playfair Display', serif;
-	color: #059669;
-	margin: 0 0 16px 0;
+.success-overlay.fade-out {
+	animation: fadeOut 0.5s ease-out forwards;
 }
 
-.success-subtitle {
-	font-size: 18px;
+@keyframes fadeOut {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+.success-animation {
+	text-align: center;
+	padding: 40px;
+	max-width: 400px;
+}
+
+/* ============================================
+   ANIMATED CHECKMARK
+   ============================================ */
+
+.checkmark-circle {
+	width: 120px;
+	height: 120px;
+	margin: 0 auto 40px;
+}
+
+.checkmark {
+	width: 120px;
+	height: 120px;
+	border-radius: 50%;
+	display: block;
+	stroke-width: 2;
+	stroke: #22c55e;
+	stroke-miterlimit: 10;
+	animation: scale 0.3s ease-in-out 0.5s both;
+}
+
+.checkmark-circle-bg {
+	stroke: #22c55e;
+	stroke-dasharray: 166;
+	stroke-dashoffset: 166;
+	stroke-width: 2;
+	stroke-miterlimit: 10;
+	fill: none;
+	animation: stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark-check {
+	transform-origin: 50% 50%;
+	stroke-dasharray: 48;
+	stroke-dashoffset: 48;
+	stroke-width: 3;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+}
+
+@keyframes stroke {
+	100% {
+		stroke-dashoffset: 0;
+	}
+}
+
+@keyframes scale {
+	0%, 100% {
+		transform: none;
+	}
+	50% {
+		transform: scale3d(1.1, 1.1, 1);
+	}
+}
+
+/* ============================================
+   TEXT ANIMATIONS
+   ============================================ */
+
+.success-animation-title {
+	font-size: 24px;
+	font-weight: 600;
+	color: #1d1d1f;
+	font-family: 'Open Sans', sans-serif;
+	margin: 0 0 12px 0;
+	animation: slideUp 0.5s ease-out 0.8s both;
+}
+
+.success-animation-subtitle {
+	font-size: 16px;
 	color: #6e6e73;
 	font-family: 'Open Sans', sans-serif;
 	margin: 0 0 32px 0;
-	line-height: 1.5;
+	animation: slideUp 0.5s ease-out 1s both;
 }
 
-.booking-reference {
-	display: inline-flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 8px;
-	background: #f0fdf4;
-	border: 2px solid #bbf7d0;
-	border-radius: 12px;
-	padding: 16px 24px;
+@keyframes slideUp {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
-.reference-label {
-	font-size: 12px;
-	font-weight: 500;
-	color: #059669;
-	font-family: 'Open Sans', sans-serif;
-	text-transform: uppercase;
-	letter-spacing: 1px;
+/* ============================================
+   REDIRECT COUNTDOWN BAR
+   ============================================ */
+
+.redirect-countdown {
+	animation: slideUp 0.5s ease-out 1.2s both;
 }
 
-.reference-number {
-	font-size: 24px;
-	font-weight: 700;
-	color: #059669;
-	font-family: 'Playfair Display', serif;
-}
-
-.confirmation-details {
-	background: white;
-	border-radius: 16px;
-	border: 1px solid #e5e5e7;
+.countdown-bar {
+	width: 200px;
+	height: 4px;
+	background: #e5e5e7;
+	border-radius: 2px;
+	margin: 0 auto 16px;
 	overflow: hidden;
-	text-align: left;
 }
 
-.details-section {
-	padding: 32px;
-	border-bottom: 1px solid #e5e5e7;
+.countdown-progress {
+	height: 100%;
+	background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+	border-radius: 2px;
+	animation: countdown 3s linear forwards;
+	animation-delay: 0s;
 }
 
-.details-section:last-child {
-	border-bottom: none;
+@keyframes countdown {
+	from {
+		width: 0%;
+	}
+	to {
+		width: 100%;
+	}
 }
 
-.details-section h3 {
-	font-size: 20px;
-	font-weight: 600;
-	font-family: 'Lora', serif;
-	color: #1d1d1f;
-	margin: 0 0 24px 0;
-}
-
-.detail-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-	gap: 20px;
-}
-
-.detail-item {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 12px 0;
-	border-bottom: 1px solid #f5f5f7;
-}
-
-.detail-label {
+.countdown-text {
 	font-size: 14px;
+	color: #22c55e;
+	font-family: 'Open Sans', sans-serif;
 	font-weight: 500;
-	color: #6e6e73;
-	font-family: 'Open Sans', sans-serif;
+	margin: 0;
 }
 
-.detail-value {
-	font-size: 14px;
-	font-weight: 600;
-	color: #1d1d1f;
-	font-family: 'Open Sans', sans-serif;
-	text-align: right;
-}
-
-.detail-value.payment-amount {
-	font-size: 18px;
-	color: #059669;
-	font-family: 'Playfair Display', serif;
-}
-
-.next-steps {
-	display: flex;
-	flex-direction: column;
-	gap: 20px;
-}
-
-.step-item {
-	display: flex;
-	align-items: flex-start;
-	gap: 16px;
-}
-
-.step-icon {
-	font-size: 20px;
-	width: 40px;
-	text-align: center;
-	margin-top: 4px;
-}
-
-.step-content {
-	flex: 1;
-}
-
-.step-title {
-	font-size: 15px;
-	font-weight: 600;
-	color: #1d1d1f;
-	font-family: 'Lora', serif;
-	margin-bottom: 4px;
-}
-
-.step-desc {
-	font-size: 13px;
-	color: #6e6e73;
-	font-family: 'Open Sans', sans-serif;
-	line-height: 1.4;
-}
-
-.confirmation-actions {
-	padding: 32px;
-	display: flex;
-	gap: 16px;
-	justify-content: center;
-	background: #fafafa;
-}
-
-.btn-secondary,
-.btn-primary {
-	padding: 12px 24px;
-	border-radius: 8px;
-	font-size: 14px;
-	font-weight: 600;
-	font-family: 'Open Sans', sans-serif;
-	cursor: pointer;
-	transition: all 0.2s;
-	border: none;
-}
-
-.btn-secondary {
-	background: white;
-	border: 1px solid #d2d2d7;
-	color: #1d1d1f;
-}
-
-.btn-secondary:hover {
-	background: #f5f5f7;
-}
-
-.btn-primary {
-	background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
-	color: white;
-	box-shadow: 0 4px 12px rgba(94, 19, 105, 0.3);
-}
-
-.btn-primary:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 6px 16px rgba(94, 19, 105, 0.4);
-}
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 
 @media (max-width: 768px) {
-	.confirmation-actions {
-		flex-direction: column;
+	.checkmark-circle {
+		width: 100px;
+		height: 100px;
 	}
-
-	.detail-grid {
-		grid-template-columns: 1fr;
+	
+	.checkmark {
+		width: 100px;
+		height: 100px;
 	}
-
-	.detail-item {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 4px;
+	
+	.success-animation-title {
+		font-size: 20px;
 	}
-
-	.detail-value {
-		text-align: left;
+	
+	.success-animation-subtitle {
+		font-size: 14px;
+	}
+	
+	.success-animation {
+		padding: 24px;
 	}
 }

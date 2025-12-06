@@ -34,7 +34,7 @@ public class BookingService
         r.room_name, r.room_number, r.room_floor, r.room_price
         FROM Bookings b
         LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
-        LEFT JOIN rooms r ON br.room_id = r.room_id
+        LEFT JOIN rooms r ON br.room_id = r.room_id 
         WHERE b.client_id = @clientId
         ORDER BY b.[check-in_date] DESC";
 
@@ -138,16 +138,38 @@ public class BookingService
         using var con = DbConnection.GetConnection();
         await con.OpenAsync();
 
-        string sql = @"INSERT INTO Booking_rooms (booking_id, room_id)
-        VALUES (@bookingId, @roomId); 
-        SELECT CAST(SCOPE_IDENTITY() AS int);";
+        using var tx = await con.BeginTransactionAsync();
 
-        using var cmd = new SqlCommand(sql, con);
-        cmd.Parameters.AddWithValue("@bookingId", bookingId);
-        cmd.Parameters.AddWithValue("@roomId", roomId);
+        try
+        {
+            // Insert into Booking_rooms table
+            string insertSql = @"INSERT INTO Booking_rooms (booking_id, room_id)
+            VALUES (@bookingId, @roomId); 
+            SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-        var result = await cmd.ExecuteScalarAsync();
-        return Convert.ToInt32(result);
+            using var insertCmd = new SqlCommand(insertSql, con, (SqlTransaction)tx);
+            insertCmd.Parameters.AddWithValue("@bookingId", bookingId);
+            insertCmd.Parameters.AddWithValue("@roomId", roomId);
+
+            var result = await insertCmd.ExecuteScalarAsync();
+            int bookingRoomId = Convert.ToInt32(result);
+
+            // Update room status to Reserved
+            string updateStatusSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
+            using var updateCmd = new SqlCommand(updateStatusSql, con, (SqlTransaction)tx);
+            updateCmd.Parameters.AddWithValue("@roomId", roomId);
+            await updateCmd.ExecuteNonQueryAsync();
+
+            await ((SqlTransaction)tx).CommitAsync();
+
+            Console.WriteLine($"? Room {roomId} added to booking {bookingId} and marked as Reserved");
+            return bookingRoomId;
+        }
+        catch
+        {
+            await ((SqlTransaction)tx).RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<List<Room>> GetAvailableRoomsAsync(DateTime checkIn, DateTime checkOut, int personCount)
@@ -322,49 +344,78 @@ public class BookingService
             using var con = DbConnection.GetConnection();
             await con.OpenAsync();
 
-            // Get booking details including total amount
-            string getBookingSql = @"
-           SELECT b.client_id, b.booking_id, SUM(r.room_price) as total_amount, DATEDIFF(day, b.[check-in_date], b.[check-out_date]) as nights
- FROM Bookings b
-          INNER JOIN Booking_rooms br ON b.booking_id = br.booking_id
-      INNER JOIN rooms r ON br.room_id = r.room_id
-    WHERE b.booking_id = @bookingId
-      GROUP BY b.client_id, b.booking_id, b.[check-in_date], b.[check-out_date]";
+            using var tx = await con.BeginTransactionAsync();
 
-            using var getCmd = new SqlCommand(getBookingSql, con);
-            getCmd.Parameters.AddWithValue("@bookingId", bookingId);
+            try
+            {
+                // Get booking details including total amount and room IDs
+                string getBookingSql = @"
+                SELECT b.client_id, b.booking_id, SUM(r.room_price) as total_amount, 
+                DATEDIFF(day, b.[check-in_date], b.[check-out_date]) as nights,
+                br.room_id
+                FROM Bookings b
+                INNER JOIN Booking_rooms br ON b.booking_id = br.booking_id
+                INNER JOIN rooms r ON br.room_id = r.room_id
+                WHERE b.booking_id = @bookingId
+                GROUP BY b.client_id, b.booking_id, b.[check-in_date], b.[check-out_date], br.room_id";
 
-            using var reader = await getCmd.ExecuteReaderAsync();
-            if (!await reader.ReadAsync())
-     {
-    return false; // Booking not found
-   }
+                using var getCmd = new SqlCommand(getBookingSql, con, (SqlTransaction)tx);
+                getCmd.Parameters.AddWithValue("@bookingId", bookingId);
 
-  int clientId = reader.GetInt32(0);
-    decimal roomPricePerNight = reader.GetDecimal(2);
-       int nights = reader.GetInt32(3);
-         decimal totalAmount = roomPricePerNight * nights;
+                var roomIds = new List<int>();
+                int clientId = 0;
+                decimal totalAmount = 0;
 
-      await reader.CloseAsync();
+                using var reader = await getCmd.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                {
+                    return false; // Booking not found
+                }
 
-            // Update booking status to completed
-     string updateSql = @"
+                clientId = reader.GetInt32(0);
+                decimal roomPricePerNight = reader.GetDecimal(2);
+                int nights = reader.GetInt32(3);
+                roomIds.Add(reader.GetInt32(4));
+                totalAmount = roomPricePerNight * nights;
+
+                await reader.CloseAsync();
+
+                // Update booking status to completed
+                string updateBookingSql = @"
                 UPDATE Bookings 
-      SET booking_status = 'completed' 
-         WHERE booking_id = @bookingId";
+                SET booking_status = 'completed' 
+                WHERE booking_id = @bookingId";
 
-   using var updateCmd = new SqlCommand(updateSql, con);
-            updateCmd.Parameters.AddWithValue("@bookingId", bookingId);
-            await updateCmd.ExecuteNonQueryAsync();
+                using var updateBookingCmd = new SqlCommand(updateBookingSql, con, (SqlTransaction)tx);
+                updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                await updateBookingCmd.ExecuteNonQueryAsync();
 
- // Award loyalty points
-      var loyaltyService = new LoyaltyService();
-  await loyaltyService.AddPointsForBookingAsync(clientId, bookingId, totalAmount);
+                // Update all rooms in this booking back to Available
+                foreach (var roomId in roomIds)
+                {
+                    string updateRoomSql = @"UPDATE rooms SET room_status = 'Available' WHERE room_id = @roomId";
+                    using var updateRoomCmd = new SqlCommand(updateRoomSql, con, (SqlTransaction)tx);
+                    updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
+                    await updateRoomCmd.ExecuteNonQueryAsync();
+                    Console.WriteLine($"? Room {roomId} set back to Available");
+                }
 
-  Console.WriteLine($"? Booking {bookingId} completed. Total: ${totalAmount}, Points awarded to client {clientId}");
-     return true;
+                // Award loyalty points
+                var loyaltyService = new LoyaltyService();
+                await loyaltyService.AddPointsForBookingAsync(clientId, bookingId, totalAmount);
+
+                await ((SqlTransaction)tx).CommitAsync();
+
+                Console.WriteLine($"? Booking {bookingId} completed. Total: ${totalAmount}, Points awarded to client {clientId}");
+                return true;
+            }
+            catch
+            {
+                await ((SqlTransaction)tx).RollbackAsync();
+                throw;
+            }
         }
- catch (Exception ex)
+        catch (Exception ex)
         {
             Console.WriteLine($"? Error completing booking: {ex.Message}");
             return false;
@@ -372,32 +423,506 @@ public class BookingService
     }
 
     /// <summary>
-    /// Gets total amount for a booking
+    /// Checks in a booking and sets room status to Occupied
     /// </summary>
-  public async Task<decimal> GetBookingTotalAsync(int bookingId)
+    public async Task<bool> CheckInBookingAsync(int bookingId)
     {
         try
         {
             using var con = DbConnection.GetConnection();
-        await con.OpenAsync();
+            await con.OpenAsync();
+
+            using var tx = await con.BeginTransactionAsync();
+
+            try
+            {
+                // Get room IDs for this booking
+                string getRoomsSql = @"
+                SELECT br.room_id
+                FROM Booking_rooms br
+                WHERE br.booking_id = @bookingId";
+
+                using var getRoomsCmd = new SqlCommand(getRoomsSql, con, (SqlTransaction)tx);
+                getRoomsCmd.Parameters.AddWithValue("@bookingId", bookingId);
+
+                var roomIds = new List<int>();
+                using var reader = await getRoomsCmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    roomIds.Add(reader.GetInt32(0));
+                }
+                await reader.CloseAsync();
+
+                if (roomIds.Count == 0)
+                {
+                    return false; // No rooms found for this booking
+                }
+
+                // Update all rooms to Occupied status
+                foreach (var roomId in roomIds)
+                {
+                    string updateRoomSql = @"UPDATE rooms SET room_status = 'Occupied' WHERE room_id = @roomId";
+                    using var updateRoomCmd = new SqlCommand(updateRoomSql, con, (SqlTransaction)tx);
+                    updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
+                    await updateRoomCmd.ExecuteNonQueryAsync();
+                    Console.WriteLine($"? Room {roomId} set to Occupied for booking {bookingId}");
+                }
+
+                // Update booking status to 'checked-in' if you have this status
+                string updateBookingSql = @"
+                UPDATE Bookings 
+                SET booking_status = 'checked-in' 
+                WHERE booking_id = @bookingId";
+
+                using var updateBookingCmd = new SqlCommand(updateBookingSql, con, (SqlTransaction)tx);
+                updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                await updateBookingCmd.ExecuteNonQueryAsync();
+
+                await ((SqlTransaction)tx).CommitAsync();
+
+                Console.WriteLine($"? Booking {bookingId} checked in successfully");
+                return true;
+            }
+            catch
+            {
+                await ((SqlTransaction)tx).RollbackAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"? Error checking in booking: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Cancels a booking and returns rooms to Available status
+    /// </summary>
+    public async Task<bool> CancelBookingAsync(int bookingId)
+    {
+        try
+        {
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            using var tx = await con.BeginTransactionAsync();
+
+            try
+            {
+                // Get room IDs for this booking
+                string getRoomsSql = @"
+                SELECT br.room_id
+                FROM Booking_rooms br
+                WHERE br.booking_id = @bookingId";
+
+                using var getRoomsCmd = new SqlCommand(getRoomsSql, con, (SqlTransaction)tx);
+                getRoomsCmd.Parameters.AddWithValue("@bookingId", bookingId);
+
+                var roomIds = new List<int>();
+                using var reader = await getRoomsCmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    roomIds.Add(reader.GetInt32(0));
+                }
+                await reader.CloseAsync();
+
+                if (roomIds.Count == 0)
+                {
+                    return false; // No rooms found for this booking
+                }
+
+                // Update all rooms back to Available status
+                foreach (var roomId in roomIds)
+                {
+                    string updateRoomSql = @"UPDATE rooms SET room_status = 'Available' WHERE room_id = @roomId";
+                    using var updateRoomCmd = new SqlCommand(updateRoomSql, con, (SqlTransaction)tx);
+                    updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
+                    await updateRoomCmd.ExecuteNonQueryAsync();
+                    Console.WriteLine($"? Room {roomId} set back to Available (booking cancelled)");
+                }
+
+                // Update booking status to cancelled
+                string updateBookingSql = @"
+                UPDATE Bookings 
+                SET booking_status = 'cancelled' 
+                WHERE booking_id = @bookingId";
+
+                using var updateBookingCmd = new SqlCommand(updateBookingSql, con, (SqlTransaction)tx);
+                updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                await updateBookingCmd.ExecuteNonQueryAsync();
+
+                await ((SqlTransaction)tx).CommitAsync();
+
+                Console.WriteLine($"? Booking {bookingId} cancelled successfully");
+                return true;
+            }
+            catch
+            {
+                await ((SqlTransaction)tx).RollbackAsync();
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"? Error cancelling booking: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Updates booking status and records payment information
+    /// </summary>
+    public async Task<bool> UpdateBookingStatusAsync(int bookingId, string status, string? paymentIntentId = null, string? paymentMethod = null)
+    {
+        try
+        {
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
 
             string sql = @"
-          SELECT SUM(r.room_price) * DATEDIFF(day, b.[check-in_date], b.[check-out_date]) as total_amount
-FROM Bookings b
-      INNER JOIN Booking_rooms br ON b.booking_id = br.booking_id
-       INNER JOIN rooms r ON br.room_id = r.room_id
-       WHERE b.booking_id = @bookingId
-       GROUP BY b.[check-in_date], b.[check-out_date]";
+            UPDATE Bookings 
+            SET booking_status = @status
+            WHERE booking_id = @bookingId";
 
             using var cmd = new SqlCommand(sql, con);
- cmd.Parameters.AddWithValue("@bookingId", bookingId);
+            cmd.Parameters.AddWithValue("@bookingId", bookingId);
+            cmd.Parameters.AddWithValue("@status", status);
+
+            var rowsAffected = await cmd.ExecuteNonQueryAsync();
+
+            if (rowsAffected > 0)
+            {
+                Console.WriteLine($"? Booking {bookingId} status updated to: {status}");
+                
+                if (!string.IsNullOrEmpty(paymentIntentId))
+                {
+                   Console.WriteLine($"  Payment Intent ID: {paymentIntentId}");
+                 }
+                
+             if (!string.IsNullOrEmpty(paymentMethod))
+          {
+      Console.WriteLine($"  Payment Method: {paymentMethod}");
+     }
+    
+       return true;
+    }
+
+ return false;
+        }
+        catch (Exception ex)
+        {
+ Console.WriteLine($"? Error updating booking status: {ex.Message}");
+            return false;
+      }
+    }
+
+    /// <summary>
+    /// Gets total amount for a booking
+    /// </summary>
+    public async Task<decimal> GetBookingTotalAsync(int bookingId)
+    {
+        try
+        {
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            string sql = @"
+            SELECT SUM(r.room_price) * DATEDIFF(day, b.[check-in_date], b.[check-out_date]) as total_amount
+            FROM Bookings b
+            INNER JOIN Booking_rooms br ON b.booking_id = br.booking_id
+            INNER JOIN rooms r ON br.room_id = r.room_id
+            WHERE b.booking_id = @bookingId
+            GROUP BY b.[check-in_date], b.[check-out_date]";
+
+            using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@bookingId", bookingId);
 
             var result = await cmd.ExecuteScalarAsync();
-   return result != null ? Convert.ToDecimal(result) : 0;
+            return result != null ? Convert.ToDecimal(result) : 0;
         }
-  catch
-    {
+        catch
+        {
             return 0;
-      }
+        }
+    }
+
+    /// <summary>
+    /// Gets all bookings with client information for admin reports
+    /// </summary>
+    public async Task<List<Booking>> GetAllBookingsWithClientsAsync(DateTime? startDate = null, DateTime? endDate = null)
+    {
+        var bookings = new List<Booking>();
+        using var con = DbConnection.GetConnection();
+        await con.OpenAsync();
+
+        string sql = @"
+        SELECT 
+        b.booking_id, b.client_id, b.[check-in_date], b.[check-out_date], b.person_count, b.client_request,
+        b.[check-in_time], b.[check-out_time], b.booking_status,
+        r.room_name, r.room_number, r.room_floor, r.room_price,
+        c.first_name, c.last_name, c.email,
+        DATEDIFF(day, b.[check-in_date], b.[check-out_date]) as nights
+        FROM Bookings b
+        INNER JOIN clients c ON b.client_id = c.client_id
+        LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
+        LEFT JOIN rooms r ON br.room_id = r.room_id
+        WHERE (@startDate IS NULL OR b.[check-in_date] >= @startDate)
+        AND (@endDate IS NULL OR b.[check-in_date] <= @endDate)
+        ORDER BY b.[check-in_date] DESC";
+
+        using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.AddWithValue("@startDate", (object?)startDate ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@endDate", (object?)endDate ?? DBNull.Value);
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        var bookingDict = new Dictionary<int, Booking>();
+
+        while (await reader.ReadAsync())
+        {
+            int bookingId = reader.GetInt32(reader.GetOrdinal("booking_id"));
+
+            if (!bookingDict.ContainsKey(bookingId))
+            {
+                var booking = MapBooking(reader);
+                booking.client_first_name = reader.GetString(reader.GetOrdinal("first_name"));
+                booking.client_last_name = reader.GetString(reader.GetOrdinal("last_name"));
+                booking.client_email = reader.GetString(reader.GetOrdinal("email"));
+
+                int nights = reader.GetInt32(reader.GetOrdinal("nights"));
+                decimal roomPrice = reader.IsDBNull(reader.GetOrdinal("room_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("room_price"));
+                booking.total_amount = roomPrice * nights;
+
+                bookingDict[bookingId] = booking;
+            }
+            else
+            {
+                // Multiple rooms - add to total
+                decimal roomPrice = reader.IsDBNull(reader.GetOrdinal("room_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("room_price"));
+                int nights = reader.GetInt32(reader.GetOrdinal("nights"));
+                bookingDict[bookingId].total_amount += roomPrice * nights;
+            }
+        }
+
+        return bookingDict.Values.ToList();
+    }
+
+    /// <summary>
+    /// Gets booking metrics for a date range
+    /// </summary>
+    public async Task<BookingMetrics> GetBookingMetricsAsync(int dateRangeDays)
+    {
+        var metrics = new BookingMetrics();
+        using var con = DbConnection.GetConnection();
+        await con.OpenAsync();
+
+        DateTime startDate = DateTime.Today.AddDays(-dateRangeDays);
+        DateTime endDate = DateTime.Today.AddDays(dateRangeDays); // Extended to include FUTURE bookings
+
+        // Get total bookings and revenue
+        string sql = @"
+        SELECT 
+        COUNT(DISTINCT b.booking_id) as total_bookings,
+        SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as total_revenue,
+        COUNT(DISTINCT b.client_id) as total_guests,
+        AVG(CAST(DATEDIFF(day, b.[check-in_date], b.[check-out_date]) AS DECIMAL(10,2))) as avg_stay_duration,
+        AVG(r.room_price) as avg_daily_rate
+        FROM Bookings b
+        INNER JOIN Booking_rooms br ON b.booking_id = br.booking_id
+        INNER JOIN rooms r ON br.room_id = r.room_id
+        WHERE b.[check-in_date] >= @startDate AND b.[check-in_date] <= @endDate";
+
+        using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.AddWithValue("@startDate", startDate);
+        cmd.Parameters.AddWithValue("@endDate", endDate);
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        if (await reader.ReadAsync())
+        {
+            metrics.TotalBookings = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+            metrics.TotalRevenue = reader.IsDBNull(1) ? 0 : reader.GetDecimal(1);
+            metrics.TotalGuests = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+            metrics.AvgStayDuration = reader.IsDBNull(3) ? 0 : reader.GetDecimal(3);
+            metrics.AverageDailyRate = reader.IsDBNull(4) ? 0 : reader.GetDecimal(4);
+        }
+
+        return metrics;
+    }
+
+    /// <summary>
+    /// Gets daily revenue breakdown for charts
+    /// </summary>
+    public async Task<List<DailyRevenue>> GetDailyRevenueAsync(int dateRangeDays)
+    {
+        var dailyRevenue = new List<DailyRevenue>();
+        using var con = DbConnection.GetConnection();
+        await con.OpenAsync();
+
+        DateTime startDate = DateTime.Today.AddDays(-dateRangeDays);
+
+        string sql = @"
+        SELECT 
+        b.[check-in_date] as date,
+        SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as revenue
+        FROM Bookings b
+        INNER JOIN Booking_rooms br ON b.booking_id = br.booking_id
+        INNER JOIN rooms r ON br.room_id = r.room_id
+        WHERE b.[check-in_date] >= @startDate
+        GROUP BY b.[check-in_date]
+        ORDER BY b.[check-in_date]";
+
+        using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.AddWithValue("@startDate", startDate);
+
+        using var reader = await cmd.ExecuteReaderAsync();
+
+        while (await reader.ReadAsync())
+        {
+            dailyRevenue.Add(new DailyRevenue
+            {
+                Date = reader.GetDateTime(0),
+                Revenue = reader.GetDecimal(1)
+            });
+        }
+
+        return dailyRevenue;
+    }
+
+    /// <summary>
+    /// Updates room statuses based on booking dates
+    /// Should be called periodically or when viewing room list
+    /// </summary>
+    public async Task UpdateRoomStatusesBasedOnDatesAsync()
+    {
+        try
+        {
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            var today = DateTime.Today;
+
+            // First, fix any NULL booking_status values - set them to 'confirmed'
+            string fixNullStatusSql = @"
+            UPDATE Bookings 
+            SET booking_status = 'confirmed' 
+            WHERE booking_status IS NULL";
+
+            using var fixNullCmd = new SqlCommand(fixNullStatusSql, con);
+            var fixedCount = await fixNullCmd.ExecuteNonQueryAsync();
+
+            if (fixedCount > 0)
+            {
+                Console.WriteLine($"? Fixed {fixedCount} bookings with NULL status");
+            }
+
+            // Set rooms to Reserved for future bookings (check-in date is in future)
+            string reservedSql = @"
+            UPDATE r
+            SET r.room_status = 'Reserved'
+            FROM rooms r
+            INNER JOIN Booking_rooms br ON r.room_id = br.room_id
+            INNER JOIN Bookings b ON br.booking_id = b.booking_id
+            WHERE b.[check-in_date] > @today 
+            AND b.booking_status NOT IN ('cancelled', 'completed')
+            AND r.room_status = 'Available'";
+
+            using var reservedCmd = new SqlCommand(reservedSql, con);
+            reservedCmd.Parameters.AddWithValue("@today", today);
+            var reservedCount = await reservedCmd.ExecuteNonQueryAsync();
+
+            if (reservedCount > 0)
+            {
+                Console.WriteLine($"? Updated {reservedCount} rooms to Reserved status (future bookings)");
+            }
+
+            // Set rooms to Occupied for bookings that have started (check-in date is today or past, check-out date is future)
+            string occupiedSql = @"
+            UPDATE r
+            SET r.room_status = 'Occupied'
+            FROM rooms r
+            INNER JOIN Booking_rooms br ON r.room_id = br.room_id
+            INNER JOIN Bookings b ON br.booking_id = b.booking_id
+            WHERE b.[check-in_date] <= @today 
+            AND b.[check-out_date] > @today
+            AND b.booking_status NOT IN ('cancelled', 'completed')
+            AND r.room_status != 'Occupied'";
+
+            using var occupiedCmd = new SqlCommand(occupiedSql, con);
+            occupiedCmd.Parameters.AddWithValue("@today", today);
+            var occupiedCount = await occupiedCmd.ExecuteNonQueryAsync();
+
+            if (occupiedCount > 0)
+            {
+                Console.WriteLine($"? Updated {occupiedCount} rooms to Occupied status");
+            }
+
+            // Set rooms back to Available for completed bookings (check-out date is past)
+            string availableSql = @"
+            UPDATE r
+            SET r.room_status = 'Available'
+            FROM rooms r
+            WHERE r.room_id IN (
+            SELECT DISTINCT br.room_id
+            FROM Booking_rooms br
+            INNER JOIN Bookings b ON br.booking_id = b.booking_id
+            WHERE b.[check-out_date] <= @today
+            AND b.booking_status NOT IN ('cancelled')
+            )
+            AND r.room_status IN ('Occupied', 'Reserved')
+            AND r.room_id NOT IN (
+            SELECT DISTINCT br2.room_id
+            FROM Booking_rooms br2
+            INNER JOIN Bookings b2 ON br2.booking_id = b2.booking_id
+            WHERE b2.[check-in_date] <= @today 
+            AND b2.[check-out_date] > @today
+            AND b2.booking_status NOT IN ('cancelled', 'completed')
+            )";
+
+            using var availableCmd = new SqlCommand(availableSql, con);
+            availableCmd.Parameters.AddWithValue("@today", today);
+            var availableCount = await availableCmd.ExecuteNonQueryAsync();
+
+            if (availableCount > 0)
+            {
+                Console.WriteLine($"? Updated {availableCount} rooms to Available status");
+            }
+
+            // Auto-complete bookings that have passed their check-out date
+            string completeBookingsSql = @"
+            UPDATE Bookings
+            SET booking_status = 'completed'
+            WHERE [check-out_date] < @today
+            AND booking_status NOT IN ('cancelled', 'completed')";
+
+            using var completeCmd = new SqlCommand(completeBookingsSql, con);
+            completeCmd.Parameters.AddWithValue("@today", today);
+            var completedCount = await completeCmd.ExecuteNonQueryAsync();
+
+            if (completedCount > 0)
+            {
+                Console.WriteLine($"? Auto-completed {completedCount} past bookings");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"? Error updating room statuses: {ex.Message}");
+        }
+    }
 }
+
+public class BookingMetrics
+{
+    public int TotalBookings { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public int TotalGuests { get; set; }
+    public decimal AvgStayDuration { get; set; }
+    public decimal AverageDailyRate { get; set; }
+}
+
+public class DailyRevenue
+{
+    public DateTime Date { get; set; }
+    public decimal Revenue { get; set; }
 }

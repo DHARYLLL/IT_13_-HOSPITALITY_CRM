@@ -368,53 +368,195 @@ font-size: 16px;
 .message-cta {
     display: flex;
     gap: 12px;
-    margin: 32px 0;
-}
-
-.offer-details {
-    background: #fafafa;
-    border: 1px solid #e5e5e7;
-    border-radius: 12px;
-    padding: 20px;
     margin: 24px 0;
+  padding-top: 24px;
+    border-top: 1px solid #e5e5e7;
 }
 
-.offer-details h4 {
-    font-size: 16px;
-    font-weight: 600;
-    font-family: 'Lora', serif;
-    color: #1d1d1f;
-    margin-bottom: 12px;
-}
-
-.offer-list {
-    list-style: none;
-    padding: 0;
-}
-
-.offer-list li {
- font-size: 14px;
+/* Message Count Badge in inbox item */
+.message-count-badge {
+    display: inline-block;
+    font-size: 11px;
     color: #6e6e73;
+    background: #f0f0f2;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-top: 6px;
+}
+
+/* Conversation Thread Styles */
+.conversation-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 16px;
+    background: #fafafa;
+    border-radius: 12px;
+ border: 1px solid #e5e5e7;
+}
+
+.thread-message {
+    padding: 16px 20px;
+border-radius: 12px;
+    max-width: 85%;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.thread-message.admin-message {
+    background: white;
+    border: 1px solid #e5e5e7;
+    align-self: flex-start;
+    border-left: 3px solid #5e1369;
+}
+
+.thread-message.client-message {
+    background: linear-gradient(135deg, #f8f4f9 0%, #f0e6f5 100%);
+    border: 1px solid #d9c3e0;
+    align-self: flex-end;
+}
+
+.thread-message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+}
+
+.sender-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sender-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+ align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.sender-avatar.admin-avatar {
+    background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+    color: white;
+}
+
+.sender-avatar.client-avatar {
+    background: #e8e8ea;
+    color: #1d1d1f;
+}
+
+.sender-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sender-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d1d1f;
+}
+
+.message-timestamp {
+    font-size: 11px;
+  color: #86868b;
+}
+
+.thread-message-body {
+    font-size: 14px;
     line-height: 1.6;
+    color: #1d1d1f;
+}
+
+.thread-message-body p {
     margin-bottom: 8px;
 }
 
-.message-footer-note {
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
+.thread-message-body p:last-child {
+    margin-bottom: 0;
+}
+
+.thread-message-action {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e5e7;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    background: #5e1369;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+ transition: all 0.2s;
+}
+
+.btn-small:hover {
+    background: #7a2388;
+}
+
+/* Reply Form Inline (within conversation view) */
+.reply-form-inline {
+    background: white;
+    border: 1px solid #e5e5e7;
     border-radius: 12px;
     padding: 20px;
     margin-top: 24px;
 }
 
-.message-footer-note p {
-    font-size: 13px;
-    color: #0c4a6e;
-    margin-bottom: 8px;
+.reply-header {
+  display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1d1d1f;
 }
 
-.message-footer-note strong {
-    font-weight: 600;
+.reply-icon {
+font-size: 16px;
+}
+
+.reply-form-inline .form-group {
+    margin-bottom: 16px;
+}
+
+.reply-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+/* Success/Error Messages */
+.success-message {
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    color: #166534;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+margin-top: 16px;
+}
+
+.error-message {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #dc2626;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-top: 16px;
 }
 
 /* Email Form */

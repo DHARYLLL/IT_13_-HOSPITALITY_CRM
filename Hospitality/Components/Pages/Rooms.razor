@@ -1,6 +1,7 @@
 ﻿@page "/admin/rooms"
 @inject NavigationManager Navigation
 @inject Hospitality.Services.RoomService RoomService
+@inject Hospitality.Services.BookingService BookingService
 
 <link rel="stylesheet" href="css/admin.css" />
 
@@ -168,6 +169,18 @@
 		loadError = false;
 		try
 		{
+			// First, update room statuses based on booking dates
+			try
+			{
+				await BookingService.UpdateRoomStatusesBasedOnDatesAsync();
+				Console.WriteLine("✅ Room statuses updated based on booking dates");
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"⚠️ Warning: Could not update room statuses: {ex.Message}");
+			}
+
+			// Then load rooms with updated statuses
 			rooms = await RoomService.GetRoomsAsync();
 		}
 		catch (Exception ex)

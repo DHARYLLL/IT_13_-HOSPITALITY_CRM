@@ -8,424 +8,643 @@
 <div class="messages-page">
     <!-- Top Navigation -->
     <nav class="top-nav">
-        <div class="nav-left">
-       <div class="brand">
-             <img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
-       <span class="brand-name">InnSight</span>
+    <div class="nav-left">
+            <div class="brand">
+          <img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
+          <span class="brand-name">InnSight</span>
      <span class="brand-sub">Guest Portal</span>
-        </div>
-  </div>
-   <div class="nav-center">
-            <a href="/client/profile/@clientId" class="nav-link">Dashboard</a>
-   <a href="#" class="nav-link">Stays</a>
-            <a href="/client/loyalty/@clientId" class="nav-link">Loyalty</a>
-      <a href="/client/messages/@clientId" class="nav-link active">Messages</a>
-        </div>
+          </div>
+</div>
+        <div class="nav-center">
+        <a href="/client/profile/@clientId" class="nav-link">Dashboard</a>
+        <a href="#" class="nav-link">Stays</a>
+          <a href="/client/loyalty/@clientId" class="nav-link">Loyalty</a>
+          <a href="/client/messages/@clientId" class="nav-link active">Messages</a>
+      </div>
         <div class="nav-right">
-     <span class="points-badge">Gold • @LoyaltyPoints pts</span>
+        <span class="points-badge">Gold • @LoyaltyPoints pts</span>
             <div class="user-menu">
-     <div class="user-avatar-small">@GetInitials()</div>
+    <div class="user-avatar-small">@GetInitials()</div>
             </div>
-        </div>
+    </div>
     </nav>
 
     <div class="messages-container">
         <!-- Left Sidebar - Inbox List -->
-        <div class="messages-left">
+      <div class="messages-left">
             <div class="inbox-header">
-             <h2 class="inbox-title">Messages & notifications</h2>
-   <p class="inbox-subtitle">Review updates about your stays, offers, and account activity, or email the hotel team.</p>
-   </div>
-
-     <!-- Filter Tabs -->
-    <div class="filter-tabs">
-         <button class="filter-tab @(currentFilter == "All" ? "active" : "")" 
-              @onclick='() => SetFilter("All")'>
-     All
-    </button>
-         <button class="filter-tab @(currentFilter == "Unread" ? "active" : "")" 
-      @onclick='() => SetFilter("Unread")'>
-         Unread (@unreadCount)
-   </button>
-      <button class="filter-tab @(currentFilter == "Stays" ? "active" : "")" 
-@onclick='() => SetFilter("Stays")'>
-Stays
-         </button>
-        <button class="filter-tab @(currentFilter == "Offers" ? "active" : "")" 
-      @onclick='() => SetFilter("Offers")'>
-      Offers
-      </button>
- </div>
-
-            <!-- Time Range Filter -->
-        <div class="time-filter">
-         <span class="time-label">Showing messages from the last 90 days</span>
-   </div>
-
-        <!-- Messages List -->
-     <div class="inbox-list">
-    @if (loading)
-     {
-        <div class="loading-state">
-   <div class="spinner"></div>
-    <p>Loading messages...</p>
-         </div>
-      }
-       else if (!messages.Any())
-                {
-   <div class="empty-state">
-                  <div class="empty-icon">??</div>
-         <h3>No messages</h3>
-       <p>You don't have any messages matching this filter.</p>
-           </div>
-                }
-         else
-    {
-         @foreach (var message in messages)
-       {
-    <div class="inbox-item @(message.is_read ? "read" : "unread") @(selectedMessage?.message_id == message.message_id ? "selected" : "")"
-          @onclick="() => SelectMessage(message)">
-           <div class="inbox-item-header">
-       <div class="inbox-item-category">
-   <span class="category-icon">@GetCategoryIcon(message.message_category)</span>
-               <span class="category-name">@message.message_category</span>
-       </div>
-           <span class="inbox-item-date">@FormatDate(message.sent_date)</span>
-          </div>
-<h4 class="inbox-item-title">@message.message_subject</h4>
-   <p class="inbox-item-preview">@GetPreview(message.message_body)</p>
-            @if (!message.is_read)
-             {
-    <span class="unread-dot"></span>
-          }
-   </div>
-            }
-          }
-         </div>
-      </div>
-
-    <!-- Right Panel - Message Detail -->
-        <div class="messages-right">
-     @if (selectedMessage == null && !showEmailForm)
-       {
-  <div class="no-selection">
-    <div class="no-selection-icon">??</div>
-          <h3>Select a message</h3>
-      <p>Choose a message from the list to view its contents</p>
-               <button class="btn-primary" @onclick="ShowEmailForm">
-             <span class="btn-icon">??</span> Email the hotel team
-     </button>
-          </div>
-       }
-   else if (showEmailForm)
-            {
-             <!-- Email Hotel Team Form -->
-        <div class="email-form">
-         <div class="email-header">
-           <button class="back-btn" @onclick="HideEmailForm">
-  ? Back
-       </button>
-    <h3>Email the hotel team</h3>
-           </div>
-
-            <div class="email-content">
-       <p class="email-intro">Send a message to the hotel team about reservations, billing, or loyalty support. We'll reply to your email address on file.</p>
-
-            <div class="form-group">
-             <label class="field-label">To</label>
-     <div class="input-readonly">
-  <span>Front desk (Harbourkey Waterfront)</span>
-      </div>
+          <h2 class="inbox-title">Messages & notifications</h2>
+ <p class="inbox-subtitle">Review updates about your stays, offers, and account activity, or email the hotel team.</p>
             </div>
 
-       <div class="form-group">
-      <label class="field-label">Regarding</label>
-     <select @bind="emailRegarding" class="form-select">
-        <option value="Upcoming stay, billing, or general question">Upcoming stay, billing, or general question</option>
-    <option value="Current reservation">Current reservation</option>
-  <option value="Past stay inquiry">Past stay inquiry</option>
-            <option value="Billing question">Billing question</option>
-         <option value="Loyalty program">Loyalty program</option>
-       </select>
-    </div>
+            <!-- Filter Tabs -->
+            <div class="filter-tabs">
+           <button class="filter-tab @(currentFilter == "All" ? "active" : "")" @onclick='() => SetFilter("All")'>
+ All
+             </button>
+       <button class="filter-tab @(currentFilter == "Unread" ? "active" : "")" @onclick='() => SetFilter("Unread")'>
+             Unread (@unreadCount)
+          </button>
+     <button class="filter-tab @(currentFilter == "Stays" ? "active" : "")" @onclick='() => SetFilter("Stays")'>
+         Stays
+     </button>
+   <button class="filter-tab @(currentFilter == "Offers" ? "active" : "")" @onclick='() => SetFilter("Offers")'>
+  Offers
+        </button>
+            </div>
 
-            <div class="form-group">
-    <label class="field-label">Subject</label>
-<input type="text" @bind="emailSubject" 
-       class="form-input" 
-   placeholder="Write a short subject for your email" />
+ <!-- Time Range Filter -->
+       <div class="time-filter">
+    <span class="time-label">Showing messages from the last 90 days</span>
+       </div>
+
+ <!-- Messages List -->
+            <div class="inbox-list">
+  @if (loading)
+  {
+         <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading messages...</p>
+          </div>
+      }
+       else if (!conversationGroups.Any())
+        {
+   <div class="empty-state">
+        <div class="empty-icon">??</div>
+  <h3>No messages</h3>
+        <p>You don't have any messages matching this filter.</p>
   </div>
+           }
+    else
+              {
+                 @foreach (var group in conversationGroups)
+        {
+  <div class="inbox-item @(group.HasUnread ? "unread" : "read") @(selectedConversationSubject == group.Subject ? "selected" : "")"
+      @onclick="() => SelectConversation(group)">
+                <div class="inbox-item-header">
+   <div class="inbox-item-category">
+       <span class="category-icon">@GetCategoryIcon(group.Category)</span>
+     <span class="category-name">@(group.HasAdminMessage ? "Admin" : group.Category)</span>
+   </div>
+             <span class="inbox-item-date">@FormatDate(group.LatestDate)</span>
+            </div>
+  <h4 class="inbox-item-title">@group.Subject</h4>
+     <p class="inbox-item-preview">@GetPreview(group.LatestMessage)</p>
+     @if (group.HasUnread)
+          {
+     <span class="unread-dot"></span>
+           }
+  @if (group.MessageCount > 1)
+           {
+     <span class="message-count-badge">@group.MessageCount messages</span>
+      }
+      </div>
+        }
+         }
+            </div>
+        </div>
+
+        <!-- Right Panel - Message Detail -->
+      <div class="messages-right">
+     @if (selectedConversationSubject == null && !showEmailForm)
+     {
+    <div class="no-selection">
+           <div class="no-selection-icon">??</div>
+   <h3>Select a message</h3>
+          <p>Choose a message from the list to view its contents</p>
+        <button class="btn-primary" @onclick="ShowNewEmailForm">
+          <span class="btn-icon">??</span> Email the hotel team
+          </button>
+   </div>
+ }
+  else if (showEmailForm && !isReplyMode)
+        {
+          <!-- New Email to Hotel Team Form -->
+     <div class="email-form">
+    <div class="email-header">
+  <button class="back-btn" @onclick="HideEmailForm">? Back</button>
+     <h3>Email the hotel team</h3>
+   </div>
+
+      <div class="email-content">
+    <p class="email-intro">Send a message to the hotel team about reservations, billing, or loyalty support. We'll reply to your email address on file.</p>
 
   <div class="form-group">
-       <label class="field-label">Message</label>
-      <textarea @bind="emailMessage" 
-       class="form-textarea" 
-                 rows="10"
-      placeholder="Share the details of your request (e.g. early check-in, room preference, invoice request)..."></textarea>
-    </div>
-
-  <div class="email-footer">
-   <p class="email-note">Your message will be sent as an email to the selected hotel team. Replies will be sent to your email address on file.</p>
-<div class="email-actions">
-       <button class="btn-secondary" @onclick="SaveDraft">
-             Save draft
-   </button>
-           <button class="btn-primary" @onclick="SendEmail" disabled="@(!IsEmailValid())">
-   <span class="btn-icon">??</span> Send email to hotel
-        </button>
- </div>
-          </div>
-        </div>
-       </div>
-         }
-    else if (selectedMessage != null)
-    {
-         <!-- Message Detail View -->
-    <div class="message-detail">
-        <div class="message-header">
-     <button class="back-btn mobile-only" @onclick="() => selectedMessage = null">
-  ? Back
-          </button>
-       <div class="message-category-badge">
-      <span class="category-icon">@GetCategoryIcon(selectedMessage.message_category)</span>
-        <span>@selectedMessage.message_category</span>
+               <label class="field-label">To</label>
+    <div class="input-readonly">
+          <span>Front desk (Harbourkey Waterfront)</span>
            </div>
-            <div class="message-actions">
-   <button class="action-btn" @onclick="() => MarkAsRead(selectedMessage.message_id)" 
-         title="@(selectedMessage.is_read ? "Mark as unread" : "Mark as read")">
-         @(selectedMessage.is_read ? "??" : "??")
- </button>
-   <button class="action-btn" @onclick="ShowEmailForm" title="Reply">
-       ??
-    </button>
-                 <button class="action-btn" title="More">
-   ?
-           </button>
+ </div>
+
+        <div class="form-group">
+       <label class="field-label">Regarding</label>
+       <select @bind="emailRegarding" class="form-select">
+     <option value="Upcoming stay, billing, or general question">Upcoming stay, billing, or general question</option>
+             <option value="Current reservation">Current reservation</option>
+            <option value="Past stay inquiry">Past stay inquiry</option>
+       <option value="Billing question">Billing question</option>
+         <option value="Loyalty program">Loyalty program</option>
+     </select>
      </div>
-          </div>
 
-     <div class="message-content">
-          <h2 class="message-title">@selectedMessage.message_subject</h2>
-     <div class="message-meta">
-<span class="message-date">@FormatDate(selectedMessage.sent_date)</span>
-@if (!string.IsNullOrEmpty(selectedMessage.regarding_text))
+ <div class="form-group">
+          <label class="field-label">Subject</label>
+    <input type="text" @bind="emailSubject" class="form-input" placeholder="Write a short subject for your email" />
+   </div>
+
+   <div class="form-group">
+      <label class="field-label">Message</label>
+<textarea @bind="emailMessage" class="form-textarea" rows="10" placeholder="Share the details of your request (e.g. early check-in, room preference, invoice request)..."></textarea>
+     </div>
+
+     <div class="email-footer">
+         <p class="email-note">Your message will be sent as an email to the selected hotel team. Replies will be sent to your email address on file.</p>
+    <div class="email-actions">
+    <button class="btn-secondary" @onclick="SaveDraft">Save draft</button>
+          <button class="btn-primary" @onclick="SendEmail" disabled="@(!IsEmailValid())">
+          <span class="btn-icon">??</span> Send email to hotel
+       </button>
+           </div>
+ </div>
+
+         @if (!string.IsNullOrEmpty(successMessage))
+  {
+     <div class="success-message">? @successMessage</div>
+   }
+    @if (!string.IsNullOrEmpty(errorMessage))
           {
-       <span class="message-regarding">• @selectedMessage.regarding_text</span>
-           }
-               </div>
-
-       <div class="message-body">
-           <p>Hi @(user?.user_fname ?? "Guest"),</p>
-    @foreach (var paragraph in (selectedMessage.message_body ?? "").Split(new[] { "\n\n", "\r\n\r\n" }, StringSplitOptions.RemoveEmptyEntries))
-     {
-           <p>@paragraph</p>
-         }
+   <div class="error-message">? @errorMessage</div>
+   }
             </div>
+     </div>
+}
+            else if (selectedConversationSubject != null)
+         {
+          <!-- Conversation Thread View -->
+     <div class="message-detail">
+         <div class="message-header">
+       <button class="back-btn mobile-only" @onclick="ClearSelection">? Back</button>
+  <div class="message-category-badge">
+                 <span class="category-icon">@GetCategoryIcon(selectedConversationCategory)</span>
+<span>@selectedConversationCategory</span>
+         </div>
+        <div class="message-actions">
+       <button class="action-btn" @onclick="ShowReplyForm" title="Reply">??</button>
+   <button class="action-btn" title="More">?</button>
+           </div>
+     </div>
 
-     @if (!string.IsNullOrEmpty(selectedMessage.action_label) && !string.IsNullOrEmpty(selectedMessage.action_url))
-    {
-  <div class="message-cta">
-     <button class="btn-primary" @onclick="@(() => NavigateTo(selectedMessage.action_url))">
-           <span class="btn-icon">??</span> @selectedMessage.action_label
-    </button>
-    <button class="btn-secondary" @onclick="ShowEmailForm">
-<span class="btn-icon">??</span> Reply via email
-  </button>
-       </div>
-        }
+       <div class="message-content">
+          <h2 class="message-title">@selectedConversationSubject</h2>
 
-    @if (selectedMessage.message_type == "offer")
-    {
-      <div class="offer-details">
-         <h4>Offer details</h4>
-       <ul class="offer-list">
-      <li>Valid for Saturday–Sunday check-ins only</li>
-       <li>Minimum stay: 2 nights</li>
-      <li>Higher room types: Standard, Deluxe, and Suite categories</li>
-     <li>Subject to availability and blackout dates may apply</li>
-   </ul>
-  </div>
-       }
-
-    @if (!string.IsNullOrEmpty(selectedMessage.regarding_text))
-       {
-             <div class="message-footer-note">
-          <p><strong>Need to use this offer</strong></p>
-      <p>When you book your next stay from your dashboard, this offer will be automatically applied to eligible dates. You can also mention this offer if you contact our reservations team.</p>
-          </div>
-          }
-    </div>
-          </div>
+                  <!-- Conversation Thread -->
+         <div class="conversation-thread">
+    @foreach (var message in selectedConversationMessages.OrderBy(m => m.sent_date))
+          {
+  <div class="thread-message @(IsClientMessage(message) ? "client-message" : "admin-message")">
+        <div class="thread-message-header">
+  <div class="sender-info">
+                <div class="sender-avatar @(IsClientMessage(message) ? "client-avatar" : "admin-avatar")">
+    @if (IsClientMessage(message))
+         {
+                   @GetInitials()
+  }
+              else
+     {
+         <span>??</span>
+      }
+        </div>
+   <div class="sender-details">
+      <span class="sender-name">@(IsClientMessage(message) ? "You" : "Admin (InnSight Team)")</span>
+     <span class="message-timestamp">@message.sent_date.ToString("MMM dd, yyyy h:mm tt")</span>
+            </div>
+        </div>
+        </div>
+         <div class="thread-message-body">
+           @foreach (var paragraph in (message.message_body ?? "").Split(new[] { "\n\n", "\r\n\r\n", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
+        {
+           <p>@paragraph</p>
             }
+  </div>
+       @if (!string.IsNullOrEmpty(message.action_label) && !string.IsNullOrEmpty(message.action_url) && !IsClientMessage(message))
+   {
+   <div class="thread-message-action">
+  <button class="btn-small" @onclick="@(() => NavigateTo(message.action_url))">@message.action_label</button>
+  </div>
+        }
+   </div>
+     }
+             </div>
+
+                  <!-- Reply Section -->
+  @if (showEmailForm && isReplyMode)
+           {
+       <div class="reply-form-inline">
+       <div class="reply-header">
+  <span class="reply-icon">??</span>
+                 <span>Reply to this conversation</span>
+                    </div>
+   <div class="form-group">
+  <textarea @bind="emailMessage" class="form-textarea" rows="5" placeholder="Write your reply..."></textarea>
+         </div>
+       <div class="reply-actions">
+            <button class="btn-secondary" @onclick="HideEmailForm">Cancel</button>
+       <button class="btn-primary" @onclick="SendReply" disabled="@(string.IsNullOrWhiteSpace(emailMessage))">
+        <span class="btn-icon">??</span> Send Reply
+      </button>
+   </div>
+     </div>
+   }
+         else
+   {
+ <div class="message-cta">
+    <button class="btn-primary" @onclick="ShowReplyForm">
+        <span class="btn-icon">??</span> Reply to this message
+      </button>
+</div>
+         }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <div class="success-message">? @successMessage</div>
+   }
+            @if (!string.IsNullOrEmpty(errorMessage))
+       {
+   <div class="error-message">? @errorMessage</div>
+      }
+     </div>
+   </div>
+         }
         </div>
     </div>
 </div>
 
 @code {
- [Parameter] public int clientId { get; set; }
+    [Parameter] public int clientId { get; set; }
 
     Hospitality.Models.User? user;
-  List<Hospitality.Models.Message> messages = new();
-    Hospitality.Models.Message? selectedMessage;
-    
+    List<Hospitality.Models.Message> messages = new();
+    List<ConversationGroup> conversationGroups = new();
+    List<Hospitality.Models.Message> selectedConversationMessages = new();
+
+    string? selectedConversationSubject = null;
+    string? selectedConversationCategory = null;
+
     bool loading = true;
-    int unreadCount = 0;
+  int unreadCount = 0;
     int LoyaltyPoints = 12450;
     string currentFilter = "All";
-    
-    // Email form state
+
+    int actualClientId = 0;
+
     bool showEmailForm = false;
-  string emailRegarding = "Upcoming stay, billing, or general question";
+    bool isReplyMode = false;
+    string emailRegarding = "Upcoming stay, billing, or general question";
     string emailSubject = "";
     string emailMessage = "";
+  string? successMessage = null;
+ string? errorMessage = null;
 
     protected override async Task OnInitializedAsync()
     {
         loading = true;
-        try
-    {
+try
+        {
             user = await UserService.GetUserByIdAsync(clientId);
-            await LoadMessages();
-         unreadCount = await MessageService.GetUnreadCountAsync(clientId);
-        }
-     catch (Exception ex)
+          actualClientId = await GetOrCreateClientIdAsync(clientId);
+
+            if (actualClientId > 0)
+            {
+   await LoadMessages();
+       unreadCount = await MessageService.GetUnreadCountAsync(actualClientId);
+    }
+            else
+            {
+          Console.WriteLine($"?? Could not get or create client record for user_id: {clientId}");
+            }
+    }
+   catch (Exception ex)
         {
             Console.WriteLine($"Error loading messages: {ex.Message}");
-     }
-    finally
-    {
-    loading = false;
         }
+        finally
+        {
+      loading = false;
+        }
+    }
+
+    async Task<int> GetOrCreateClientIdAsync(int userId)
+    {
+  try
+        {
+            using var con = Hospitality.Database.DbConnection.GetConnection();
+      await con.OpenAsync();
+
+      // First, try to get existing client_id
+            string selectSql = "SELECT client_id FROM Clients WHERE user_id = @userId";
+            using var selectCmd = new Microsoft.Data.SqlClient.SqlCommand(selectSql, con);
+   selectCmd.Parameters.AddWithValue("@userId", userId);
+
+            var result = await selectCmd.ExecuteScalarAsync();
+            if (result != null && result != DBNull.Value)
+            {
+                int actualId = Convert.ToInt32(result);
+             Console.WriteLine($"? Found existing client_id: {actualId} for user_id: {userId}");
+      return actualId;
+          }
+
+        // No client record found, create one
+    Console.WriteLine($"?? No client record found for user_id: {userId}, creating one...");
+          
+     string insertSql = "INSERT INTO Clients (user_id) VALUES (@userId); SELECT CAST(SCOPE_IDENTITY() AS INT);";
+       using var insertCmd = new Microsoft.Data.SqlClient.SqlCommand(insertSql, con);
+      insertCmd.Parameters.AddWithValue("@userId", userId);
+
+   var newClientId = await insertCmd.ExecuteScalarAsync();
+            if (newClientId != null && newClientId != DBNull.Value)
+  {
+       int actualId = Convert.ToInt32(newClientId);
+           Console.WriteLine($"? Created new client record with client_id: {actualId} for user_id: {userId}");
+    return actualId;
+            }
+
+         Console.WriteLine($"? Failed to create client record for user_id: {userId}");
+            return 0;
+        }
+        catch (Exception ex)
+        {
+Console.WriteLine($"? Error getting/creating client_id: {ex.Message}");
+   return 0;
+   }
     }
 
     async Task LoadMessages()
     {
+     if (actualClientId <= 0) return;
+
         var filter = new Hospitality.Models.MessageFilter
-      {
-        FilterType = currentFilter,
-            TimeRange = "Last 90 days"
-  };
-        messages = await MessageService.GetClientMessagesAsync(clientId, filter);
+{
+      FilterType = currentFilter,
+    TimeRange = "Last 90 days"
+     };
+        messages = await MessageService.GetClientMessagesAsync(actualClientId, filter);
+ GroupConversations();
+    }
+
+    void GroupConversations()
+    {
+   conversationGroups = messages
+        .GroupBy(m => NormalizeSubject(m.message_subject ?? "No Subject"))
+      .Select(g => new ConversationGroup
+       {
+                Subject = g.First().message_subject ?? "No Subject",
+                Category = g.First().message_category ?? "General",
+          LatestMessage = g.OrderByDescending(m => m.sent_date).First().message_body ?? "",
+     LatestDate = g.Max(m => m.sent_date),
+     HasUnread = g.Any(m => !m.is_read && !IsClientMessage(m)),
+       MessageCount = g.Count(),
+                HasAdminMessage = g.Any(m => !IsClientMessage(m)),
+     Messages = g.ToList()
+            })
+        .OrderByDescending(g => g.LatestDate)
+       .ToList();
+    }
+
+    string NormalizeSubject(string subject)
+    {
+        var normalized = subject.Trim();
+        while (normalized.StartsWith("Re:", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring(3).Trim();
+     }
+        return normalized;
+    }
+
+    bool IsClientMessage(Hospitality.Models.Message message)
+    {
+        return message.message_type == "outgoing";
     }
 
     async Task SetFilter(string filter)
     {
         currentFilter = filter;
-     await LoadMessages();
+        await LoadMessages();
+ ClearSelection();
     }
 
- async Task SelectMessage(Hospitality.Models.Message message)
+    async Task SelectConversation(ConversationGroup group)
     {
-        selectedMessage = message;
-        showEmailForm = false;
-        
-        if (!message.is_read)
+        selectedConversationSubject = group.Subject;
+        selectedConversationCategory = group.Category;
+   selectedConversationMessages = group.Messages;
+     showEmailForm = false;
+        isReplyMode = false;
+
+    var unreadMessages = group.Messages.Where(m => !m.is_read && !IsClientMessage(m));
+ foreach (var msg in unreadMessages)
         {
-      await MessageService.MarkAsReadAsync(message.message_id);
-            message.is_read = true;
-       unreadCount = Math.Max(0, unreadCount - 1);
-StateHasChanged();
-        }
+     await MessageService.MarkAsReadAsync(msg.message_id);
+     msg.is_read = true;
+      }
+
+      unreadCount = await MessageService.GetUnreadCountAsync(actualClientId);
+   StateHasChanged();
     }
 
-    void ShowEmailForm()
+    void ClearSelection()
+    {
+        selectedConversationSubject = null;
+        selectedConversationCategory = null;
+        selectedConversationMessages = new();
+   showEmailForm = false;
+        isReplyMode = false;
+    }
+
+    void ShowNewEmailForm()
     {
         showEmailForm = true;
-        selectedMessage = null;
+        isReplyMode = false;
+    selectedConversationSubject = null;
+        selectedConversationCategory = null;
+        selectedConversationMessages = new();
         emailSubject = "";
         emailMessage = "";
+        successMessage = null;
+        errorMessage = null;
+    }
+
+    void ShowReplyForm()
+ {
+   showEmailForm = true;
+        isReplyMode = true;
+        emailMessage = "";
+    successMessage = null;
+    errorMessage = null;
     }
 
     void HideEmailForm()
-    {
-        showEmailForm = false;
+  {
+   showEmailForm = false;
+  isReplyMode = false;
+        emailMessage = "";
+      successMessage = null;
+        errorMessage = null;
     }
 
     async Task SendEmail()
     {
-   try
+if (actualClientId <= 0)
         {
-  var request = new Hospitality.Models.EmailRequest
-    {
-       client_id = clientId,
-      regarding = emailRegarding,
-       subject = emailSubject,
-                message_body = emailMessage,
-    email_to = "frontdesk@innsight.com"
- };
+    errorMessage = "Unable to send message - client record not found.";
+    StateHasChanged();
+            return;
+        }
 
-   await MessageService.SendEmailToHotelAsync(request);
-       
-            // Show success message
-     Console.WriteLine("Email sent successfully!");
-    
-          // Reset form
-     HideEmailForm();
-   await LoadMessages();
+        if (!IsEmailValid())
+        {
+            errorMessage = "Please fill in both subject and message.";
+      StateHasChanged();
+            return;
+        }
+
+        try
+        {
+ Console.WriteLine($"?? Sending email for client_id: {actualClientId}");
+
+            var request = new Hospitality.Models.EmailRequest
+     {
+       client_id = actualClientId,
+      regarding = emailRegarding,
+        subject = emailSubject,
+        message_body = emailMessage,
+        email_to = "frontdesk@innsight.com"
+            };
+
+         await MessageService.SendEmailToHotelAsync(request);
+
+        successMessage = "Email sent successfully!";
+            Console.WriteLine("? Email sent successfully");
+
+            emailSubject = "";
+       emailMessage = "";
+       showEmailForm = false;
+
+    await LoadMessages();
+
+            StateHasChanged();
+        await Task.Delay(3000);
+      successMessage = null;
+        StateHasChanged();
+      }
+        catch (Exception ex)
+        {
+   errorMessage = $"Error sending email: {ex.Message}";
+            Console.WriteLine($"? Error sending email: {ex.Message}");
+  StateHasChanged();
+        }
+ }
+
+    async Task SendReply()
+    {
+        if (string.IsNullOrWhiteSpace(emailMessage) || selectedConversationSubject == null || actualClientId <= 0)
+        {
+        errorMessage = "Please write a message before sending.";
+          StateHasChanged();
+       return;
+        }
+
+        try
+   {
+       Console.WriteLine($"?? Sending reply for client_id: {actualClientId}");
+
+       var request = new Hospitality.Models.EmailRequest
+            {
+      client_id = actualClientId,
+     regarding = selectedConversationCategory,
+         subject = selectedConversationSubject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase)
+        ? selectedConversationSubject
+         : $"Re: {selectedConversationSubject}",
+      message_body = emailMessage,
+    email_to = "frontdesk@innsight.com"
+            };
+
+            await MessageService.SendEmailToHotelAsync(request);
+
+      successMessage = "Reply sent successfully!";
+         Console.WriteLine("? Reply sent successfully");
+
+            emailMessage = "";
+            showEmailForm = false;
+        isReplyMode = false;
+
+     await LoadMessages();
+
+        var normalizedSubject = NormalizeSubject(selectedConversationSubject);
+       var group = conversationGroups.FirstOrDefault(g => NormalizeSubject(g.Subject) == normalizedSubject);
+   if (group != null)
+          {
+        selectedConversationMessages = group.Messages;
+       }
+
+  StateHasChanged();
+  await Task.Delay(3000);
+      successMessage = null;
+        StateHasChanged();
         }
         catch (Exception ex)
-      {
-          Console.WriteLine($"Error sending email: {ex.Message}");
-   }
+        {
+  errorMessage = $"Error sending reply: {ex.Message}";
+  Console.WriteLine($"? Error sending reply: {ex.Message}");
+            StateHasChanged();
+        }
     }
 
     void SaveDraft()
     {
-        Console.WriteLine("Draft saved locally");
+    Console.WriteLine("Draft saved locally");
     }
 
     bool IsEmailValid()
     {
-     return !string.IsNullOrWhiteSpace(emailSubject) && !string.IsNullOrWhiteSpace(emailMessage);
-    }
-
-    async Task MarkAsRead(int messageId)
-    {
-      var message = messages.FirstOrDefault(m => m.message_id == messageId);
-   if (message != null)
-        {
-            message.is_read = !message.is_read;
-            await MessageService.MarkAsReadAsync(messageId);
-     unreadCount = await MessageService.GetUnreadCountAsync(clientId);
-         StateHasChanged();
-        }
+        return !string.IsNullOrWhiteSpace(emailSubject) && !string.IsNullOrWhiteSpace(emailMessage);
     }
 
     void NavigateTo(string? url)
     {
         if (!string.IsNullOrEmpty(url))
-        {
-      Navigation.NavigateTo(url);
-      }
-    }
+      {
+            Navigation.NavigateTo(url);
+        }
+  }
 
     string GetInitials()
     {
-        if (user == null) return "G";
-      var parts = new List<string>();
+      if (user == null) return "G";
+   var parts = new List<string>();
         if (!string.IsNullOrWhiteSpace(user.user_fname)) parts.Add(user.user_fname.Substring(0, 1));
-if (user.user_lname != null && user.user_lname.Length > 0)
+        if (user.user_lname != null && user.user_lname.Length > 0)
         {
-      try
-     {
-        var ln = user.user_lname ?? "";
-    if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0, 1));
-       }
-        catch { }
+try
+            {
+                var ln = user.user_lname ?? "";
+         if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0, 1));
+            }
+    catch { }
         }
-     return string.Join("", parts).ToUpperInvariant();
+        return string.Join("", parts).ToUpperInvariant();
     }
 
     string GetCategoryIcon(string? category)
     {
         return category switch
         {
-       "Member Services" => "??",
-  "Billing & Receipts" => "??",
-        "Harbourkey Waterfront" => "??",
+     "Member Services" => "??",
+        "Billing & Receipts" => "??",
+       "Harbourkey Waterfront" => "??",
             "Membership Rewards" => "?",
-     "Email Sent" => "??",
-       _ => "??"
+            "Email Sent" => "??",
+            "Front Desk" => "??",
+            _ => "??"
         };
     }
 
@@ -433,22 +652,34 @@ if (user.user_lname != null && user.user_lname.Length > 0)
     {
         var timeSpan = DateTime.Now - date;
 
-if (timeSpan.TotalMinutes < 60)
-return $"{(int)timeSpan.TotalMinutes}m ago";
-     else if (timeSpan.TotalHours < 24)
-return $"{(int)timeSpan.TotalHours}h ago";
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes}m ago";
+    else if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours}h ago";
         else if (timeSpan.TotalDays < 7)
    return date.ToString("ddd");
         else if (timeSpan.TotalDays < 365)
-       return date.ToString("MMM dd");
+            return date.ToString("MMM dd");
         else
             return date.ToString("MMM dd, yyyy");
     }
 
     string GetPreview(string? body)
     {
-        if (string.IsNullOrEmpty(body)) return "";
-   var preview = body.Replace("\r\n", " ").Replace("\n", " ");
-        return preview.Length > 80 ? preview.Substring(0, 80) + "..." : preview;
+   if (string.IsNullOrEmpty(body)) return "";
+        var preview = body.Replace("\r\n", " ").Replace("\n", " ");
+ return preview.Length > 80 ? preview.Substring(0, 80) + "..." : preview;
+    }
+
+    public class ConversationGroup
+ {
+        public string Subject { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string LatestMessage { get; set; } = "";
+    public DateTime LatestDate { get; set; }
+        public bool HasUnread { get; set; }
+      public int MessageCount { get; set; }
+        public bool HasAdminMessage { get; set; }
+ public List<Hospitality.Models.Message> Messages { get; set; } = new();
     }
 }

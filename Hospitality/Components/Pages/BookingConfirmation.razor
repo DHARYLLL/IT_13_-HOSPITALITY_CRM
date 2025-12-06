@@ -5,116 +5,25 @@
 
 <link rel="stylesheet" href="css/confirmation.css" />
 
-<div class="payment-page">
-	<!-- Top Navigation Bar -->
-	<nav class="top-nav">
-		<div class="nav-left">
-			<div class="brand">
-				<img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
-				<span class="brand-name">InnSight</span>
-				<span class="brand-sub">Guest Portal</span>
+<div class="confirmation-page">
+	<!-- Payment Success Animation Overlay -->
+	<div class="success-overlay @(fadeOut ? "fade-out" : "")">
+		<div class="success-animation">
+			<div class="checkmark-circle">
+				<svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+					<circle class="checkmark-circle-bg" cx="26" cy="26" r="25" fill="none"/>
+					<path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+				</svg>
 			</div>
-		</div>
-		<div class="nav-center">
-			<a href="@GetDashboardLink()" class="nav-link">Dashboard</a>
-			<a href="#" class="nav-link">Stays</a>
-			<a href="#" class="nav-link">Loyalty</a>
-			<a href="#" class="nav-link">Messages</a>
-		</div>
-		<div class="nav-right">
-			<span class="points-badge">Gold • @LoyaltyPoints pts</span>
-			<div class="user-menu">
-				<div class="user-avatar-small">@GetInitials()</div>
-			</div>
-		</div>
-	</nav>
-
-	<div class="payment-container">
-		<div class="confirmation-content">
-			<!-- Success Message -->
-			<div class="success-card">
-				<div class="success-icon">?</div>
-				<h1 class="success-title">Booking Confirmed!</h1>
-				<p class="success-subtitle">Thank you for choosing InnSight Hotel. Your payment has been processed successfully.</p>
-				
-				<div class="booking-reference">
-					<span class="reference-label">Booking Reference</span>
-					<span class="reference-number">#INS@bookingId.ToString("D6")</span>
+			<h2 class="success-animation-title">Payment successfully received!</h2>
+			<p class="success-animation-subtitle">@statusMessage</p>
+			
+			<!-- Countdown indicator -->
+			<div class="redirect-countdown">
+				<div class="countdown-bar">
+					<div class="countdown-progress"></div>
 				</div>
-			</div>
-
-			<!-- Booking Details -->
-			<div class="confirmation-details">
-				<div class="details-section">
-					<h3>Your Stay Details</h3>
-					<div class="detail-grid">
-						<div class="detail-item">
-							<span class="detail-label">Hotel</span>
-							<span class="detail-value">InnSight Hotel, San Francisco</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Room</span>
-							<span class="detail-value">Deluxe King Suite</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Check-in</span>
-							<span class="detail-value">@DateTime.Today.AddDays(1).ToString("dddd, MMMM dd, yyyy") • 3:00 PM</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Check-out</span>
-							<span class="detail-value">@DateTime.Today.AddDays(4).ToString("dddd, MMMM dd, yyyy") • 11:00 AM</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Guests</span>
-							<span class="detail-value">2 Adults</span>
-						</div>
-						<div class="detail-item">
-							<span class="detail-label">Total Paid</span>
-							<span class="detail-value payment-amount">$840.70</span>
-						</div>
-					</div>
-				</div>
-
-				<!-- Next Steps -->
-				<div class="details-section">
-					<h3>What's Next?</h3>
-					<div class="next-steps">
-						<div class="step-item">
-							<span class="step-icon">??</span>
-							<div class="step-content">
-								<div class="step-title">Confirmation Email</div>
-								<div class="step-desc">We've sent a confirmation email with your booking details and receipt.</div>
-							</div>
-						</div>
-						<div class="step-item">
-							<span class="step-icon">??</span>
-							<div class="step-content">
-								<div class="step-title">Mobile Check-in</div>
-								<div class="step-desc">Use our mobile app for express check-in starting 24 hours before arrival.</div>
-							</div>
-						</div>
-						<div class="step-item">
-							<span class="step-icon">??</span>
-							<div class="step-content">
-								<div class="step-title">Gold Benefits</div>
-								<div class="step-desc">Enjoy complimentary WiFi, late checkout, and welcome drink as a Gold member.</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Actions -->
-				<div class="confirmation-actions">
-					<button class="btn-secondary" @onclick="DownloadReceipt">
-						?? Download Receipt
-					</button>
-					<button class="btn-secondary" @onclick="AddToCalendar">
-						?? Add to Calendar
-					</button>
-					<button class="btn-primary" @onclick="ViewBooking">
-						View Booking Details
-					</button>
-				</div>
+				<p class="countdown-text">Redirecting in @countdownSeconds second@(countdownSeconds != 1 ? "s" : "")...</p>
 			</div>
 		</div>
 	</div>
@@ -124,62 +33,60 @@
 	[Parameter] public int clientId { get; set; }
 	[Parameter] public int bookingId { get; set; }
 
-	Hospitality.Models.User? user;
-	int LoyaltyPoints = 2850;
+	bool fadeOut = false;
+	string statusMessage = "Updating your booking...";
+	int countdownSeconds = 3;
 
 	protected override async Task OnInitializedAsync()
 	{
 		try
 		{
-			user = await UserService.GetUserByIdAsync(clientId);
+			Console.WriteLine($"? Payment confirmation page loaded");
+			Console.WriteLine($"   Client ID: {clientId}");
+			Console.WriteLine($"   Booking ID: {bookingId}");
+			
+			// Update booking status to confirmed
+			statusMessage = "Confirming your booking...";
+			StateHasChanged();
+			
+			var success = await BookingService.UpdateBookingStatusAsync(bookingId, "confirmed");
+			
+			if (success)
+			{
+				Console.WriteLine($"? Booking #{bookingId} status updated to confirmed");
+				statusMessage = "Booking confirmed! Redirecting to dashboard...";
+			}
+			else
+			{
+				Console.WriteLine($"?? Could not update booking status (might already be confirmed)");
+				statusMessage = "Redirecting to your dashboard...";
+			}
+			StateHasChanged();
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine($"Error loading user data: {ex.Message}");
+			Console.WriteLine($"? Error updating booking: {ex.Message}");
+			statusMessage = "Redirecting to your dashboard...";
+			StateHasChanged();
 		}
-	}
-
-	string GetInitials()
-	{
-		if (user == null) return "G";
-		var parts = new List<string>();
-		if (!string.IsNullOrWhiteSpace(user.user_fname)) parts.Add(user.user_fname.Substring(0, 1));
-		if (user.user_lname != null && user.user_lname.Length > 0)
+		
+		// Countdown animation
+		for (int i = 3; i > 0; i--)
 		{
-			try
-			{
-				var ln = user.user_lname ?? "";
-				if (!string.IsNullOrWhiteSpace(ln)) parts.Add(ln.Substring(0, 1));
-			}
-			catch { }
+			countdownSeconds = i;
+			StateHasChanged();
+			await Task.Delay(1000);
 		}
-		return string.Join("", parts).ToUpperInvariant();
-	}
-
-	string Decode(byte[]? data)
-	{
-		if (data == null || data.Length == 0) return string.Empty;
-		try { return System.Text.Encoding.UTF8.GetString(data); }
-		catch { return string.Empty; }
-	}
-
-	string GetDashboardLink()
-	{
-		return $"/client/profile/{clientId}";
-	}
-
-	void DownloadReceipt()
-	{
-		Console.WriteLine("Downloading receipt...");
-	}
-
-	void AddToCalendar()
-	{
-		Console.WriteLine("Adding to calendar...");
-	}
-
-	void ViewBooking()
-	{
-		Navigation.NavigateTo(GetDashboardLink());
+		
+		// Start fade out
+		fadeOut = true;
+		StateHasChanged();
+		
+		// Wait for fade animation
+		await Task.Delay(500);
+		
+		// Redirect to dashboard
+		Console.WriteLine($"?? Redirecting to dashboard: /client/profile/{clientId}");
+		Navigation.NavigateTo($"/client/profile/{clientId}", forceLoad: true);
 	}
 }
