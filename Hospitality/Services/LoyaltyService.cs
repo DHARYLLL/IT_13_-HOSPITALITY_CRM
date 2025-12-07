@@ -233,7 +233,7 @@ public class LoyaltyService
         }
     }
 
-    // Get available rewards
+    // Get available rewards (for clients - only active)
     public async Task<List<LoyaltyReward>> GetAvailableRewardsAsync()
     {
         var rewards = new List<LoyaltyReward>();
@@ -273,6 +273,50 @@ public class LoyaltyService
         return rewards;
     }
 
+    // Get ALL rewards (for admin - includes inactive)
+    public async Task<List<LoyaltyReward>> GetAllRewardsAsync()
+    {
+        var rewards = new List<LoyaltyReward>();
+        try
+        {
+            using var con = Database.DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            string sql = @"
+     SELECT reward_id, reward_name, reward_description, points_required, reward_type, is_active, expiry_date
+         FROM LoyaltyRewards
+                ORDER BY points_required";
+
+   using var cmd = new SqlCommand(sql, con);
+
+   using var reader = await cmd.ExecuteReaderAsync();
+     while (await reader.ReadAsync())
+    {
+                rewards.Add(new LoyaltyReward
+                {
+       reward_id = reader.GetInt32(0),
+         reward_name = reader.GetString(1),
+            reward_description = reader.GetString(2),
+         points_required = reader.GetInt32(3),
+  reward_type = reader.GetString(4),
+  is_active = reader.GetBoolean(5),
+   expiry_date = reader.IsDBNull(6) ? null : reader.GetDateTime(6)
+                });
+   }
+    }
+        catch (Exception ex)
+        {
+     Console.WriteLine($"Error getting all rewards: {ex.Message}");
+        }
+        return rewards;
+    }
+
+    // Get reward by ID (public version)
+    public async Task<LoyaltyReward?> GetRewardByIdPublicAsync(int rewardId)
+    {
+        return await GetRewardByIdAsync(rewardId);
+    }
+
     private async Task<LoyaltyReward?> GetRewardByIdAsync(int rewardId)
     {
         try
@@ -308,6 +352,205 @@ public class LoyaltyService
             Console.WriteLine($"Error getting reward: {ex.Message}");
         }
         return null;
+    }
+
+    // Create new reward
+    public async Task<int> CreateRewardAsync(LoyaltyReward reward)
+    {
+     try
+        {
+        using var con = Database.DbConnection.GetConnection();
+     await con.OpenAsync();
+
+       string sql = @"
+                INSERT INTO LoyaltyRewards (reward_name, reward_description, points_required, reward_type, is_active, expiry_date)
+          VALUES (@name, @description, @points, @type, @isActive, @expiry);
+              SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+   using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@name", reward.reward_name);
+        cmd.Parameters.AddWithValue("@description", reward.reward_description);
+       cmd.Parameters.AddWithValue("@points", reward.points_required);
+          cmd.Parameters.AddWithValue("@type", reward.reward_type);
+   cmd.Parameters.AddWithValue("@isActive", reward.is_active);
+            cmd.Parameters.AddWithValue("@expiry", (object?)reward.expiry_date ?? DBNull.Value);
+
+      var result = await cmd.ExecuteScalarAsync();
+            return Convert.ToInt32(result);
+        }
+        catch (Exception ex)
+        {
+    Console.WriteLine($"Error creating reward: {ex.Message}");
+        return 0;
+      }
+    }
+
+    // Update existing reward
+    public async Task<bool> UpdateRewardAsync(LoyaltyReward reward)
+    {
+        try
+        {
+       using var con = Database.DbConnection.GetConnection();
+     await con.OpenAsync();
+
+        string sql = @"
+          UPDATE LoyaltyRewards 
+                SET reward_name = @name,
+      reward_description = @description,
+               points_required = @points,
+  reward_type = @type,
+         is_active = @isActive,
+  expiry_date = @expiry
+                WHERE reward_id = @rewardId";
+
+         using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@rewardId", reward.reward_id);
+       cmd.Parameters.AddWithValue("@name", reward.reward_name);
+       cmd.Parameters.AddWithValue("@description", reward.reward_description);
+    cmd.Parameters.AddWithValue("@points", reward.points_required);
+            cmd.Parameters.AddWithValue("@type", reward.reward_type);
+            cmd.Parameters.AddWithValue("@isActive", reward.is_active);
+            cmd.Parameters.AddWithValue("@expiry", (object?)reward.expiry_date ?? DBNull.Value);
+
+            int rowsAffected = await cmd.ExecuteNonQueryAsync();
+       return rowsAffected > 0;
+        }
+        catch (Exception ex)
+        {
+      Console.WriteLine($"Error updating reward: {ex.Message}");
+      return false;
+        }
+    }
+
+    // Delete reward
+    public async Task<bool> DeleteRewardAsync(int rewardId)
+    {
+        try
+        {
+  using var con = Database.DbConnection.GetConnection();
+  await con.OpenAsync();
+
+  string sql = "DELETE FROM LoyaltyRewards WHERE reward_id = @rewardId";
+
+            using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@rewardId", rewardId);
+
+            int rowsAffected = await cmd.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
+        }
+     catch (Exception ex)
+     {
+ Console.WriteLine($"Error deleting reward: {ex.Message}");
+            return false;
+     }
+    }
+
+    // Toggle reward active status
+    public async Task<bool> ToggleRewardActiveAsync(int rewardId)
+    {
+        try
+{
+          using var con = Database.DbConnection.GetConnection();
+   await con.OpenAsync();
+
+       string sql = @"
+    UPDATE LoyaltyRewards 
+      SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END
+   WHERE reward_id = @rewardId";
+
+            using var cmd = new SqlCommand(sql, con);
+          cmd.Parameters.AddWithValue("@rewardId", rewardId);
+
+     int rowsAffected = await cmd.ExecuteNonQueryAsync();
+    return rowsAffected > 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error toggling reward status: {ex.Message}");
+      return false;
+  }
+    }
+
+    // Get rewards count
+    public async Task<int> GetRewardsCountAsync(string searchQuery = "", string typeFilter = "")
+    {
+        try
+        {
+      using var con = Database.DbConnection.GetConnection();
+         await con.OpenAsync();
+
+      string sql = "SELECT COUNT(*) FROM LoyaltyRewards WHERE 1=1";
+            
+if (!string.IsNullOrEmpty(searchQuery))
+      sql += " AND (reward_name LIKE @search OR reward_description LIKE @search)";
+if (!string.IsNullOrEmpty(typeFilter))
+                sql += " AND reward_type = @type";
+
+         using var cmd = new SqlCommand(sql, con);
+ if (!string.IsNullOrEmpty(searchQuery))
+  cmd.Parameters.AddWithValue("@search", $"%{searchQuery}%");
+ if (!string.IsNullOrEmpty(typeFilter))
+                cmd.Parameters.AddWithValue("@type", typeFilter);
+
+            var result = await cmd.ExecuteScalarAsync();
+     return Convert.ToInt32(result);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting rewards count: {ex.Message}");
+      return 0;
+        }
+    }
+
+    // Get paginated rewards
+    public async Task<List<LoyaltyReward>> GetRewardsPagedAsync(int page, int pageSize, string searchQuery = "", string typeFilter = "")
+    {
+        var rewards = new List<LoyaltyReward>();
+    try
+        {
+ using var con = Database.DbConnection.GetConnection();
+            await con.OpenAsync();
+
+         string sql = @"
+     SELECT reward_id, reward_name, reward_description, points_required, reward_type, is_active, expiry_date
+            FROM LoyaltyRewards
+             WHERE 1=1";
+        
+            if (!string.IsNullOrEmpty(searchQuery))
+    sql += " AND (reward_name LIKE @search OR reward_description LIKE @search)";
+        if (!string.IsNullOrEmpty(typeFilter))
+                sql += " AND reward_type = @type";
+            
+            sql += " ORDER BY points_required OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY";
+
+          using var cmd = new SqlCommand(sql, con);
+     cmd.Parameters.AddWithValue("@offset", (page - 1) * pageSize);
+cmd.Parameters.AddWithValue("@pageSize", pageSize);
+     if (!string.IsNullOrEmpty(searchQuery))
+    cmd.Parameters.AddWithValue("@search", $"%{searchQuery}%");
+            if (!string.IsNullOrEmpty(typeFilter))
+         cmd.Parameters.AddWithValue("@type", typeFilter);
+
+      using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+      rewards.Add(new LoyaltyReward
+     {
+          reward_id = reader.GetInt32(0),
+ reward_name = reader.GetString(1),
+        reward_description = reader.GetString(2),
+  points_required = reader.GetInt32(3),
+     reward_type = reader.GetString(4),
+     is_active = reader.GetBoolean(5),
+        expiry_date = reader.IsDBNull(6) ? null : reader.GetDateTime(6)
+                });
+    }
+        }
+        catch (Exception ex)
+        {
+ Console.WriteLine($"Error getting paginated rewards: {ex.Message}");
+        }
+        return rewards;
     }
 
     // Get loyalty transaction history

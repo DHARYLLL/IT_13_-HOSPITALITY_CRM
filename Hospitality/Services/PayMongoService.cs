@@ -57,51 +57,50 @@ namespace Hospitality.Services
                 Console.WriteLine($"Success URL: {request.SuccessUrl}");
                 Console.WriteLine($"Cancel URL: {request.CancelUrl}");
 
-                var lineItems = new[]
+                // Build the request payload manually to ensure proper snake_case naming
+                var payloadDict = new Dictionary<string, object>
                 {
-                    new
+                    ["data"] = new Dictionary<string, object>
                     {
-                        name = request.LineItemName,
-                        description = request.LineItemDescription,
-                        amount = request.Amount,
-                        currency = request.Currency,
-                        quantity = 1
-                    }
-                };
-
-                var payload = new
-                {
-                    data = new
-                    {
-                        attributes = new
+                        ["attributes"] = new Dictionary<string, object>
                         {
-                            billing = request.Billing != null ? new
+                            ["send_email_receipt"] = true,
+                            ["show_description"] = true,
+                            ["show_line_items"] = true,
+                            ["description"] = request.Description,
+                            ["line_items"] = new[]
                             {
-                                name = request.Billing.Name,
-                                email = request.Billing.Email,
-                                phone = request.Billing.Phone
-                            } : null,
-                            send_email_receipt = true,
-                            show_description = true,
-                            show_line_items = true,
-                            description = request.Description,
-                            line_items = lineItems,
-                            payment_method_types = request.PaymentMethodTypes,
-                            success_url = request.SuccessUrl,
-                            cancel_url = request.CancelUrl,
-                            reference_number = request.ReferenceNumber,
-                            metadata = request.Metadata
+                                new Dictionary<string, object>
+                                {
+                                    ["name"] = request.LineItemName,
+                                    ["description"] = request.LineItemDescription,
+                                    ["amount"] = request.Amount,
+                                    ["currency"] = request.Currency,
+                                    ["quantity"] = 1
+                                }
+                            },
+                            ["payment_method_types"] = request.PaymentMethodTypes,
+                            ["success_url"] = request.SuccessUrl,
+                            ["cancel_url"] = request.CancelUrl,
+                            ["reference_number"] = request.ReferenceNumber,
+                            ["metadata"] = request.Metadata
                         }
                     }
                 };
 
-                var jsonOptions = new JsonSerializerOptions
+                // Add billing if provided
+                if (request.Billing != null)
                 {
-                    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                };
+                    var attributes = (Dictionary<string, object>)((Dictionary<string, object>)payloadDict["data"])["attributes"];
+                    attributes["billing"] = new Dictionary<string, object>
+                    {
+                        ["name"] = request.Billing.Name,
+                        ["email"] = request.Billing.Email,
+                        ["phone"] = request.Billing.Phone
+                    };
+                }
 
-                var json = JsonSerializer.Serialize(payload, jsonOptions);
+                var json = JsonSerializer.Serialize(payloadDict);
                 Console.WriteLine($"Request Payload: {json}");
 
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -472,7 +471,7 @@ namespace Hospitality.Services
         public string Description { get; set; } = "";
         public string LineItemName { get; set; } = "";
         public string LineItemDescription { get; set; } = "";
-        public string[] PaymentMethodTypes { get; set; } = { "card", "gcash", "grab_pay" };
+        public string[] PaymentMethodTypes { get; set; } = { "card", "gcash", "paymaya" };
         public string SuccessUrl { get; set; } = "";
         public string CancelUrl { get; set; } = "";
         public string ReferenceNumber { get; set; } = "";

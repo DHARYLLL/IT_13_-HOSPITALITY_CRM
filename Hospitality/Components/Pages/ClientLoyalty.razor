@@ -20,10 +20,10 @@
 			<a href="/client/profile/@clientId" class="nav-link">Dashboard</a>
 			<a href="#" class="nav-link">Stays</a>
 			<a href="/client/loyalty/@clientId" class="nav-link active">Loyalty</a>
-			<a href="#" class="nav-link">Messages</a>
+			<a href="/client/messages/@clientId" class="nav-link">Messages</a>
 		</div>
 		<div class="nav-right">
-			<span class="points-badge">@(loyalty?.current_tier ?? "Guest") • @(loyalty?.total_points ?? 0) pts</span>
+			<span class="points-badge">@(loyalty?.current_tier ?? "Bronze") • @(loyalty?.total_points ?? 0) pts</span>
 			<div class="user-menu">
 				<div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
 				@if (isDropdownOpen)
@@ -43,7 +43,14 @@
 				<p>Loading your loyalty program...</p>
 			</div>
 		}
-		else if (loyalty != null)
+		else if (loyalty == null)
+		{
+			<div class="loading-container">
+				<p>Unable to load loyalty program data.</p>
+				<p><small>User ID: @clientId</small></p>
+			</div>
+		}
+		else
 		{
 			<!-- Hero Section -->
 			<header class="loyalty-hero">
@@ -62,7 +69,7 @@
 				<!-- Current Status Card -->
 				<div class="card status-card">
 					<div class="card-header">
-						<div class="card-icon">?</div>
+						<div class="card-icon">??</div>
 						<h3>Current status</h3>
 						<span class="tier-badge" style="background: @currentTier.Color">@currentTier.Icon @currentTier.Name tier</span>
 					</div>
@@ -132,7 +139,10 @@
 									</li>
 								}
 							</ul>
-							<p class="preview-note">+ @(nextTier.Benefits.Count - 3) more exclusive benefits</p>
+							@if (nextTier.Benefits.Count > 3)
+							{
+								<p class="preview-note">+ @(nextTier.Benefits.Count - 3) more exclusive benefits</p>
+							}
 						</div>
 					}
 				</div>
@@ -168,7 +178,7 @@
 				<!-- Available Rewards -->
 				<div class="card rewards-card">
 					<div class="card-header">
-						<div class="card-icon">???</div>
+						<div class="card-icon">??</div>
 						<h3>Available rewards</h3>
 						<span class="rewards-count">@availableRewards.Count rewards</span>
 					</div>
@@ -315,64 +325,104 @@
 	List<LoyaltyTransaction> recentTransactions = new();
 	bool loading = true;
 	bool isDropdownOpen = false;
+	int actualClientId = 0;
 
-	protected override async Task OnInitializedAsync()
+	protected override async Task OnParametersSetAsync()
+	{
+		await LoadDataAsync();
+	}
+
+	private async Task LoadDataAsync()
 	{
 		loading = true;
+		StateHasChanged();
 
 		try
 		{
+			Console.WriteLine($"?? Loading loyalty data for user ID: {clientId}");
+
 			// Load user data
 			user = await UserService.GetUserByIdAsync(clientId);
 
+			if (user == null)
+			{
+				Console.WriteLine("? UserService returned null!");
+				loading = false;
+				StateHasChanged();
+				return;
+			}
+
+			Console.WriteLine($"? User loaded: {user.user_fname}");
+
 			// Get actual client_id from user_id
-			int actualClientId = await GetClientIdFromUserIdAsync(clientId);
+			actualClientId = await GetClientIdFromUserIdAsync(clientId);
+			Console.WriteLine($"? Client ID: {actualClientId}");
 
 			// Load loyalty program
 			loyalty = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
 			
 			if (loyalty != null)
 			{
+				Console.WriteLine($"? Loyalty: {loyalty.total_points} points, {loyalty.current_tier} tier");
 				currentTier = LoyaltyTier.GetTierByName(loyalty.current_tier);
 				nextTier = LoyaltyTier.GetNextTier(loyalty.current_tier);
+			}
+			else
+			{
+				Console.WriteLine("?? No loyalty program found, using defaults");
+				currentTier = LoyaltyTier.Tiers[0];
+				nextTier = LoyaltyTier.GetNextTier("Bronze");
 			}
 
 			// Load available rewards
 			availableRewards = await LoyaltyService.GetAvailableRewardsAsync();
+			Console.WriteLine($"? Loaded {availableRewards.Count} rewards");
 
 			// Load recent transactions
 			recentTransactions = await LoyaltyService.GetTransactionHistoryAsync(actualClientId, 10);
+			Console.WriteLine($"? Loaded {recentTransactions.Count} transactions");
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine($"Error loading loyalty data: {ex.Message}");
+			Console.WriteLine($"? Error loading loyalty data: {ex.Message}");
 		}
 		finally
 		{
 			loading = false;
+			StateHasChanged();
 		}
 	}
 
 	private async Task<int> GetClientIdFromUserIdAsync(int userId)
 	{
-		using var con = Hospitality.Database.DbConnection.GetConnection();
-		await con.OpenAsync();
-
-		string sql = "SELECT client_id FROM Clients WHERE user_id = @userId";
-		using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con);
-		cmd.Parameters.AddWithValue("@userId", userId);
-		var result = await cmd.ExecuteScalarAsync();
-
-		if (result == null)
+		try
 		{
+			using var con = Hospitality.Database.DbConnection.GetConnection();
+			await con.OpenAsync();
+
+			string sql = "SELECT client_id FROM Clients WHERE user_id = @userId";
+			using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con);
+			cmd.Parameters.AddWithValue("@userId", userId);
+			var result = await cmd.ExecuteScalarAsync();
+
+			if (result != null && result != DBNull.Value)
+			{
+				return Convert.ToInt32(result);
+			}
+
 			// Create client record if it doesn't exist
 			string insertSql = "INSERT INTO Clients (user_id) VALUES (@userId); SELECT CAST(SCOPE_IDENTITY() AS INT);";
 			using var insertCmd = new Microsoft.Data.SqlClient.SqlCommand(insertSql, con);
 			insertCmd.Parameters.AddWithValue("@userId", userId);
 			result = await insertCmd.ExecuteScalarAsync();
-		}
 
-		return Convert.ToInt32(result);
+			return result != null ? Convert.ToInt32(result) : 0;
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Error getting/creating client_id: {ex.Message}");
+			return 0;
+		}
 	}
 
 	string GetInitials()
@@ -389,15 +439,17 @@
 	double GetCircleProgress()
 	{
 		if (loyalty == null || nextTier == null) return 0;
+		if (nextTier.MinPoints == currentTier.MinPoints) return 440;
 		var progress = (loyalty.total_points - currentTier.MinPoints) / (double)(nextTier.MinPoints - currentTier.MinPoints);
-		return Math.Min(440, progress * 440);
+		return Math.Min(440, Math.Max(0, progress * 440));
 	}
 
 	double GetTierProgress()
 	{
 		if (loyalty == null || nextTier == null) return 0;
+		if (nextTier.MinPoints == currentTier.MinPoints) return 100;
 		var progress = (loyalty.total_points - currentTier.MinPoints) / (double)(nextTier.MinPoints - currentTier.MinPoints);
-		return Math.Min(100, progress * 100);
+		return Math.Min(100, Math.Max(0, progress * 100));
 	}
 
 	string GetAverageNightlyRate()
@@ -413,7 +465,6 @@
 
 		try
 		{
-			int actualClientId = await GetClientIdFromUserIdAsync(clientId);
 			bool success = await LoyaltyService.RedeemPointsAsync(actualClientId, rewardId);
 			
 			if (success)
@@ -426,7 +477,7 @@
 		}
 		catch (Exception ex)
 		{
-			Console.WriteLine($"Error redeeming reward: {ex.Message}");
+			Console.WriteLine($"? Error redeeming reward: {ex.Message}");
 		}
 	}
 

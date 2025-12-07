@@ -1,8 +1,12 @@
+﻿@page "/booking/payment/{clientId:int}"
 @page "/booking/payment/{clientId:int}/{bookingId:int}"
 @inject NavigationManager Navigation
 @inject Hospitality.Services.BookingService BookingService
 @inject Hospitality.Services.UserService UserService
 @inject Hospitality.Services.PayMongoService PayMongoService
+@inject Hospitality.Services.PaymentService PaymentService
+@inject Hospitality.Services.LoyaltyService LoyaltyService
+@inject Hospitality.Services.RoomService RoomService
 @inject IJSRuntime JSRuntime
 
 <link rel="stylesheet" href="css/payment.css" />
@@ -18,15 +22,21 @@
 			</div>
 		</div>
 		<div class="nav-center">
-			<a href="@GetDashboardLink()" class="nav-link">Dashboard</a>
+			<a href="/client/profile/@clientId" class="nav-link">Dashboard</a>
 			<a href="#" class="nav-link">Stays</a>
-			<a href="#" class="nav-link">Loyalty</a>
-			<a href="#" class="nav-link">Messages</a>
+			<a href="/client/loyalty/@clientId" class="nav-link">Loyalty</a>
+			<a href="/client/messages/@clientId" class="nav-link">Messages</a>
 		</div>
 		<div class="nav-right">
-			<span class="points-badge">Gold � @LoyaltyPoints pts</span>
+			<span class="points-badge">@loyaltyTier • @LoyaltyPoints pts</span>
 			<div class="user-menu">
-				<div class="user-avatar-small">@GetInitials()</div>
+				<div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
+				@if (isDropdownOpen)
+				{
+					<div class="user-dropdown">
+						<button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
+					</div>
+				}
 			</div>
 		</div>
 	</nav>
@@ -51,7 +61,7 @@
 				{
 					<!-- Payment Pending - User needs to complete payment in browser -->
 					<div class="payment-pending-card" style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border: 2px solid #4caf50; border-radius: 16px; padding: 32px; text-align: center; margin-bottom: 24px;">
-						<div style="font-size: 64px; margin-bottom: 16px;">??</div>
+						<div style="font-size: 64px; margin-bottom: 16px;">🏦</div>
 						<h2 style="color: #2e7d32; font-size: 24px; margin-bottom: 12px;">Payment Page Opened</h2>
 						<p style="color: #388e3c; font-size: 16px; margin-bottom: 24px;">
 							Complete your payment in the browser window that opened.<br/>
@@ -60,13 +70,13 @@
 						
 						<div style="display: flex; flex-direction: column; gap: 12px; max-width: 300px; margin: 0 auto;">
 							<button class="btn-primary" @onclick="ConfirmPaymentComplete" style="padding: 16px 32px; font-size: 16px;">
-								? I've Completed Payment
+								✅ I've Completed Payment
 							</button>
 							<button class="btn-secondary" @onclick="RetryPayment" style="padding: 12px 24px;">
-								?? Open Payment Page Again
+								🔄 Open Payment Page Again
 							</button>
 							<button class="btn-secondary" @onclick="CancelPayment" style="padding: 12px 24px;">
-								? Cancel
+								❌ Cancel
 							</button>
 						</div>
 					</div>
@@ -78,7 +88,7 @@
 					{
 						<div class="success-banner" style="background: #e6ffe6; border: 1px solid #4caf50; padding: 15px; margin-bottom: 20px; border-radius: 8px; color: #2e7d32;">
 							<div style="display: flex; align-items: center; gap: 10px;">
-								<span style="font-size: 18px;">?</span>
+								<span style="font-size: 18px;">✅</span>
 								<div>
 									<strong>Payment Successful</strong>
 									<div style="margin-top: 5px;">@successMessage</div>
@@ -92,7 +102,7 @@
 					{
 						<div class="error-banner" style="background: #ffe6e6; border: 1px solid #ff6b6b; padding: 15px; margin-bottom: 20px; border-radius: 8px; color: #d63031;">
 							<div style="display: flex; align-items: center; gap: 10px;">
-								<span style="font-size: 18px;">?</span>
+								<span style="font-size: 18px;">⚠️</span>
 								<div>
 									<strong>Payment Error</strong>
 									<div style="margin-top: 5px;">@errorMessage</div>
@@ -131,6 +141,36 @@
 						</div>
 					</div>
 
+					<!-- Payment Type Selection -->
+					<div class="form-section">
+						<div class="section-header">
+							<h3 class="section-title">Payment Option</h3>
+							<span class="section-subtitle">Choose how much to pay now</span>
+						</div>
+						<div class="payment-methods">
+							<button type="button" class="payment-method @(selectedPaymentType == "full" ? "selected" : "")" @onclick="SelectFullPayment">
+								<div class="method-icon">💳</div>
+								<div class="method-details">
+									<div class="method-name">Pay in Full</div>
+									<div class="method-desc">₱@totalAmount.ToString("N2") - Complete payment now</div>
+								</div>
+								<div class="method-radio">
+									<input type="radio" name="paymentType" value="full" checked="@(selectedPaymentType == "full")" />
+								</div>
+							</button>
+							<button type="button" class="payment-method @(selectedPaymentType == "downpayment" ? "selected" : "")" @onclick="SelectDownpayment">
+								<div class="method-icon">📝</div>
+								<div class="method-details">
+									<div class="method-name">Downpayment (50%)</div>
+									<div class="method-desc">₱@minimumDownpayment.ToString("N2") now, balance at check-in</div>
+								</div>
+								<div class="method-radio">
+									<input type="radio" name="paymentType" value="downpayment" checked="@(selectedPaymentType == "downpayment")" />
+								</div>
+							</button>
+						</div>
+					</div>
+
 					<!-- Payment Method Selection -->
 					<div class="form-section">
 						<div class="section-header">
@@ -139,7 +179,7 @@
 						</div>
 						<div class="payment-methods">
 							<button type="button" class="payment-method @(selectedPaymentMethod == "card" ? "selected" : "")" @onclick="SelectCardPayment">
-								<div class="method-icon">??</div>
+								<div class="method-icon">💳</div>
 								<div class="method-details">
 									<div class="method-name">Credit/Debit Card</div>
 									<div class="method-desc">Visa, Mastercard, JCB</div>
@@ -149,7 +189,7 @@
 								</div>
 							</button>
 							<button type="button" class="payment-method @(selectedPaymentMethod == "gcash" ? "selected" : "")" @onclick="SelectGCashPayment">
-								<div class="method-icon">??</div>
+								<div class="method-icon">📱</div>
 								<div class="method-details">
 									<div class="method-name">GCash</div>
 									<div class="method-desc">Pay with your GCash wallet</div>
@@ -158,14 +198,14 @@
 									<input type="radio" name="paymentMethod" value="gcash" checked="@(selectedPaymentMethod == "gcash")" />
 								</div>
 							</button>
-							<button type="button" class="payment-method @(selectedPaymentMethod == "grab_pay" ? "selected" : "")" @onclick="SelectGrabPayPayment">
-								<div class="method-icon">??</div>
+							<button type="button" class="payment-method @(selectedPaymentMethod == "paymaya" ? "selected" : "")" @onclick="SelectPayMayaPayment">
+								<div class="method-icon">💳</div>
 								<div class="method-details">
-									<div class="method-name">GrabPay</div>
-									<div class="method-desc">Pay with your GrabPay wallet</div>
+									<div class="method-name">PayMaya</div>
+									<div class="method-desc">Pay with your PayMaya wallet</div>
 								</div>
 								<div class="method-radio">
-									<input type="radio" name="paymentMethod" value="grab_pay" checked="@(selectedPaymentMethod == "grab_pay")" />
+									<input type="radio" name="paymentMethod" value="paymaya" checked="@(selectedPaymentMethod == "paymaya")" />
 								</div>
 							</button>
 						</div>
@@ -195,7 +235,7 @@
 					<!-- Payment Buttons -->
 					<div class="payment-actions">
 						<button class="btn-secondary" @onclick="GoBack">
-							? Back to Rooms
+							← Back to Rooms
 						</button>
 						<button class="btn-primary @(CanProcessPayment() ? "" : "disabled")" 
 								@onclick="ProcessPayment" 
@@ -208,7 +248,7 @@
 							}
 							else
 							{
-								<span>Pay ?@totalAmount.ToString("N2")</span>
+								<span>Pay ₱@paymentAmount.ToString("N2")</span>
 							}
 						</button>
 					</div>
@@ -219,73 +259,91 @@
 			<div class="payment-right">
 				<div class="summary-card">
 					<div class="summary-header">
-						<div class="summary-icon">??</div>
+						<div class="summary-icon">📋</div>
 						<h3>Booking Summary</h3>
 					</div>
 
-					@if (booking != null)
-					{
-						<!-- Hotel Details -->
-						<div class="summary-section">
-							<div class="hotel-info">
-								<div class="hotel-details">
-									<h4 class="hotel-name">InnSight Hotel</h4>
-									<div class="hotel-location">?? Waterfront, San Francisco</div>
-									<div class="hotel-rating">????? 4.8 (2,847 reviews)</div>
-								</div>
+					<!-- Hotel Details -->
+					<div class="summary-section">
+						<div class="hotel-info">
+							<div class="hotel-details">
+								<h4 class="hotel-name">InnSight Hotel</h4>
+								<div class="hotel-location">📍 Waterfront, San Francisco</div>
+								<div class="hotel-rating">⭐⭐⭐⭐⭐ 4.8 (2,847 reviews)</div>
 							</div>
 						</div>
+					</div>
 
-						<!-- Stay Details -->
-						<div class="summary-section">
-							<h4 class="section-title">Stay Details</h4>
-							<div class="stay-info">
-								<div class="info-row">
-									<span class="info-label">Room Type</span>
-									<span class="info-value">@booking.room_name</span>
-								</div>
-								<div class="info-row">
-									<span class="info-label">Check-in</span>
-									<span class="info-value">@booking.check_in_date.ToString("ddd, MMM dd") � 3:00 PM</span>
-								</div>
-								<div class="info-row">
-									<span class="info-label">Check-out</span>
-									<span class="info-value">@booking.check_out_date.ToString("ddd, MMM dd") � 11:00 AM</span>
-								</div>
-								<div class="info-row">
-									<span class="info-label">Guests</span>
-									<span class="info-value">@booking.person_count adult@(booking.person_count != 1 ? "s" : "")</span>
-								</div>
-								<div class="info-row">
-									<span class="info-label">Nights</span>
-									<span class="info-value">@GetNights() night@(GetNights() != 1 ? "s" : "")</span>
-								</div>
+					<!-- Stay Details -->
+					<div class="summary-section">
+						<h4 class="section-title">Stay Details</h4>
+						<div class="stay-info">
+							<div class="info-row">
+								<span class="info-label">Room(s)</span>
+								<span class="info-value">@string.Join(", ", selectedRoomNames)</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Check-in</span>
+								<span class="info-value">@checkInDate.ToString("ddd, MMM dd") • 3:00 PM</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Check-out</span>
+								<span class="info-value">@checkOutDate.ToString("ddd, MMM dd") • 11:00 AM</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Guests</span>
+								<span class="info-value">@adults adult@(adults != 1 ? "s" : "")</span>
+							</div>
+							<div class="info-row">
+								<span class="info-label">Nights</span>
+								<span class="info-value">@GetNights() night@(GetNights() != 1 ? "s" : "")</span>
 							</div>
 						</div>
+					</div>
 
-						<!-- Price Breakdown -->
-						<div class="summary-section">
-							<h4 class="section-title">Price Breakdown</h4>
-							<div class="price-breakdown">
-								<div class="price-row">
-									<span class="price-label">@booking.room_name x @GetNights() nights</span>
-									<span class="price-value">?@((booking.room_price ?? 0) * GetNights()).ToString("N2")</span>
+					<!-- Price Breakdown -->
+					<div class="summary-section">
+						<h4 class="section-title">Price Breakdown</h4>
+						<div class="price-breakdown">
+							<div class="price-row">
+								<span class="price-label">Room(s) x @GetNights() nights</span>
+								<span class="price-value">₱@subtotal.ToString("N2")</span>
+							</div>
+							@if (discountPercentage > 0)
+							{
+								<div class="price-row discount" style="color: #27ae60;">
+									<span class="price-label">@loyaltyTier Member Discount (@discountPercentage%)</span>
+									<span class="price-value">-₱@discountAmount.ToString("N2")</span>
 								</div>
-								<div class="price-row">
-									<span class="price-label">Taxes & Fees</span>
-									<span class="price-value">?@taxesAndFees.ToString("N2")</span>
-								</div>
-								<div class="price-row discount">
-									<span class="price-label">Gold Member Discount</span>
-									<span class="price-value">-?@goldDiscount.ToString("N2")</span>
-								</div>
-								<div class="price-row total">
-									<span class="price-label">Total</span>
-									<span class="price-value">?@totalAmount.ToString("N2")</span>
-								</div>
+							}
+							<div class="price-row">
+								<span class="price-label">Taxes & Fees (12%)</span>
+								<span class="price-value">₱@taxesAndFees.ToString("N2")</span>
+							</div>
+							<div class="price-row total">
+								<span class="price-label">Total</span>
+								<span class="price-value">₱@totalAmount.ToString("N2")</span>
 							</div>
 						</div>
-					}
+					</div>
+
+					<!-- Payment Summary -->
+					<div class="summary-section" style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin-top: 10px;">
+						<h4 class="section-title">Payment Summary</h4>
+						<div class="price-breakdown">
+							<div class="price-row">
+								<span class="price-label">Amount to Pay Now</span>
+								<span class="price-value" style="font-weight: bold; color: #2980b9;">₱@paymentAmount.ToString("N2")</span>
+							</div>
+							@if (selectedPaymentType == "downpayment")
+							{
+								<div class="price-row">
+									<span class="price-label">Remaining Balance (due at check-in)</span>
+									<span class="price-value">₱@(totalAmount - paymentAmount).ToString("N2")</span>
+								</div>
+							}
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -294,16 +352,16 @@
 
 @code {
 	[Parameter] public int clientId { get; set; }
-	[Parameter] public int bookingId { get; set; }
+	[Parameter] public int? bookingId { get; set; }
 
-	// User and booking data
+	// User data
 	Hospitality.Models.User? user;
-	Hospitality.Models.Booking? booking;
 
 	// Loading states
 	bool loading = true;
 	bool processingPayment = false;
 	bool showPaymentPendingMessage = false;
+	bool isDropdownOpen = false;
 	string errorMessage = "";
 	string successMessage = "";
 	string lastCheckoutUrl = "";
@@ -316,6 +374,7 @@
 
 	// Payment details
 	string selectedPaymentMethod = "gcash";
+	string selectedPaymentType = "full";
 
 	// Terms and conditions
 	bool agreeToTerms = false;
@@ -324,11 +383,24 @@
 	// PayMongo payment tracking
 	string paymentIntentId = "";
 
-	// Pricing
-	decimal taxesAndFees = 96.50m;
-	decimal goldDiscount = 24.80m;
+	// Pricing (from query params or existing booking)
+	DateTime checkInDate = DateTime.Today.AddDays(1);
+	DateTime checkOutDate = DateTime.Today.AddDays(4);
+	int adults = 2;
+	List<int> roomIds = new();
+	List<string> selectedRoomNames = new();
+	string loyaltyTier = "Bronze";
+	decimal discountPercentage = 0;
+	decimal subtotal = 0;
+	decimal discountAmount = 0;
+	decimal taxesAndFees = 0;
 	decimal totalAmount = 0;
+	decimal minimumDownpayment = 0;
+	decimal paymentAmount = 0;
 	int LoyaltyPoints = 0;
+
+	// Pending booking data (not saved until payment succeeds)
+	Hospitality.Models.PendingBooking? pendingBooking;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -339,6 +411,7 @@
 		{
 			Console.WriteLine($"Payment page initialized with clientId: {clientId}, bookingId: {bookingId}");
 			
+			// Load user data
 			user = await UserService.GetUserByIdAsync(clientId);
 			
 			if (user != null)
@@ -347,32 +420,92 @@
 				lastName = user.user_lname ?? "";
 				email = user.user_email ?? "";
 				phoneNumber = user.user_contact_number ?? "";
-				Console.WriteLine($"Loaded user: {firstName} {lastName}, Email: {email}");
+				Console.WriteLine($"Loaded user: {firstName} {lastName}");
 			}
 
-			// Load actual booking data from database
-			try
+			// Parse query parameters for new booking
+			var uri = new Uri(Navigation.Uri);
+			var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+			
+			if (!string.IsNullOrEmpty(query["checkIn"]))
 			{
-				booking = await BookingService.GetBookingByIdAsync(bookingId);
-				Console.WriteLine($"Loaded booking: {booking?.booking_id}, Room: {booking?.room_name}");
-			}
-			catch (Exception ex)
-			{
-				Console.WriteLine($"Error loading booking: {ex.Message}");
-				booking = new Hospitality.Models.Booking
+				// This is a new booking from room selection
+				if (DateTime.TryParse(query["checkIn"], out var parsedCheckIn))
+					checkInDate = parsedCheckIn;
+				if (DateTime.TryParse(query["checkOut"], out var parsedCheckOut))
+					checkOutDate = parsedCheckOut;
+				if (int.TryParse(query["adults"], out var parsedAdults))
+					adults = parsedAdults;
+				
+				// Parse room IDs
+				var roomIdStr = query["rooms"];
+				if (!string.IsNullOrEmpty(roomIdStr))
 				{
-					booking_id = bookingId,
-					client_id = clientId,
-					room_name = "Deluxe King Suite",
-					check_in_date = DateTime.Today.AddDays(1),
-					check_out_date = DateTime.Today.AddDays(4),
-					person_count = 2,
-					room_price = 248m,
-					booking_status = "pending"
+					roomIds = roomIdStr.Split(',').Select(int.Parse).ToList();
+				}
+				
+				// Parse pricing
+				loyaltyTier = query["tier"] ?? "Bronze";
+				if (decimal.TryParse(query["discount"], out var parsedDiscount))
+					discountPercentage = parsedDiscount;
+				if (decimal.TryParse(query["subtotal"], out var parsedSubtotal))
+					subtotal = parsedSubtotal;
+				if (decimal.TryParse(query["taxes"], out var parsedTaxes))
+					taxesAndFees = parsedTaxes;
+				if (decimal.TryParse(query["total"], out var parsedTotal))
+					totalAmount = parsedTotal;
+				
+				discountAmount = subtotal * (discountPercentage / 100m);
+				
+				// Load room names
+				await LoadRoomNames();
+				
+				// Build pending booking object
+				pendingBooking = new Hospitality.Models.PendingBooking
+				{
+					client_id = await GetActualClientId(),
+					check_in_date = checkInDate,
+					check_out_date = checkOutDate,
+					person_count = adults,
+					check_in_time = new TimeOnly(15, 0),
+					check_out_time = new TimeOnly(11, 0),
+					room_ids = roomIds,
+					loyalty_tier = loyaltyTier,
+					discount_percentage = discountPercentage,
+					subtotal = subtotal,
+					discount_amount = discountAmount,
+					taxes_and_fees = taxesAndFees,
+					total_amount = totalAmount
 				};
 			}
+			else if (bookingId.HasValue)
+			{
+				// This is an existing booking (partial payment)
+				var booking = await BookingService.GetBookingByIdAsync(bookingId.Value);
+				if (booking != null)
+				{
+					checkInDate = booking.check_in_date;
+					checkOutDate = booking.check_out_date;
+					adults = booking.person_count;
+					selectedRoomNames.Add(booking.room_name ?? "Selected Room");
+					totalAmount = await BookingService.GetBookingTotalAsync(bookingId.Value);
+					
+					// Get payment summary for existing booking
+					var paymentSummary = await PaymentService.GetPaymentSummaryAsync(bookingId.Value, totalAmount);
+					if (paymentSummary.total_paid > 0)
+					{
+						totalAmount = paymentSummary.remaining_balance;
+						selectedPaymentType = "balance"; // Paying remaining balance
+					}
+				}
+			}
 
-			CalculateTotalAmount();
+			// Calculate minimum downpayment (50%)
+			minimumDownpayment = totalAmount * 0.5m;
+			paymentAmount = totalAmount; // Default to full payment
+			
+			// Load loyalty points
+			await LoadLoyaltyInfo();
 		}
 		catch (Exception ex)
 		{
@@ -385,6 +518,59 @@
 		}
 	}
 
+	async Task LoadRoomNames()
+	{
+		try
+		{
+			var allRooms = await RoomService.GetRoomsAsync();
+			selectedRoomNames = allRooms
+				.Where(r => roomIds.Contains(r.room_id))
+				.Select(r => r.room_name)
+				.ToList();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading room names: {ex.Message}");
+			selectedRoomNames = roomIds.Select(id => $"Room {id}").ToList();
+		}
+	}
+
+	async Task LoadLoyaltyInfo()
+	{
+		try
+		{
+			var actualClientId = await GetActualClientId();
+			var loyalty = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
+			if (loyalty != null)
+			{
+				LoyaltyPoints = loyalty.total_points;
+			}
+		}
+		catch { }
+	}
+
+	async Task<int> GetActualClientId()
+	{
+		using var con = Hospitality.Database.DbConnection.GetConnection();
+		await con.OpenAsync();
+
+		string sql = "SELECT client_id FROM clients WHERE user_id = @userId";
+		using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con);
+		cmd.Parameters.AddWithValue("@userId", clientId);
+		var result = await cmd.ExecuteScalarAsync();
+		
+		if (result == null)
+		{
+			// Create client record
+			string insertSql = "INSERT INTO Clients (user_id) VALUES (@userId); SELECT CAST(SCOPE_IDENTITY() AS INT);";
+			using var insertCmd = new Microsoft.Data.SqlClient.SqlCommand(insertSql, con);
+			insertCmd.Parameters.AddWithValue("@userId", clientId);
+			var newId = await insertCmd.ExecuteScalarAsync();
+			return Convert.ToInt32(newId);
+		}
+		return Convert.ToInt32(result);
+	}
+
 	string GetInitials()
 	{
 		if (user == null) return "G";
@@ -394,26 +580,37 @@
 		return string.Join("", parts).ToUpperInvariant();
 	}
 
+	void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
+	void Logout() => Navigation.NavigateTo("/");
+
 	string GetDashboardLink() => $"/client/profile/{clientId}";
 
-	int GetNights()
+	int GetNights() => (checkOutDate - checkInDate).Days;
+
+	void SelectPaymentType(string type)
 	{
-		if (booking == null) return 0;
-		return (int)(booking.check_out_date - booking.check_in_date).TotalDays;
+		selectedPaymentType = type;
+		paymentAmount = type == "full" ? totalAmount : minimumDownpayment;
+		StateHasChanged();
 	}
 
-	void CalculateTotalAmount()
+	void SelectFullPayment()
 	{
-		if (booking?.room_price == null) return;
-		var subtotal = booking.room_price.Value * GetNights();
-		totalAmount = subtotal + taxesAndFees - goldDiscount;
+		selectedPaymentType = "full";
+		paymentAmount = totalAmount;
+		StateHasChanged();
 	}
 
-	int GetAmountInCents() => (int)(totalAmount * 100);
+	void SelectDownpayment()
+	{
+		selectedPaymentType = "downpayment";
+		paymentAmount = minimumDownpayment;
+		StateHasChanged();
+	}
 
 	void SelectCardPayment() => selectedPaymentMethod = "card";
 	void SelectGCashPayment() => selectedPaymentMethod = "gcash";
-	void SelectGrabPayPayment() => selectedPaymentMethod = "grab_pay";
+	void SelectPayMayaPayment() => selectedPaymentMethod = "paymaya";
 
 	bool IsBasicInfoValid()
 	{
@@ -445,9 +642,8 @@
 		
 		try
 		{
-			Console.WriteLine($"Starting payment processing for booking {bookingId}");
-			Console.WriteLine($"Payment method: {selectedPaymentMethod}");
-			Console.WriteLine($"Total amount: ?{totalAmount:N2} ({GetAmountInCents()} centavos)");
+			Console.WriteLine($"Starting payment processing - Amount: ₱{paymentAmount:N2}");
+			Console.WriteLine($"Payment method: {selectedPaymentMethod}, Type: {selectedPaymentType}");
 			
 			await ProcessWithCheckoutSession();
 		}
@@ -468,29 +664,33 @@
 	{
 		Console.WriteLine("=== Creating PayMongo Checkout Session ===");
 		
-		// For MAUI apps, use a generic success URL since external browser can't redirect back
-		var successUrl = "https://www.google.com/search?q=payment+successful";
-		var cancelUrl = "https://www.google.com/search?q=payment+cancelled";
+		// Use placeholder URLs - PayMongo requires valid URLs but we handle the result manually
+		var successUrl = "https://checkout.paymongo.com/success";
+		var cancelUrl = "https://checkout.paymongo.com/cancel";
 
 		string[] paymentMethods = selectedPaymentMethod switch
 		{
 			"card" => new[] { "card" },
 			"gcash" => new[] { "gcash" },
-			"grab_pay" => new[] { "grab_pay" },
-			_ => new[] { "card", "gcash", "grab_pay" }
+			"paymaya" => new[] { "paymaya" },
+			_ => new[] { "card", "gcash", "paymaya" }
 		};
+
+		var description = selectedPaymentType == "full" 
+			? $"InnSight Hotel - Full Payment"
+			: $"InnSight Hotel - 50% Downpayment";
 
 		var checkoutRequest = new Hospitality.Services.CreateCheckoutSessionRequest
 		{
-			Amount = GetAmountInCents(),
+			Amount = (int)(paymentAmount * 100), // Convert to centavos
 			Currency = "PHP",
-			Description = $"InnSight Hotel Booking #{bookingId}",
-			LineItemName = booking?.room_name ?? "Hotel Room",
-			LineItemDescription = $"{GetNights()} night(s) - Check-in: {booking?.check_in_date:MMM dd, yyyy}",
+			Description = description,
+			LineItemName = string.Join(", ", selectedRoomNames),
+			LineItemDescription = $"{GetNights()} night(s) - Check-in: {checkInDate:MMM dd, yyyy}",
 			PaymentMethodTypes = paymentMethods,
 			SuccessUrl = successUrl,
 			CancelUrl = cancelUrl,
-			ReferenceNumber = $"BOOK-{bookingId:D6}",
+			ReferenceNumber = $"PEND-{DateTime.Now:yyyyMMddHHmmss}",
 			Billing = new Hospitality.Services.CheckoutBilling
 			{
 				Name = $"{firstName} {lastName}",
@@ -499,9 +699,9 @@
 			},
 			Metadata = new Dictionary<string, string>
 			{
-				{ "booking_id", bookingId.ToString() },
 				{ "client_id", clientId.ToString() },
-				{ "room_name", booking?.room_name ?? "" }
+				{ "payment_type", selectedPaymentType },
+				{ "loyalty_tier", loyaltyTier }
 			}
 		};
 
@@ -514,10 +714,7 @@
 
 		paymentIntentId = result.CheckoutSessionId;
 		lastCheckoutUrl = result.CheckoutUrl;
-		Console.WriteLine($"? Checkout session created: {paymentIntentId}");
-		Console.WriteLine($"? Checkout URL: {result.CheckoutUrl}");
-
-		await BookingService.UpdateBookingStatusAsync(bookingId, "pending_payment");
+		Console.WriteLine($"✅ Checkout session created: {paymentIntentId}");
 
 		if (!string.IsNullOrEmpty(result.CheckoutUrl))
 		{
@@ -542,12 +739,79 @@
 	async Task ConfirmPaymentComplete()
 	{
 		Console.WriteLine("User confirmed payment complete");
-		
-		// Update booking status to confirmed
-		await BookingService.UpdateBookingStatusAsync(bookingId, "confirmed");
-		
-		// Navigate to dashboard with success message
-		Navigation.NavigateTo($"/client/profile/{clientId}");
+		processingPayment = true;
+		StateHasChanged();
+
+		try
+		{
+			if (pendingBooking != null)
+			{
+				// Create booking now that payment is confirmed
+				Console.WriteLine("Creating booking after successful payment...");
+				
+				var (newBookingId, success, message) = await PaymentService.CreateBookingWithPaymentAsync(
+					pendingBooking,
+					paymentAmount,
+					selectedPaymentMethod,
+					selectedPaymentType,
+					paymentIntentId,
+					paymentIntentId
+				);
+
+				if (success)
+				{
+					Console.WriteLine($"✅ Booking {newBookingId} created successfully!");
+					
+					// Award loyalty points
+					await LoyaltyService.AddPointsForBookingAsync(
+						pendingBooking.client_id, 
+						newBookingId, 
+						totalAmount
+					);
+					
+					// Navigate to confirmation
+					Navigation.NavigateTo($"/booking/confirmation/{clientId}/{newBookingId}");
+				}
+				else
+				{
+					errorMessage = $"Error creating booking: {message}";
+					showPaymentPendingMessage = false;
+				}
+			}
+			else if (bookingId.HasValue)
+			{
+				// This is an additional payment for existing booking
+				var (success, message) = await PaymentService.AddPaymentToBookingAsync(
+					bookingId.Value,
+					paymentAmount,
+					selectedPaymentMethod,
+					selectedPaymentType,
+					totalAmount,
+					paymentIntentId
+				);
+
+				if (success)
+				{
+					Navigation.NavigateTo($"/booking/confirmation/{clientId}/{bookingId.Value}");
+				}
+				else
+				{
+					errorMessage = $"Error recording payment: {message}";
+					showPaymentPendingMessage = false;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error confirming payment: {ex.Message}");
+			errorMessage = $"Error: {ex.Message}";
+			showPaymentPendingMessage = false;
+		}
+		finally
+		{
+			processingPayment = false;
+			StateHasChanged();
+		}
 	}
 
 	async Task RetryPayment()
@@ -579,6 +843,8 @@
 
 	void GoBack()
 	{
-		Navigation.NavigateTo($"/booking/rooms/{clientId}");
+		var checkInStr = checkInDate.ToString("yyyy-MM-dd");
+		var checkOutStr = checkOutDate.ToString("yyyy-MM-dd");
+		Navigation.NavigateTo($"/booking/rooms/{clientId}/{adults}/1/{checkInStr}/{checkOutStr}");
 	}
 }

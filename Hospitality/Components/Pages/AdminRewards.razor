@@ -1,0 +1,700 @@
+@page "/admin/rewards"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.LoyaltyService LoyaltyService
+
+<link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-rewards.css" />
+
+<div class="admin-page">
+	<!-- Sidebar -->
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/admin" class="nav-item">
+				<span class="nav-icon">??</span>
+				<span>EMPLOYEES</span>
+			</a>
+			<a href="/admin/dashboard" class="nav-item">
+				<span class="nav-icon">??</span>
+				<span>DASHBOARD</span>
+			</a>
+			<a href="/admin/rooms" class="nav-item">
+				<span class="nav-icon">??</span>
+				<span>ROOMS</span>
+			</a>
+			<a href="/admin/rewards" class="nav-item active">
+				<span class="nav-icon">??</span>
+				<span>REWARDS</span>
+			</a>
+			<a href="/admin/messages" class="nav-item">
+				<span class="nav-icon">??</span>
+				<span>MESSAGES</span>
+			</a>
+			<a href="/admin/reports" class="nav-item">
+				<span class="nav-icon">??</span>
+				<span>REPORTS & ANALYTICS</span>
+			</a>
+		</nav>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Loyalty Rewards</h1>
+				<p class="page-subtitle">Manage rewards that clients can redeem with their points</p>
+			</div>
+			<div class="header-actions">
+				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span>??</button>
+				<button class="icon-btn" title="Profile">??</button>
+				<button class="icon-btn" title="Logout" @onclick="Logout">?</button>
+			</div>
+		</header>
+
+		<!-- Stats Cards -->
+		<div class="stats-row">
+			<div class="stat-card">
+				<div class="stat-icon">??</div>
+				<div class="stat-info">
+					<div class="stat-value">@totalRewards</div>
+					<div class="stat-label">Total Rewards</div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">?</div>
+				<div class="stat-info">
+					<div class="stat-value">@activeRewards</div>
+					<div class="stat-label">Active Rewards</div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">??</div>
+				<div class="stat-info">
+					<div class="stat-value">@voucherCount</div>
+					<div class="stat-label">Vouchers</div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon">??</div>
+				<div class="stat-info">
+					<div class="stat-value">@upgradeCount</div>
+					<div class="stat-label">Upgrades</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="toolbar">
+			<div class="search-box">
+				<span>??</span>
+				<input type="text" placeholder="Search rewards..." @bind="searchQuery" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+			</div>
+			<button class="btn-sort" @onclick="ToggleTypeFilter">Type: @(string.IsNullOrEmpty(typeFilter) ? "All" : typeFilter)</button>
+			<button class="btn-sort" @onclick="ToggleStatusFilter">Status: @(statusFilter == null ? "All" : (statusFilter.Value ? "Active" : "Inactive"))</button>
+			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Reward</button>
+		</div>
+
+		@if (loading)
+		{
+			<div class="loading-container">
+				<div class="spinner"></div>
+				<p>Loading rewards...</p>
+			</div>
+		}
+		else if (loadError)
+		{
+			<div class="error-banner">
+				<span>??</span>
+				<span>Failed to load rewards. Please try again.</span>
+				<button @onclick="LoadRewardsAsync">Retry</button>
+			</div>
+		}
+		else
+		{
+			<!-- Rewards Table -->
+			<div class="rewards-table-container">
+				<table class="rewards-table">
+					<thead>
+						<tr>
+							<th>Reward</th>
+							<th>Type</th>
+							<th>Points Required</th>
+							<th>Status</th>
+							<th>Expiry</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						@if (!FilteredRewards.Any())
+						{
+							<tr>
+								<td colspan="6" class="empty-state">
+									<div class="empty-icon">??</div>
+									<p>No rewards found matching your criteria.</p>
+								</td>
+							</tr>
+						}
+						else
+						{
+							@foreach (var reward in FilteredRewards)
+							{
+								<tr class="@(!reward.is_active ? "inactive-row" : "")">
+									<td>
+										<div class="reward-info">
+											<div class="reward-icon">@GetRewardIcon(reward.reward_type)</div>
+											<div class="reward-details">
+												<div class="reward-name">@reward.reward_name</div>
+												<div class="reward-desc">@TruncateText(reward.reward_description, 60)</div>
+											</div>
+										</div>
+									</td>
+									<td>
+										<span class="type-badge @GetTypeBadgeClass(reward.reward_type)">
+											@reward.reward_type
+										</span>
+									</td>
+									<td>
+										<div class="points-display">
+											<span class="points-value">@reward.points_required.ToString("N0")</span>
+											<span class="points-label">pts</span>
+										</div>
+									</td>
+									<td>
+										<span class="status-badge @(reward.is_active ? "status-active" : "status-inactive")">
+											@(reward.is_active ? "Active" : "Inactive")
+										</span>
+									</td>
+									<td>
+										@if (reward.expiry_date.HasValue)
+										{
+											<span class="expiry-date @(reward.expiry_date.Value < DateTime.Now ? "expired" : "")">
+												@reward.expiry_date.Value.ToString("MMM dd, yyyy")
+											</span>
+										}
+										else
+										{
+											<span class="no-expiry">No expiry</span>
+										}
+									</td>
+									<td>
+										<div class="action-buttons">
+											<button class="action-btn edit" title="Edit" @onclick="() => EditReward(reward)">??</button>
+											<button class="action-btn toggle" title="@(reward.is_active ? "Deactivate" : "Activate")" @onclick="() => ToggleStatus(reward)">
+												@(reward.is_active ? "??" : "??")
+											</button>
+											<button class="action-btn delete" title="Delete" @onclick="() => ConfirmDelete(reward)">???</button>
+										</div>
+									</td>
+								</tr>
+							}
+						}
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Pagination -->
+			<div class="pagination">
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">« First</button>
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">‹ Prev</button>
+				@foreach (var p in PageNumbers)
+				{
+					<button class="page-btn @(p == page ? "active" : "")" @onclick="() => GoPage(p)">@p</button>
+				}
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ›</button>
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last »</button>
+				<span class="page-info">Page @(page) of @totalPages • Total @totalCount</span>
+				<select class="page-size" @onchange="PageSizeChanged">
+					<option value="10" selected="@(pageSize == 10)">10</option>
+					<option value="20" selected="@(pageSize == 20)">20</option>
+					<option value="50" selected="@(pageSize == 50)">50</option>
+				</select>
+			</div>
+		}
+	</main>
+</div>
+
+<!-- Add/Edit Modal -->
+@if (showModal)
+{
+	<div class="modal-overlay" @onclick="CloseModal">
+		<div class="modal-card" @onclick:stopPropagation>
+			<div class="modal-header">
+				<h2 class="modal-title">@(isEdit ? "Edit Reward" : "New Reward")</h2>
+				<button class="modal-close-btn" @onclick="CloseModal">?</button>
+			</div>
+			<div class="modal-body">
+				@if (!string.IsNullOrEmpty(modalError))
+				{
+					<div class="modal-error">
+						<span>??</span> @modalError
+					</div>
+				}
+
+				<div class="form-grid">
+					<div class="form-field full-width">
+						<label>Reward Name *</label>
+						<input type="text" @bind="formName" placeholder="e.g., Free Breakfast for 2" />
+					</div>
+				</div>
+
+				<div class="form-grid">
+					<div class="form-field full-width">
+						<label>Description *</label>
+						<textarea @bind="formDescription" rows="3" placeholder="Describe what the client receives with this reward..."></textarea>
+					</div>
+				</div>
+
+				<div class="form-grid">
+					<div class="form-field">
+						<label>Points Required *</label>
+						<input type="number" @bind="formPoints" min="100" step="100" />
+					</div>
+					<div class="form-field">
+						<label>Reward Type *</label>
+						<select @bind="formType">
+							<option value="voucher">Voucher</option>
+							<option value="upgrade">Upgrade</option>
+							<option value="service">Service</option>
+						</select>
+					</div>
+				</div>
+
+				<div class="form-grid">
+					<div class="form-field">
+						<label>Expiry Date (Optional)</label>
+						<input type="date" value="@formExpiryString" @onchange="OnExpiryDateChanged" />
+					</div>
+					<div class="form-field">
+						<label>Status</label>
+						<div class="toggle-switch">
+							<input type="checkbox" id="activeToggle" @bind="formIsActive" />
+							<label for="activeToggle" class="toggle-label">
+								<span class="toggle-inner"></span>
+								<span class="toggle-switch-btn"></span>
+							</label>
+							<span class="toggle-text">@(formIsActive ? "Active" : "Inactive")</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Preview -->
+				<div class="reward-preview">
+					<h4>Preview</h4>
+					<div class="preview-card">
+						<div class="preview-icon">@GetRewardIcon(formType)</div>
+						<div class="preview-content">
+							<div class="preview-name">@(string.IsNullOrEmpty(formName) ? "Reward Name" : formName)</div>
+							<div class="preview-desc">@(string.IsNullOrEmpty(formDescription) ? "Reward description will appear here" : TruncateText(formDescription, 80))</div>
+							<div class="preview-points">@formPoints.ToString("N0") points</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn-modal-cancel" @onclick="CloseModal">Cancel</button>
+				<button class="btn-modal-save" @onclick="SaveReward" disabled="@saving">
+					@if (saving)
+					{
+						<span>Saving...</span>
+					}
+					else
+					{
+						<span>@(isEdit ? "Update Reward" : "Create Reward")</span>
+					}
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteModal)
+{
+	<div class="modal-overlay" @onclick="CloseDeleteModal">
+		<div class="modal-card delete-modal" @onclick:stopPropagation>
+			<div class="modal-header">
+				<h2 class="modal-title">Delete Reward</h2>
+				<button class="modal-close-btn" @onclick="CloseDeleteModal">?</button>
+			</div>
+			<div class="modal-body">
+				<div class="delete-warning">
+					<div class="warning-icon">??</div>
+					<p>Are you sure you want to delete this reward?</p>
+					<div class="delete-reward-info">
+						<strong>@rewardToDelete?.reward_name</strong>
+						<span>@rewardToDelete?.points_required.ToString("N0") points</span>
+					</div>
+					<p class="warning-text">This action cannot be undone. Clients who have already redeemed this reward will not be affected.</p>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn-modal-cancel" @onclick="CloseDeleteModal">Cancel</button>
+				<button class="btn-modal-delete" @onclick="DeleteReward" disabled="@deleting">
+					@if (deleting)
+					{
+						<span>Deleting...</span>
+					}
+					else
+					{
+						<span>Delete Reward</span>
+					}
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	// Data
+	List<LoyaltyReward> rewards = new();
+	bool loading = true;
+	bool loadError = false;
+
+	// Pagination
+	int page = 1;
+	int pageSize = 10;
+	int totalCount = 0;
+	int totalPages => totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
+	List<int> PageNumbers => Enumerable.Range(1, Math.Min(totalPages, 5)).ToList();
+	bool CanPrev => page > 1;
+	bool CanNext => page < totalPages;
+
+	// Filters
+	string searchQuery = "";
+	string typeFilter = "";
+	bool? statusFilter = null;
+
+	// Stats
+	int totalRewards = 0;
+	int activeRewards = 0;
+	int voucherCount = 0;
+	int upgradeCount = 0;
+
+	// Modal state
+	bool showModal = false;
+	bool isEdit = false;
+	bool saving = false;
+	string modalError = "";
+	int editingRewardId = 0;
+
+	// Form fields
+	string formName = "";
+	string formDescription = "";
+	int formPoints = 1000;
+	string formType = "voucher";
+	string formExpiryString = "";
+	bool formIsActive = true;
+
+	// Delete modal
+	bool showDeleteModal = false;
+	bool deleting = false;
+	LoyaltyReward? rewardToDelete = null;
+
+	// Filtered rewards list
+	List<LoyaltyReward> FilteredRewards => ApplyFilters(rewards);
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadRewardsAsync();
+	}
+
+	async Task LoadRewardsAsync()
+	{
+		loading = true;
+		loadError = false;
+		StateHasChanged();
+
+		try
+		{
+			rewards = await LoyaltyService.GetRewardsPagedAsync(page, pageSize, searchQuery, typeFilter);
+			totalCount = await LoyaltyService.GetRewardsCountAsync(searchQuery, typeFilter);
+			await LoadStatsAsync();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading rewards: {ex.Message}");
+			loadError = true;
+		}
+		finally
+		{
+			loading = false;
+			StateHasChanged();
+		}
+	}
+
+	async Task LoadStatsAsync()
+	{
+		try
+		{
+			var allRewards = await LoyaltyService.GetAllRewardsAsync();
+			totalRewards = allRewards.Count;
+			activeRewards = allRewards.Count(r => r.is_active);
+			voucherCount = allRewards.Count(r => r.reward_type == "voucher");
+			upgradeCount = allRewards.Count(r => r.reward_type == "upgrade");
+		}
+		catch { }
+	}
+
+	List<LoyaltyReward> ApplyFilters(List<LoyaltyReward> list)
+	{
+		var filtered = list.AsEnumerable();
+
+		if (statusFilter.HasValue)
+		{
+			filtered = filtered.Where(r => r.is_active == statusFilter.Value);
+		}
+
+		return filtered.ToList();
+	}
+
+	void ToggleTypeFilter()
+	{
+		typeFilter = typeFilter switch
+		{
+			"" => "voucher",
+			"voucher" => "upgrade",
+			"upgrade" => "service",
+			"service" => "",
+			_ => ""
+		};
+		page = 1;
+		_ = LoadRewardsAsync();
+	}
+
+	void ToggleStatusFilter()
+	{
+		statusFilter = statusFilter switch
+		{
+			null => true,
+			true => false,
+			false => null
+		};
+		StateHasChanged();
+	}
+
+	async Task OnSearchChanged()
+	{
+		page = 1;
+		await LoadRewardsAsync();
+	}
+
+	// Modal methods
+	void ShowAddModal()
+	{
+		isEdit = false;
+		editingRewardId = 0;
+		ResetForm();
+		showModal = true;
+	}
+
+	void EditReward(LoyaltyReward reward)
+	{
+		isEdit = true;
+		editingRewardId = reward.reward_id;
+		formName = reward.reward_name;
+		formDescription = reward.reward_description;
+		formPoints = reward.points_required;
+		formType = reward.reward_type;
+		formIsActive = reward.is_active;
+		formExpiryString = reward.expiry_date?.ToString("yyyy-MM-dd") ?? "";
+		modalError = "";
+		showModal = true;
+	}
+
+	void ResetForm()
+	{
+		formName = "";
+		formDescription = "";
+		formPoints = 1000;
+		formType = "voucher";
+		formExpiryString = "";
+		formIsActive = true;
+		modalError = "";
+	}
+
+	void CloseModal()
+	{
+		showModal = false;
+		ResetForm();
+	}
+
+	async Task SaveReward()
+	{
+		modalError = "";
+
+		// Validation
+		if (string.IsNullOrWhiteSpace(formName))
+		{
+			modalError = "Please enter a reward name.";
+			return;
+		}
+		if (string.IsNullOrWhiteSpace(formDescription))
+		{
+			modalError = "Please enter a description.";
+			return;
+		}
+		if (formPoints < 100)
+		{
+			modalError = "Points required must be at least 100.";
+			return;
+		}
+
+		saving = true;
+		StateHasChanged();
+
+		try
+		{
+			DateTime? expiryDate = null;
+			if (!string.IsNullOrEmpty(formExpiryString) && DateTime.TryParse(formExpiryString, out var parsed))
+			{
+				expiryDate = parsed;
+			}
+
+			var reward = new LoyaltyReward
+			{
+				reward_id = editingRewardId,
+				reward_name = formName,
+				reward_description = formDescription,
+				points_required = formPoints,
+				reward_type = formType,
+				is_active = formIsActive,
+				expiry_date = expiryDate
+			};
+
+			bool success;
+			if (isEdit)
+			{
+				success = await LoyaltyService.UpdateRewardAsync(reward);
+			}
+			else
+			{
+				var newId = await LoyaltyService.CreateRewardAsync(reward);
+				success = newId > 0;
+			}
+
+			if (success)
+			{
+				CloseModal();
+				await LoadRewardsAsync();
+			}
+			else
+			{
+				modalError = "Failed to save reward. Please try again.";
+			}
+		}
+		catch (Exception ex)
+		{
+			modalError = $"Error: {ex.Message}";
+		}
+		finally
+		{
+			saving = false;
+			StateHasChanged();
+		}
+	}
+
+	async Task ToggleStatus(LoyaltyReward reward)
+	{
+		try
+		{
+			var success = await LoyaltyService.ToggleRewardActiveAsync(reward.reward_id);
+			if (success)
+			{
+				reward.is_active = !reward.is_active;
+				await LoadStatsAsync();
+				StateHasChanged();
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error toggling status: {ex.Message}");
+		}
+	}
+
+	// Delete methods
+	void ConfirmDelete(LoyaltyReward reward)
+	{
+		rewardToDelete = reward;
+		showDeleteModal = true;
+	}
+
+	void CloseDeleteModal()
+	{
+		showDeleteModal = false;
+		rewardToDelete = null;
+	}
+
+	async Task DeleteReward()
+	{
+		if (rewardToDelete == null) return;
+
+		deleting = true;
+		StateHasChanged();
+
+		try
+		{
+			var success = await LoyaltyService.DeleteRewardAsync(rewardToDelete.reward_id);
+			if (success)
+			{
+				CloseDeleteModal();
+				await LoadRewardsAsync();
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error deleting reward: {ex.Message}");
+		}
+		finally
+		{
+			deleting = false;
+			StateHasChanged();
+		}
+	}
+
+	// Pagination
+	async Task PrevPage() { if (CanPrev) { page--; await LoadRewardsAsync(); } }
+	async Task NextPage() { if (CanNext) { page++; await LoadRewardsAsync(); } }
+	async Task FirstPage() { if (CanPrev) { page = 1; await LoadRewardsAsync(); } }
+	async Task LastPage() { if (CanNext) { page = totalPages; await LoadRewardsAsync(); } }
+	async Task GoPage(int p) { if (p != page) { page = p; await LoadRewardsAsync(); } }
+	async Task PageSizeChanged(ChangeEventArgs e)
+	{
+		if (int.TryParse(e.Value?.ToString(), out var ps) && ps > 0)
+		{
+			pageSize = ps;
+			page = 1;
+			await LoadRewardsAsync();
+		}
+	}
+
+	// Helpers
+	string GetRewardIcon(string type) => type switch
+	{
+		"voucher" => "??",
+		"upgrade" => "??",
+		"service" => "???",
+		_ => "??"
+	};
+
+	string GetTypeBadgeClass(string type) => type switch
+	{
+		"voucher" => "type-voucher",
+		"upgrade" => "type-upgrade",
+		"service" => "type-service",
+		_ => ""
+	};
+
+	string TruncateText(string text, int maxLength)
+	{
+		if (string.IsNullOrEmpty(text)) return "";
+		return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+	}
+
+	void OnExpiryDateChanged(ChangeEventArgs e)
+	{
+		formExpiryString = e.Value?.ToString() ?? "";
+	}
+
+	void Logout() => Navigation.NavigateTo("/");
+}
