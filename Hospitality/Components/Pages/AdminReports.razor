@@ -18,12 +18,13 @@
 			</div>
 		</div>
 		<nav class="sidebar-nav">
-			<a href="/admin" class="nav-item"><span class="nav-icon">??</span><span>EMPLOYEES</span></a>
-			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon">??</span><span>DASHBOARD</span></a>
-			<a href="/admin/rooms" class="nav-item"><span class="nav-icon">??</span><span>ROOMS</span></a>
-			<a href="/admin/rewards" class="nav-item"><span class="nav-icon">??</span><span>REWARDS</span></a>
-			<a href="/admin/messages" class="nav-item"><span class="nav-icon">??</span><span>MESSAGES</span></a>
-			<a href="/admin/reports" class="nav-item active"><span class="nav-icon">??</span><span>REPORTS & ANALYTICS</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
+			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin/reports" class="nav-item active"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS & ANALYTICS</span></a>
+			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
 		</nav>
 	</aside>
 
@@ -49,20 +50,20 @@
 			</div>
 			<div class="header-actions">
 				<button class="btn-filter" @onclick="() => ChangeDateRange(30)">
-					<span class="filter-icon">??</span> Last @dateRangeDays days
+					<span class="filter-icon"><i class="icon icon-calendar"></i></span> Last @dateRangeDays days
 				</button>
 				<select class="btn-filter" style="padding: 8px 16px; cursor: pointer; font-size: 14px; min-width: 150px;" @onchange="OnDateRangeChanged">
 					<option value="7" selected="@(dateRangeDays == 7)">Last 7 days</option>
 					<option value="30" selected="@(dateRangeDays == 30)">Last 30 days</option>
 					<option value="90" selected="@(dateRangeDays == 90)">Last 90 days</option>
 					<option value="365" selected="@(dateRangeDays == 365)">Last Year</option>
-					<option value="3650" selected="@(dateRangeDays == 3650)">All Time ?</option>
+					<option value="3650" selected="@(dateRangeDays == 3650)">All Time</option>
 				</select>
 				<button class="btn-filter">
-					<span class="filter-icon">??</span> All properties
+					<span class="filter-icon"><i class="icon icon-filter"></i></span> All properties
 				</button>
 				<button class="btn-export" @onclick="ExportCSV">
-					<span class="export-icon">??</span> Export CSV
+					<span class="export-icon"><i class="icon icon-export"></i></span> Export CSV
 				</button>
 			</div>
 		</header>

@@ -8,637 +8,600 @@
 @inject IJSRuntime JSRuntime
 
 <link rel="stylesheet" href="css/clientprofile.css" />
+<link rel="stylesheet" href="css/client-layout.css" />
 
 <div class="client-profile-page">
-    <!-- Top Navigation Bar -->
-    <nav class="top-nav">
-        <div class="nav-left">
-          <div class="brand">
-    <img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
-<span class="brand-name">InnSight</span>
-    <span class="brand-sub">Guest Portal</span>
-            </div>
-     </div>
-   <div class="nav-center">
-      <a href="/client/profile/@id" class="nav-link active">Dashboard</a>
-     <a href="#" class="nav-link">Stays</a>
- <a href="/client/loyalty/@id" class="nav-link">Loyalty</a>
-        <a href="/client/messages/@id" class="nav-link">Messages</a>
-        </div>
-        <div class="nav-right">
-      <span class="points-badge">@CurrentTier • @LoyaltyPoints pts</span>
-          <div class="user-menu">
-         <div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
-     @if (isDropdownOpen)
-       {
-      <div class="user-dropdown">
-          <button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
-      </div>
-     }
-     </div>
-   </div>
-    </nav>
+    <!-- Shared Navigation Component -->
+    <ClientNavigation UserId="@id" ActivePage="profile" User="@user" LoyaltyProgram="@loyaltyProgram" />
 
-    <div class="profile-container">
-        @if (loading)
- {
-            <div class="loading-container">
-       <p>Loading client profile...</p>
-              <p><small>User ID: @id</small></p>
-</div>
-        }
-else if (!loading && user == null)
-  {
-       <div class="error-container">
-                <h3>User not found</h3>
- <p>Could not find user with ID: @id</p>
-        <p>Check your database or service method.</p>
-            </div>
-        }
-        else if (user != null)
-   {
-            <!-- Welcome Header -->
-            <header class="welcome-header">
-                <div class="welcome-content">
- <h1 class="welcome-title">Welcome back, @(user.user_fname ?? "Guest")</h1>
-           <p class="welcome-subtitle">Here is your stay summary and upcoming plans.</p>
-       </div>
-     <div class="user-avatar-large">
-             <span>@GetInitials()</span>
-     <span class="avatar-label">Loyalty member</span>
-          </div>
-     </header>
+	<div class="profile-container">
+		@if (loading)
+		{
+			<div class="loading-container">
+				<p>Loading client profile...</p>
+				<p><small>User ID: @id</small></p>
+			</div>
+		}
+		else if (!loading && user == null)
+		{
+			<div class="error-container">
+				<h3>User not found</h3>
+				<p>Could not find user with ID: @id</p>
+				<p>Check your database or service method.</p>
+			</div>
+		}
+		else if (user != null)
+		{
+			<!-- Welcome Header -->
+			<header class="welcome-header">
+				<div class="welcome-content">
+					<h1 class="welcome-title">Welcome back, @(user.user_fname ?? "Guest")</h1>
+					<p class="welcome-subtitle">Here is your stay summary and upcoming plans.</p>
+				</div>
+				<div class="user-avatar-large">
+					<span>@GetInitials()</span>
+					<span class="avatar-label">Loyalty member</span>
+				</div>
+			</header>
 
-            <!-- Action Buttons -->
-         <div class="action-buttons">
-     <button class="btn btn-primary" @onclick="BookRoom">
-    <span class="btn-icon">???</span> Book a Room
-       </button>
-        <button class="btn btn-secondary" @onclick="ViewReceipts">
-           <span class="btn-icon">??</span> View Receipts
-          </button>
-           <button class="btn btn-secondary" @onclick="EditProfile">
-   <span class="btn-icon">??</span> Edit Profile
-        </button>
-          </div>
+			<!-- Action Buttons -->
+			<div class="action-buttons">
+				<button class="btn btn-primary" @onclick="BookRoom">
+					<span class="btn-icon">??</span> Book a Room
+				</button>
+				<button class="btn btn-secondary" @onclick="ViewReceipts">
+					<span class="btn-icon">??</span> View Receipts
+				</button>
+			</div>
 
-        <!-- Pending Payments Alert -->
-  @if (bookingsWithBalance.Any())
- {
-    <div class="card" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #ff9800; margin-bottom: 24px;">
-   <div class="card-icon-header">
-                <span class="icon">??</span>
-             <h3 style="color: #e65100;">Pending Payments</h3>
-            <span style="margin-left: auto; background: #ff9800; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-              @bookingsWithBalance.Count booking@(bookingsWithBalance.Count != 1 ? "s" : "") with balance
-         </span>
-        </div>
-         <p style="color: #e65100; margin-bottom: 16px; font-size: 14px;">
-           Complete your payment to confirm your booking. You can pay the remaining balance anytime before check-in.
-         </p>
-<div style="display: flex; flex-direction: column; gap: 12px;">
-         @foreach (var booking in bookingsWithBalance)
-             {
-                   <div style="background: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-           <div>
-     <div style="font-weight: 600; font-family: 'Lora', serif; color: #1d1d1f;">
-   @booking.room_name
-        </div>
-    <div style="font-size: 13px; color: #6e6e73;">
-        Booking #@booking.booking_id • @booking.check_in_date.ToString("MMM dd") - @booking.check_out_date.ToString("MMM dd")
-           </div>
-    <div style="font-size: 12px; color: #86868b; margin-top: 4px;">
-       @booking.nights night@(booking.nights != 1 ? "s" : "") • @booking.person_count guest@(booking.person_count != 1 ? "s" : "")
-          </div>
-           </div>
-  <div style="text-align: right;">
-   <div style="font-size: 12px; color: #6e6e73;">Already paid: ?@booking.total_paid.ToString("N2")</div>
-     <div style="font-size: 18px; font-weight: 700; color: #e65100; font-family: 'Playfair Display', serif;">
- ?@booking.remaining_balance.ToString("N2") remaining
-   </div>
-  </div>
-            <button class="btn btn-primary" style="min-width: 140px;" @onclick="() => PayRemainingBalance(booking.booking_id)">
-    ?? Pay Balance
-            </button>
-             </div>
-             }
-</div>
-     </div>
-            }
+			<!-- Pending Payments Alert -->
+			@if (bookingsWithBalance.Any())
+			{
+				<div class="card" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #ff9800; margin-bottom: 24px;">
+					<div class="card-icon-header">
+						<span class="icon">??</span>
+						<h3 style="color: #e65100;">Pending Payments</h3>
+						<span style="margin-left: auto; background: #ff9800; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+							@bookingsWithBalance.Count booking@(bookingsWithBalance.Count != 1 ? "s" : "") with balance
+						</span>
+					</div>
+					<p style="color: #e65100; margin-bottom: 16px; font-size: 14px;">
+						Complete your payment to confirm your booking. You can pay the remaining balance anytime before check-in.
+					</p>
+					<div style="display: flex; flex-direction: column; gap: 12px;">
+						@foreach (var booking in bookingsWithBalance)
+						{
+							<div style="background: white; border-radius: 12px; padding: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+								<div>
+									<div style="font-weight: 600; font-family: 'Lora', serif; color: #1d1d1f;">
+										@booking.room_name
+									</div>
+									<div style="font-size: 13px; color: #6e6e73;">
+										Booking #@booking.booking_id • @booking.check_in_date.ToString("MMM dd") - @booking.check_out_date.ToString("MMM dd")
+									</div>
+									<div style="font-size: 12px; color: #86868b; margin-top: 4px;">
+										@booking.nights night@(booking.nights != 1 ? "s" : "") • @booking.person_count guest@(booking.person_count != 1 ? "s" : "")
+									</div>
+								</div>
+								<div style="text-align: right;">
+									<div style="font-size: 12px; color: #6e6e73;">Already paid: ?@booking.total_paid.ToString("N2")</div>
+									<div style="font-size: 18px; font-weight: 700; color: #e65100; font-family: 'Playfair Display', serif;">
+										?@booking.remaining_balance.ToString("N2") remaining
+									</div>
+								</div>
+								<button class="btn btn-primary" style="min-width: 140px;" @onclick="() => PayRemainingBalance(booking.booking_id)">
+									?? Pay Balance
+								</button>
+							</div>
+						}
+					</div>
+				</div>
+			}
 
-    <!-- Main Dashboard Grid -->
-            <div class="dashboard-grid">
-      <!-- Upcoming Booking Card -->
-   <div class="card upcoming-card">
-           <div class="card-icon-header">
-        <span class="icon">??</span>
-  <h3>Upcoming Booking</h3>
-          </div>
- @if (currentBooking == null)
-         {
-             <p class="empty-text">No upcoming booking.</p>
-    }
-        else
-           {
-          <div class="booking-content">
-   <div class="booking-info-left">
-      <h4 class="room-title">@(currentBooking.room_name ?? "Room")</h4>
-         <p class="booking-dates">Check-in @currentBooking.check_in_date.ToString("ddd, MMM dd") • Check-out @currentBooking.check_out_date.ToString("ddd, MMM dd")</p>
-         <p class="booking-meta">Guests: @currentBooking.person_count adult@(currentBooking.person_count != 1 ? "s" : "") • @GetNights(currentBooking) night@(GetNights(currentBooking) != 1 ? "s" : "")</p>
-      <p class="booking-id-text">@GetDaysUntilCheckIn(currentBooking) • Booking ID #@currentBooking.booking_id</p>
-     <a href="#" class="view-link">View details</a>
-      </div>
-         <div class="booking-map-placeholder">
-             <div class="map-icon">???</div>
-   </div>
-               </div>
-          }
-            </div>
+			<!-- Main Dashboard Grid -->
+			<div class="dashboard-grid">
+				<!-- Upcoming Booking Card -->
+				<div class="card upcoming-card">
+					<div class="card-icon-header">
+						<span class="icon">??</span>
+						<h3>Upcoming Booking</h3>
+					</div>
+					@if (currentBooking == null)
+					{
+						<p class="empty-text">No upcoming booking.</p>
+					}
+					else
+					{
+						<div class="booking-content">
+							<div class="booking-info-left">
+								<h4 class="room-title">@(currentBooking.room_name ?? "Room")</h4>
+								<p class="booking-dates">Check-in @currentBooking.check_in_date.ToString("ddd, MMM dd") • Check-out @currentBooking.check_out_date.ToString("ddd, MMM dd")</p>
+								<p class="booking-meta">Guests: @currentBooking.person_count adult@(currentBooking.person_count != 1 ? "s" : "") • @GetNights(currentBooking) night@(GetNights(currentBooking) != 1 ? "s" : "")</p>
+								<p class="booking-id-text">@GetDaysUntilCheckIn(currentBooking) • Booking ID #@currentBooking.booking_id</p>
+								<a href="/client/stays/@id/booking/@currentBooking.booking_id" class="view-link">View details ?</a>
+							</div>
+							<div class="booking-map-placeholder">
+								<div class="map-icon">???</div>
+							</div>
+						</div>
+					}
+				</div>
 
-    <!-- Total Stays Card -->
-           <div class="card stays-card">
-       <div class="card-header-split">
-      <div class="card-icon-header">
-        <span class="icon">??</span>
-    <h3>Total Stays</h3>
-   </div>
-              <span class="time-label">Last 12 months</span>
-       </div>
-                    <div class="stays-content">
-      <div class="stays-number">@TotalStays</div>
-      <p class="stays-label">Completed bookings</p>
-         <p class="stays-avg">
-          Average @(AverageNights > 0 ? AverageNights.ToString("0.1") : "–") nights / stay
-               </p>
-       <div class="month-pills">
-  @foreach (var month in new[] { "Jan", "Mar", "May", "Jul", "Sep", "Nov" })
-   {
-       <div class="month-pill" style="background: @GetMonthColor(month)">
-<span class="month-label">@month</span>
-                </div>
-   }
-             @if (!string.IsNullOrEmpty(PeakMonth))
-           {
-            <span class="peak-label">Peak in @PeakMonth</span>
-         }
-</div>
-        </div>
-             </div>
+				<!-- Total Stays Card -->
+				<div class="card stays-card">
+					<div class="card-header-split">
+						<div class="card-icon-header">
+							<span class="icon">??</span>
+							<h3>Total Stays</h3>
+						</div>
+						<span class="time-label">Last 12 months</span>
+					</div>
+					<div class="stays-content">
+						<div class="stays-number">@TotalStays</div>
+						<p class="stays-label">Completed bookings</p>
+						<p class="stays-avg">
+							Average @(AverageNights > 0 ? AverageNights.ToString("0.1") : "–") nights / stay
+						</p>
+						<div class="month-pills">
+							@foreach (var month in new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" })
+							{
+								<div class="month-pill" style="background: @GetMonthColor(month)">
+									<span class="month-label">@month</span>
+								</div>
+							}
+							@if (!string.IsNullOrEmpty(PeakMonth))
+							{
+								<span class="peak-label">Peak in @PeakMonth</span>
+							}
+						</div>
+					</div>
+				</div>
 
-                <!-- Loyalty & Rewards Card -->
-       <div class="card loyalty-card">
-      <div class="card-header-split">
-            <div class="card-icon-header">
-           <span class="icon">?</span>
-             <h3>Loyalty & Rewards</h3>
-        </div>
-         <span class="member-since">Member since @MemberSinceYear</span>
-  </div>
-       <div class="loyalty-content">
-      <div class="points-circle-wrapper">
-  <svg class="points-circle" viewBox="0 0 120 120">
-   <circle cx="60" cy="60" r="54" fill="none" stroke="#e8e8ea" stroke-width="10" />
-    <circle cx="60" cy="60" r="54" fill="none" stroke="url(#gradient)" stroke-width="10"
-   stroke-dasharray="@GetCircleProgress() 340" stroke-dashoffset="0"
-           transform="rotate(-90 60 60)" stroke-linecap="round" />
-         <defs>
-       <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#667eea" />
-    <stop offset="100%" stop-color="#764ba2" />
-         </linearGradient>
-   </defs>
-     </svg>
-        <div class="points-center">
-   <div class="points-number">@LoyaltyPoints</div>
-               <div class="points-label">points</div>
-    </div>
-      </div>
-<div class="loyalty-details">
-         <span class="gold-badge">@GetTierBadge() @CurrentTier member</span>
-      <p class="loyalty-perks">@GetTierPerks()</p>
-             @if (CurrentTier != "Platinum")
-           {
-     <p class="next-tier-label">Next tier: @NextTier</p>
-           <p class="points-to-next">@PointsToNextTier points to reach @NextTier</p>
-             }
-   else
-     {
-                 <p class="next-tier-label">?? You've reached the highest tier!</p>
- }
-       </div>
-   </div>
-       </div>
+				<!-- Loyalty & Rewards Card -->
+				<div class="card loyalty-card">
+					<div class="card-header-split">
+						<div class="card-icon-header">
+							<span class="icon">?</span>
+							<h3>Loyalty & Rewards</h3>
+						</div>
+						<span class="member-since">Member since @MemberSinceYear</span>
+					</div>
+					<div class="loyalty-content">
+						<div class="points-circle-wrapper">
+							<svg class="points-circle" viewBox="0 0 120 120">
+								<circle cx="60" cy="60" r="54" fill="none" stroke="#e8e8ea" stroke-width="10" />
+								<circle cx="60" cy="60" r="54" fill="none" stroke="url(#gradient)" stroke-width="10"
+										stroke-dasharray="@GetCircleProgress() 340" stroke-dashoffset="0"
+										transform="rotate(-90 60 60)" stroke-linecap="round" />
+								<defs>
+									<linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+										<stop offset="0%" stop-color="#667eea" />
+										<stop offset="100%" stop-color="#764ba2" />
+									</linearGradient>
+								</defs>
+							</svg>
+							<div class="points-center">
+								<div class="points-number">@LoyaltyPoints</div>
+								<div class="points-label">points</div>
+							</div>
+						</div>
+						<div class="loyalty-details">
+							<span class="gold-badge">@GetTierBadge() @CurrentTier member</span>
+							<p class="loyalty-perks">@GetTierPerks()</p>
+							@if (CurrentTier != "Platinum")
+							{
+								<p class="next-tier-label">Next tier: @NextTier</p>
+								<p class="points-to-next">@PointsToNextTier points to reach @NextTier</p>
+							}
+							else
+							{
+								<p class="next-tier-label">?? You've reached the highest tier!</p>
+							}
+						</div>
+					</div>
+				</div>
 
-        <!-- Messages & Notifications Card -->
-           <div class="card messages-card" style="cursor: pointer;" @onclick="@(() => Navigation.NavigateTo($"/client/messages/{id}"))">
- <div class="card-header-split">
-             <div class="card-icon-header">
-   <span class="icon">??</span>
-    <h3>Messages</h3>
-   </div>
-           <span class="unread-badge">@UnreadCount unread</span>
-    </div>
-        <ul class="messages-list">
-     @if (recentMessages.Any())
-      {
-        @foreach (var message in recentMessages.Take(2))
-         {
-         <li class="message-item">
-        <div class="message-row">
-        <span class="message-title">@(message.message_subject ?? "No Subject")</span>
-     <span class="message-time">@GetTimeAgo(message.sent_date)</span>
-     </div>
-    <p class="message-body">@GetMessagePreview(message.message_body)</p>
-  </li>
-    }
-             }
-          else
-                {
-     <li class="message-item">
-        <p class="empty-text">No recent messages</p>
-         </li>
-         }
-      </ul>
-           <a href="/client/messages/@id" class="view-link" @onclick:stopPropagation="true">View all messages ?</a>
-                </div>
-      </div>
+				<!-- Messages & Notifications Card -->
+				<div class="card messages-card" style="cursor: pointer;" @onclick="@(() => Navigation.NavigateTo($"/client/messages/{id}"))">
+					<div class="card-header-split">
+						<div class="card-icon-header">
+							<span class="icon">??</span>
+							<h3>Messages</h3>
+						</div>
+						<span class="unread-badge">@UnreadCount unread</span>
+					</div>
+					<ul class="messages-list">
+						@if (recentMessages.Any())
+						{
+							@foreach (var message in recentMessages.Take(2))
+							{
+								<li class="message-item">
+									<div class="message-row">
+										<span class="message-title">@(message.message_subject ?? "No Subject")</span>
+										<span class="message-time">@GetTimeAgo(message.sent_date)</span>
+									</div>
+									<p class="message-body">@GetMessagePreview(message.message_body)</p>
+								</li>
+							}
+						}
+						else
+						{
+							<li class="message-item">
+								<p class="empty-text">No recent messages</p>
+							</li>
+						}
+					</ul>
+					<a href="/client/messages/@id" class="view-link" @onclick:stopPropagation="true">View all messages ?</a>
+				</div>
+			</div>
 
-     <!-- Recent Booking History -->
-            <div class="card history-card">
-         <div class="card-header-split">
-               <div>
-  <h3>Recent Booking History</h3>
-             <p class="card-subtitle">Overview of your latest stays and their status.</p>
-      </div>
-      <a href="#" class="view-all-link">View all bookings</a>
-         </div>
-                @if (bookingHistory == null || bookingHistory.Count == 0)
-  {
-         <p class="empty-text">No booking history available.</p>
-       }
-     else
-           {
-       <table class="history-table">
-         <thead>
-              <tr>
-               <th>Booking ID</th>
-                <th>Room type</th>
-         <th>Duration & Guests</th>
-  <th>Status</th>
-               <th>Price</th>
-     <th>Action</th>
-   </tr>
-     </thead>
-<tbody>
- @foreach (var booking in bookingHistory.Take(5))
-    {
-      var hasBalance = bookingsWithBalance.Any(b => b.booking_id == booking.booking_id);
-        <tr>
-          <td>#@booking.booking_id.ToString("D7")</td>
-               <td>@(booking.room_name ?? "Unknown Room")</td>
-   <td>
-       @GetNights(booking) night@(GetNights(booking) != 1 ? "s" : "") • @booking.person_count guest@(booking.person_count != 1 ? "s" : "")<br />
-         <small>@booking.check_in_date.ToString("MMM dd")–@booking.check_out_date.ToString("MMM dd")</small>
-   </td>
-      <td>
-           <span class="status-badge status-@(GetStatusBadge(booking.booking_status ?? "pending"))">
-     @(booking.booking_status ?? "Pending")
-           </span>
-        </td>
-          <td>@(CalculateBookingTotal(booking).ToString("C"))</td>
-       <td>
-          @if (hasBalance)
-     {
-  <button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;" 
-              @onclick="() => PayRemainingBalance(booking.booking_id)">
-              Pay Balance
-  </button>
-           }
-         else
-    {
- <span style="color: #86868b; font-size: 12px;">—</span>
-       }
-         </td>
-        </tr>
-              }
-       </tbody>
-        </table>
-    }
-            </div>
-   }
-    </div>
+			<!-- Recent Booking History -->
+			<div class="card history-card">
+				<div class="card-header-split">
+					<div>
+						<h3>Recent Booking History</h3>
+						<p class="card-subtitle">Overview of your latest stays and their status.</p>
+					</div>
+					<a href="/client/stays/@id" class="view-all-link">View all bookings ?</a>
+				</div>
+				@if (bookingHistory == null || bookingHistory.Count == 0)
+				{
+					<p class="empty-text">No booking history available.</p>
+				}
+				else
+				{
+					<table class="history-table">
+						<thead>
+							<tr>
+								<th>Booking ID</th>
+								<th>Room type</th>
+								<th>Duration & Guests</th>
+								<th>Status</th>
+								<th>Price</th>
+								<th>Action</th>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (var booking in bookingHistory.Take(5))
+							{
+								var hasBalance = bookingsWithBalance.Any(b => b.booking_id == booking.booking_id);
+								<tr>
+									<td>#@booking.booking_id.ToString("D7")</td>
+									<td>@(booking.room_name ?? "Unknown Room")</td>
+									<td>
+										@GetNights(booking) night@(GetNights(booking) != 1 ? "s" : "") • @booking.person_count guest@(booking.person_count != 1 ? "s" : "")<br />
+										<small>@booking.check_in_date.ToString("MMM dd")–@booking.check_out_date.ToString("MMM dd")</small>
+									</td>
+									<td>
+										<span class="status-badge status-@(GetStatusBadge(booking.booking_status ?? "pending"))">
+											@(booking.booking_status ?? "Pending")
+										</span>
+									</td>
+									<td>@(CalculateBookingTotal(booking).ToString("C"))</td>
+									<td>
+										@if (hasBalance)
+										{
+											<button class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;"
+													@onclick="() => PayRemainingBalance(booking.booking_id)">
+												Pay Balance
+											</button>
+										}
+										else
+										{
+											<span style="color: #86868b; font-size: 12px;">—</span>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				}
+			</div>
+		}
+	</div>
 </div>
 
 @code {
-    [Parameter] public int id { get; set; }
+	[Parameter] public int id { get; set; }
 
-  Hospitality.Models.User? user;
-    Hospitality.Models.Booking? currentBooking;
-    List<Hospitality.Models.Booking> bookingHistory = new();
-  List<Hospitality.Models.Message> recentMessages = new();
-    List<Hospitality.Services.BookingWithBalance> bookingsWithBalance = new();
-    Hospitality.Models.LoyaltyProgram? loyaltyProgram;
-  Dictionary<string, int> monthlyStays = new();
+	Hospitality.Models.User? user;
+	Hospitality.Models.Booking? currentBooking;
+	List<Hospitality.Models.Booking> bookingHistory = new();
+	List<Hospitality.Models.Message> recentMessages = new();
+	List<Hospitality.Services.BookingWithBalance> bookingsWithBalance = new();
+	Hospitality.Models.LoyaltyProgram? loyaltyProgram;
+	Dictionary<string, int> monthlyStays = new();
 
- bool loading = true;
-    int actualClientId = 0;
-    bool isDropdownOpen = false;
+	bool loading = true;
+	int actualClientId = 0;
 
-    protected override async Task OnParametersSetAsync()
-    {
-        await LoadDataAsync();
-    }
+	protected override async Task OnParametersSetAsync()
+	{
+		await LoadDataAsync();
+	}
 
-    private async Task LoadDataAsync()
-    {
-        loading = true;
-        StateHasChanged();
+	private async Task LoadDataAsync()
+	{
+		loading = true;
+		StateHasChanged();
 
- try
- {
-       Console.WriteLine($"?? Loading client profile for user ID: {id}");
+		try
+		{
+			Console.WriteLine($"?? Loading client profile for user ID: {id}");
 
-         // Load user data
-          user = await UserService.GetUserByIdAsync(id);
+			// Load user data
+			user = await UserService.GetUserByIdAsync(id);
 
- if (user == null)
-       {
-       Console.WriteLine("? UserService returned null!");
-     }
- else
-            {
-                Console.WriteLine($"? User loaded: {user.user_fname}");
+			if (user == null)
+			{
+				Console.WriteLine("? UserService returned null!");
+			}
+			else
+			{
+				Console.WriteLine($"? User loaded: {user.user_fname}");
 
-        // Get client_id from user_id
-                actualClientId = await GetOrCreateClientIdAsync(id);
-     Console.WriteLine($"? Client ID: {actualClientId}");
+				// Get client_id from user_id
+				actualClientId = await GetOrCreateClientIdAsync(id);
+				Console.WriteLine($"? Client ID: {actualClientId}");
 
-     // Load current/upcoming booking
-       currentBooking = await BookingService.GetCurrentBookingByUserIdAsync(id);
-     Console.WriteLine($"? Current booking: {(currentBooking != null ? $"#{currentBooking.booking_id}" : "None")}");
+				// Load current/upcoming booking
+				currentBooking = await BookingService.GetCurrentBookingByUserIdAsync(id);
+				Console.WriteLine($"? Current booking: {(currentBooking != null ? $"#{currentBooking.booking_id}" : "None")}");
 
-   // Load booking history
-       bookingHistory = await BookingService.GetBookingsByUserIdAsync(id);
-          Console.WriteLine($"? Booking history: {bookingHistory.Count} bookings");
+				// Load booking history
+				bookingHistory = await BookingService.GetBookingsByUserIdAsync(id);
+				Console.WriteLine($"? Booking history: {bookingHistory.Count} bookings");
 
-       // Load loyalty program data
-       if (actualClientId > 0)
-                {
-     try
-             {
-           loyaltyProgram = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
-   Console.WriteLine($"? Loyalty: {loyaltyProgram?.total_points ?? 0} points, {loyaltyProgram?.current_tier ?? "Bronze"} tier");
-       }
-      catch (Exception ex)
-       {
-      Console.WriteLine($"?? Could not load loyalty: {ex.Message}");
-   }
+				// Load loyalty program data
+				if (actualClientId > 0)
+				{
+					try
+					{
+						loyaltyProgram = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
+						Console.WriteLine($"? Loyalty: {loyaltyProgram?.total_points ?? 0} points, {loyaltyProgram?.current_tier ?? "Bronze"} tier");
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine($"?? Could not load loyalty: {ex.Message}");
+					}
 
-         // Load recent messages
-         try
-         {
-            var filter = new Hospitality.Models.MessageFilter { FilterType = "All", TimeRange = "Last 90 days" };
-            recentMessages = await MessageService.GetClientMessagesAsync(actualClientId, filter);
-     Console.WriteLine($"? Messages: {recentMessages.Count} messages");
-       }
-     catch (Exception ex)
-           {
-                 Console.WriteLine($"?? Could not load messages: {ex.Message}");
-       }
+					// Load recent messages
+					try
+					{
+						var filter = new Hospitality.Models.MessageFilter { FilterType = "All", TimeRange = "Last 90 days" };
+						recentMessages = await MessageService.GetClientMessagesAsync(actualClientId, filter);
+						Console.WriteLine($"? Messages: {recentMessages.Count} messages");
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine($"?? Could not load messages: {ex.Message}");
+					}
 
-           // Load bookings with remaining balance
-      try
-             {
-     bookingsWithBalance = await PaymentService.GetBookingsWithBalanceAsync(actualClientId);
-      Console.WriteLine($"? Bookings with balance: {bookingsWithBalance.Count}");
-     }
-          catch (Exception ex)
-        {
-       Console.WriteLine($"?? Could not load bookings with balance: {ex.Message}");
-          }
-    }
+					// Load bookings with remaining balance
+					try
+					{
+						bookingsWithBalance = await PaymentService.GetBookingsWithBalanceAsync(actualClientId);
+						Console.WriteLine($"? Bookings with balance: {bookingsWithBalance.Count}");
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine($"?? Could not load bookings with balance: {ex.Message}");
+					}
+				}
 
-        // Calculate monthly stays from booking history
-         CalculateMonthlyStays();
-   }
- }
-        catch (Exception ex)
-   {
-  Console.WriteLine($"? Exception: {ex.Message}");
-        }
-        finally
-    {
-            loading = false;
-            StateHasChanged();
-       Console.WriteLine("? Finished loading");
-        }
-    }
+				// Calculate monthly stays from booking history
+				CalculateMonthlyStays();
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Exception: {ex.Message}");
+		}
+		finally
+		{
+			loading = false;
+			StateHasChanged();
+			Console.WriteLine("? Finished loading");
+		}
+	}
 
-    private void CalculateMonthlyStays()
-    {
-        monthlyStays.Clear();
-    var last12Months = DateTime.Now.AddMonths(-12);
+	private void CalculateMonthlyStays()
+	{
+		monthlyStays.Clear();
+		var last12Months = DateTime.Now.AddMonths(-12);
 
-        var completedBookings = bookingHistory
+		var completedBookings = bookingHistory
    .Where(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase)
-          && b.check_in_date >= last12Months)
+		  && b.check_in_date >= last12Months)
    .ToList();
 
-        foreach (var booking in completedBookings)
-        {
-            var monthKey = booking.check_in_date.ToString("MMM");
-      if (monthlyStays.ContainsKey(monthKey))
-            monthlyStays[monthKey]++;
-            else
-     monthlyStays[monthKey] = 1;
-        }
-    }
+		foreach (var booking in completedBookings)
+		{
+			var monthKey = booking.check_in_date.ToString("MMM");
+			if (monthlyStays.ContainsKey(monthKey))
+				monthlyStays[monthKey]++;
+			else
+				monthlyStays[monthKey] = 1;
+		}
+	}
 
-    async Task<int> GetOrCreateClientIdAsync(int userId)
-    {
-        try
-        {
-         using var con = Hospitality.Database.DbConnection.GetConnection();
-            await con.OpenAsync();
+	async Task<int> GetOrCreateClientIdAsync(int userId)
+	{
+		try
+		{
+			using var con = Hospitality.Database.DbConnection.GetConnection();
+			await con.OpenAsync();
 
-     string selectSql = "SELECT client_id FROM Clients WHERE user_id = @userId";
-            using var selectCmd = new Microsoft.Data.SqlClient.SqlCommand(selectSql, con);
-   selectCmd.Parameters.AddWithValue("@userId", userId);
+			string selectSql = "SELECT client_id FROM Clients WHERE user_id = @userId";
+			using var selectCmd = new Microsoft.Data.SqlClient.SqlCommand(selectSql, con);
+			selectCmd.Parameters.AddWithValue("@userId", userId);
 
-            var result = await selectCmd.ExecuteScalarAsync();
-   if (result != null && result != DBNull.Value)
-       {
-      return Convert.ToInt32(result);
- }
+			var result = await selectCmd.ExecuteScalarAsync();
+			if (result != null && result != DBNull.Value)
+			{
+				return Convert.ToInt32(result);
+			}
 
-            // Create client record if it doesn't exist
-            string insertSql = "INSERT INTO Clients (user_id) VALUES (@userId); SELECT CAST(SCOPE_IDENTITY() AS INT);";
-  using var insertCmd = new Microsoft.Data.SqlClient.SqlCommand(insertSql, con);
-      insertCmd.Parameters.AddWithValue("@userId", userId);
-       var newClientId = await insertCmd.ExecuteScalarAsync();
+			// Create client record if it doesn't exist
+			string insertSql = "INSERT INTO Clients (user_id) VALUES (@userId); SELECT CAST(SCOPE_IDENTITY() AS INT);";
+			using var insertCmd = new Microsoft.Data.SqlClient.SqlCommand(insertSql, con);
+			insertCmd.Parameters.AddWithValue("@userId", userId);
+			var newClientId = await insertCmd.ExecuteScalarAsync();
 
-    return newClientId != null ? Convert.ToInt32(newClientId) : 0;
-      }
-        catch (Exception ex)
-  {
-      Console.WriteLine($"? Error getting/creating client_id: {ex.Message}");
-    return 0;
-        }
-    }
+			return newClientId != null ? Convert.ToInt32(newClientId) : 0;
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Error getting/creating client_id: {ex.Message}");
+			return 0;
+		}
+	}
 
-    void BookRoom() => Navigation.NavigateTo($"/booking/new/{id}");
-  void ViewReceipts() { Console.WriteLine("?? View Receipts clicked"); }
-    void EditProfile() { Console.WriteLine("?? Edit Profile clicked"); }
-    
-    void PayRemainingBalance(int bookingId)
-    {
-        // Navigate to payment page for existing booking
-    Navigation.NavigateTo($"/booking/payment/{id}/{bookingId}");
-    }
+	void BookRoom() => Navigation.NavigateTo($"/booking/new/{id}");
+	void ViewReceipts() => Navigation.NavigateTo($"/client/receipts/{id}");
 
-    string GetInitials()
-    {
-        if (user == null) return "G";
-      var initials = new[] { user.user_fname, user.user_mname, user.user_lname }
-         .Where(s => !string.IsNullOrWhiteSpace(s))
-    .Select(s => s![0].ToString().ToUpper());
-        return string.Join("", initials);
-    }
+	void PayRemainingBalance(int bookingId)
+	{
+		// Navigate to payment page for existing booking
+		Navigation.NavigateTo($"/booking/payment/{id}/{bookingId}");
+	}
 
-    string GetStatusBadge(string status) => status?.ToLowerInvariant() switch
-    {
-  "confirmed" => "confirmed",
-        "active" or "checked-in" => "active",
-    "completed" => "completed",
-        "cancelled" => "cancelled",
-        "partially_paid" => "pending",
-    _ => "pending"
-    };
+	string GetInitials()
+	{
+		if (user == null) return "G";
+		var initials = new[] { user.user_fname, user.user_mname, user.user_lname }
+		   .Where(s => !string.IsNullOrWhiteSpace(s))
+	  .Select(s => s![0].ToString().ToUpper());
+		return string.Join("", initials);
+	}
 
-    string GetMonthColor(string month)
-    {
-      if (monthlyStays.TryGetValue(month, out int count) && count > 0)
-        {
-          return count >= 2 ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-     : "linear-gradient(135deg, #9e9ea3 0%, #bcbcc0 100%)";
-        }
-    return "#d8d8dc";
-  }
+	string GetStatusBadge(string status) => status?.ToLowerInvariant() switch
+	{
+		"confirmed" => "confirmed",
+		"active" or "checked-in" => "active",
+		"completed" => "completed",
+		"cancelled" => "cancelled",
+		"partially_paid" => "pending",
+		_ => "pending"
+	};
 
-    int GetNights(Hospitality.Models.Booking booking) => Math.Max(1, (int)(booking.check_out_date - booking.check_in_date).TotalDays);
+	string GetMonthColor(string month)
+	{
+		if (monthlyStays.TryGetValue(month, out int count) && count > 0)
+		{
+			return count >= 2 ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+	   : "linear-gradient(135deg, #9e9ea3 0%, #bcbcc0 100%)";
+		}
+		return "#d8d8dc";
+	}
 
-    string GetDaysUntilCheckIn(Hospitality.Models.Booking booking)
-    {
- var daysUntil = (int)(booking.check_in_date - DateTime.Today).TotalDays;
-        return daysUntil > 0 ? $"Check-in in {daysUntil} day{(daysUntil != 1 ? "s" : "")}"
-    : daysUntil == 0 ? "Check-in today"
+	int GetNights(Hospitality.Models.Booking booking) => Math.Max(1, (int)(booking.check_out_date - booking.check_in_date).TotalDays);
+
+	string GetDaysUntilCheckIn(Hospitality.Models.Booking booking)
+	{
+		var daysUntil = (int)(booking.check_in_date - DateTime.Today).TotalDays;
+		return daysUntil > 0 ? $"Check-in in {daysUntil} day{(daysUntil != 1 ? "s" : "")}"
+	: daysUntil == 0 ? "Check-in today"
    : "Currently staying";
-    }
+	}
 
-    decimal CalculateBookingTotal(Hospitality.Models.Booking booking)
-    {
-        var nights = GetNights(booking);
-        return (booking.room_price ?? 0) * nights;
-    }
+	decimal CalculateBookingTotal(Hospitality.Models.Booking booking)
+	{
+		var nights = GetNights(booking);
+		return (booking.room_price ?? 0) * nights;
+	}
 
-    int TotalStays => loyaltyProgram?.lifetime_stays ??
-        bookingHistory?.Count(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase)) ?? 0;
+	int TotalStays => loyaltyProgram?.lifetime_stays ??
+		bookingHistory?.Count(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase)) ?? 0;
 
-    double AverageNights
-    {
-      get
-   {
-    var completedBookings = bookingHistory?
-     .Where(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase))
-    .ToList();
-    return completedBookings?.Any() == true ? completedBookings.Average(GetNights) : 0;
-        }
- }
+	double AverageNights
+	{
+		get
+		{
+			var completedBookings = bookingHistory?
+			 .Where(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase))
+			.ToList();
+			return completedBookings?.Any() == true ? completedBookings.Average(GetNights) : 0;
+		}
+	}
 
-    string PeakMonth
-    {
-        get
-    {
-            if (monthlyStays.Count == 0) return "";
-          var peak = monthlyStays.OrderByDescending(x => x.Value).FirstOrDefault();
-    return peak.Value > 0 ? peak.Key : "";
-        }
-    }
+	string PeakMonth
+	{
+		get
+		{
+			if (monthlyStays.Count == 0) return "";
+			var peak = monthlyStays.OrderByDescending(x => x.Value).FirstOrDefault();
+			return peak.Value > 0 ? peak.Key : "";
+		}
+	}
 
-    int LoyaltyPoints => loyaltyProgram?.total_points ?? 0;
+	int LoyaltyPoints => loyaltyProgram?.total_points ?? 0;
 
-    string CurrentTier => loyaltyProgram?.current_tier ?? "Bronze";
+	string CurrentTier => loyaltyProgram?.current_tier ?? "Bronze";
 
-    string NextTier => CurrentTier switch
-    {
-        "Bronze" => "Silver",
-        "Silver" => "Gold",
-        "Gold" => "Platinum",
-        _ => "Platinum"
-    };
+	string NextTier => CurrentTier switch
+	{
+		"Bronze" => "Silver",
+		"Silver" => "Gold",
+		"Gold" => "Platinum",
+		_ => "Platinum"
+	};
 
-    int MemberSinceYear => loyaltyProgram?.member_since.Year ?? DateTime.Now.Year;
+	int MemberSinceYear => loyaltyProgram?.member_since.Year ?? DateTime.Now.Year;
 
-  int PointsToNextTier => CurrentTier switch
-    {
-        "Bronze" => Math.Max(0, 500 - LoyaltyPoints),
-   "Silver" => Math.Max(0, 2000 - LoyaltyPoints),
-   "Gold" => Math.Max(0, 5000 - LoyaltyPoints),
-    _ => 0
-    };
+	int PointsToNextTier => CurrentTier switch
+	{
+		"Bronze" => Math.Max(0, 500 - LoyaltyPoints),
+		"Silver" => Math.Max(0, 2000 - LoyaltyPoints),
+		"Gold" => Math.Max(0, 5000 - LoyaltyPoints),
+		_ => 0
+	};
 
-    double GetCircleProgress()
-    {
-        int maxPoints = CurrentTier switch
-   {
-  "Bronze" => 500,
-          "Silver" => 2000,
-     "Gold" => 5000,
-       _ => 10000
-        };
-     return LoyaltyPoints > 0 ? Math.Min(340, (LoyaltyPoints / (double)maxPoints) * 340) : 0;
-    }
+	double GetCircleProgress()
+	{
+		int maxPoints = CurrentTier switch
+		{
+			"Bronze" => 500,
+			"Silver" => 2000,
+			"Gold" => 5000,
+			_ => 10000
+		};
+		return LoyaltyPoints > 0 ? Math.Min(340, (LoyaltyPoints / (double)maxPoints) * 340) : 0;
+	}
 
-    string GetTierBadge() => CurrentTier switch
-    {
-        "Bronze" => "??",
-        "Silver" => "??",
-        "Gold" => "??",
-        "Platinum" => "??",
-        _ => "?"
-    };
+	string GetTierBadge() => CurrentTier switch
+	{
+		"Bronze" => "??",
+		"Silver" => "??",
+		"Gold" => "??",
+		"Platinum" => "??",
+		_ => "?",
+	};
 
-    string GetTierPerks() => CurrentTier switch
-    {
-      "Bronze" => "Earn 10 points per dollar spent on bookings.",
-        "Silver" => "Enjoy 5% discount on bookings and early check-in when available.",
-        "Gold" => "Enjoy late checkout, room upgrades (when available), and welcome drinks.",
-        "Platinum" => "VIP treatment: complimentary upgrades, lounge access, and concierge service.",
-        _ => "Start earning points with your bookings!"
-    };
+	string GetTierPerks() => CurrentTier switch
+	{
+		"Bronze" => "Earn 10 points per dollar spent on bookings.",
+		"Silver" => "Enjoy 5% discount on bookings and early check-in when available.",
+		"Gold" => "Enjoy late checkout, room upgrades (when available), and welcome drinks.",
+		"Platinum" => "VIP treatment: complimentary upgrades, lounge access, and concierge service.",
+		_ => "Start earning points with your bookings!",
+	};
 
-    int UnreadCount => recentMessages?.Count(m => !m.is_read) ?? 0;
+	int UnreadCount => recentMessages?.Count(m => !m.is_read) ?? 0;
 
-    string GetTimeAgo(DateTime date)
-    {
-    var timeSpan = DateTime.Now - date;
-        if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
-        if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
-        if (timeSpan.TotalDays < 7) return date.ToString("ddd");
-        return date.ToString("MMM dd");
-    }
+	string GetTimeAgo(DateTime date)
+	{
+		var timeSpan = DateTime.Now - date;
+		if (timeSpan.TotalMinutes < 60) return $"{(int)timeSpan.TotalMinutes}m ago";
+		if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
+		if (timeSpan.TotalDays < 7) return date.ToString("ddd");
+		return date.ToString("MMM dd");
+	}
 
-    string GetMessagePreview(string? body)
-  {
-        if (string.IsNullOrEmpty(body)) return "";
-   var preview = body.Replace("\r\n", " ").Replace("\n", " ");
-        return preview.Length > 60 ? preview.Substring(0, 60) + "..." : preview;
-    }
-
-    private void ToggleDropdown()
-    {
-        isDropdownOpen = !isDropdownOpen;
-    }
-
-    void Logout() => Navigation.NavigateTo("/");
+	string GetMessagePreview(string? body)
+	{
+		if (string.IsNullOrEmpty(body)) return "";
+		var preview = body.Replace("\r\n", " ").Replace("\n", " ");
+		return preview.Length > 60 ? preview.Substring(0, 60) + "..." : preview;
+	}
 }

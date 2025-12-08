@@ -11,12 +11,13 @@
 			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
 		</div>
 		<nav class="sidebar-nav">
-			<a href="/admin" class="nav-item"><span class="nav-icon">👥</span><span>EMPLOYEES</span></a>
-			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon">📊</span><span>DASHBOARD</span></a>
-			<a href="/admin/rooms" class="nav-item active"><span class="nav-icon">🏠</span><span>ROOMS</span></a>
-			<a href="/admin/rewards" class="nav-item"><span class="nav-icon">🎁</span><span>REWARDS</span></a>
-			<a href="/admin/messages" class="nav-item"><span class="nav-icon">💬</span><span>MESSAGES</span></a>
-			<a href="/admin/reports" class="nav-item"><span class="nav-icon">📈</span><span>REPORTS & ANALYTICS</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
+			<a href="/admin/rooms" class="nav-item active"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
+			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
+			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
 		</nav>
 	</aside>
 
@@ -27,14 +28,14 @@
 				<p class="page-subtitle">Manage hotel rooms and availability</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span>🔔</button>
-				<button class="icon-btn" title="Profile">👤</button>
-				<button class="icon-btn" title="Logout" @onclick="Logout">⎋</button>
+				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span><i class="icon icon-notification"></i></button>
+				<button class="icon-btn" title="Profile"><i class="icon icon-profile"></i></button>
+				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
 		<div class="toolbar">
-			<div class="search-box"><span>🔍</span><input type="text" placeholder="Search rooms..." @bind="searchQuery" @bind:event="oninput" /></div>
+			<div class="search-box"><span><i class="icon icon-search"></i></span><input type="text" placeholder="Search rooms..." @bind="searchQuery" @bind:event="oninput" /></div>
 			<button class="btn-sort" @onclick="SortByNumber">Sort: @(sortAsc ? "▲" : "▼")</button>
 			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Room</button>
 		</div>
@@ -58,7 +59,6 @@
 						<p class="card-role">Floor @room.room_floor</p>
 						<div class="room-price">$@room.room_price.ToString("N2") / night</div>
 						<div class="room-status-badge status-@room.room_status.ToLower()">@room.room_status</div>
-						@* (@room.room_available) *@
 						@if (room.room_picture != null)
 						{
 							<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" style="width:120px;height:120px;border-radius:8px;object-fit:cover;margin:8px auto;display:block;" />
@@ -69,9 +69,9 @@
 						}
 						<button class="btn-view-profile" @onclick="() => Edit(room)">Edit Room</button>
 						<div class="card-actions">
-							<button class="card-action-btn" title="Details" @onclick="() => Edit(room)">📋</button>
-							<button class="card-action-btn" title="Book" @onclick="() => BookRoom(room)">📅</button>
-							<button class="card-action-btn" title="Delete" @onclick="() => Delete(room)">🗑️</button>
+							<button class="card-action-btn" title="Details" @onclick="() => Edit(room)"><i class="icon icon-details"></i></button>
+							<button class="card-action-btn" title="Book" @onclick="() => BookRoom(room)"><i class="icon icon-calendar"></i></button>
+							<button class="card-action-btn" title="Delete" @onclick="() => Delete(room)"><i class="icon icon-delete"></i></button>
 						</div>
 					</div>
 				}
@@ -101,7 +101,7 @@
 	<div class="modal-overlay" @onclick="CloseModal">
 		<div class="modal-card" @onclick:stopPropagation>
 			<div class="modal-header">
-				<h2 class="modal-title">@(isEdit ? "Edit Room" : "New Room")</h2><button class="modal-close-btn" @onclick="CloseModal">✕</button>
+				<h2 class="modal-title">@(isEdit ? "Edit Room" : "New Room")</h2><button class="modal-close-btn" @onclick="CloseModal"><i class="icon icon-close"></i></button>
 			</div>
 			<div class="modal-body">
 				<div class="form-grid">

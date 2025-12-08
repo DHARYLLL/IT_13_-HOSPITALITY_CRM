@@ -4,37 +4,13 @@
 @inject Hospitality.Services.UserService UserService
 @inject Hospitality.Services.BookingService BookingService
 
+<link rel="stylesheet" href="css/clientprofile.css" />
+<link rel="stylesheet" href="css/client-layout.css" />
 <link rel="stylesheet" href="css/client-loyalty.css" />
 
 <div class="loyalty-page">
-	<!-- Top Navigation Bar -->
-	<nav class="top-nav">
-		<div class="nav-left">
-			<div class="brand">
-				<img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
-				<span class="brand-name">InnSight</span>
-				<span class="brand-sub">Guest Portal</span>
-			</div>
-		</div>
-		<div class="nav-center">
-			<a href="/client/profile/@clientId" class="nav-link">Dashboard</a>
-			<a href="#" class="nav-link">Stays</a>
-			<a href="/client/loyalty/@clientId" class="nav-link active">Loyalty</a>
-			<a href="/client/messages/@clientId" class="nav-link">Messages</a>
-		</div>
-		<div class="nav-right">
-			<span class="points-badge">@(loyalty?.current_tier ?? "Bronze") • @(loyalty?.total_points ?? 0) pts</span>
-			<div class="user-menu">
-				<div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
-				@if (isDropdownOpen)
-				{
-					<div class="user-dropdown">
-						<button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
-					</div>
-				}
-			</div>
-		</div>
-	</nav>
+	<!-- Shared Navigation Component -->
+	<ClientNavigation UserId="@clientId" ActivePage="loyalty" User="@user" LoyaltyProgram="@loyalty" />
 
 	<div class="loyalty-container">
 		@if (loading)
@@ -324,7 +300,6 @@
 	List<LoyaltyReward> availableRewards = new();
 	List<LoyaltyTransaction> recentTransactions = new();
 	bool loading = true;
-	bool isDropdownOpen = false;
 	int actualClientId = 0;
 
 	protected override async Task OnParametersSetAsync()
@@ -425,15 +400,6 @@
 		}
 	}
 
-	string GetInitials()
-	{
-		if (user == null) return "G";
-		var parts = new List<string>();
-		if (!string.IsNullOrWhiteSpace(user.user_fname)) parts.Add(user.user_fname.Substring(0, 1));
-		if (!string.IsNullOrWhiteSpace(user.user_lname)) parts.Add(user.user_lname.Substring(0, 1));
-		return string.Join("", parts).ToUpper();
-	}
-
 	int PointsToNextTier => nextTier != null && loyalty != null ? Math.Max(0, nextTier.MinPoints - loyalty.total_points) : 0;
 
 	double GetCircleProgress()
@@ -480,7 +446,4 @@
 			Console.WriteLine($"? Error redeeming reward: {ex.Message}");
 		}
 	}
-
-	void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
-	void Logout() => Navigation.NavigateTo("/");
 }

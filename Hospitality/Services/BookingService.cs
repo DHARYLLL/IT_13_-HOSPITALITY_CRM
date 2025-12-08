@@ -26,11 +26,11 @@ public class BookingService
 
         int clientId = Convert.ToInt32(clientIdResult);
 
-        // Get bookings with room details
+        // Get bookings with room details - INCLUDE booking_status
         string sql = @"
         SELECT 
         b.booking_id, b.client_id, b.[check-in_date], b.[check-out_date], b.person_count, b.client_request,
-        b.[check-in_time], b.[check-out_time],
+        b.[check-in_time], b.[check-out_time], b.booking_status,
         r.room_name, r.room_number, r.room_floor, r.room_price
         FROM Bookings b
         LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
@@ -69,17 +69,18 @@ public class BookingService
 
         int clientId = Convert.ToInt32(clientIdResult);
 
-        // Get current/active booking (check-in date is today or in the future)
+        // Get current/active booking (check-in date is today or in the future) - INCLUDE booking_status
         string sql = @"
         SELECT TOP 1
         b.booking_id, b.client_id, b.[check-in_date], b.[check-out_date], b.person_count, b.client_request,
-        b.[check-in_time], b.[check-out_time],
+        b.[check-in_time], b.[check-out_time], b.booking_status,
         r.room_name, r.room_number, r.room_floor, r.room_price
         FROM Bookings b
         LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
         LEFT JOIN rooms r ON br.room_id = r.room_id
         WHERE b.client_id = @clientId
         AND b.[check-out_date] >= CAST(GETDATE() AS DATE)
+        AND (b.booking_status IS NULL OR b.booking_status NOT IN ('cancelled', 'completed'))
         ORDER BY b.[check-in_date] ASC";
 
         using var cmd = new SqlCommand(sql, con);
@@ -219,6 +220,21 @@ public class BookingService
 
     private static Booking MapBooking(SqlDataReader reader)
     {
+        // Check if booking_status column exists in the result set
+        string bookingStatus = "Confirmed"; // Default
+        try
+        {
+            int statusOrdinal = reader.GetOrdinal("booking_status");
+            if (!reader.IsDBNull(statusOrdinal))
+            {
+                bookingStatus = reader.GetString(statusOrdinal);
+            }
+        }
+        catch
+        {
+            // Column doesn't exist, use default
+        }
+
         var booking = new Booking
         {
             booking_id = reader.GetInt32(reader.GetOrdinal("booking_id")),
@@ -235,7 +251,7 @@ public class BookingService
             room_price = reader.IsDBNull(reader.GetOrdinal("room_price")) ? null : reader.GetDecimal(reader.GetOrdinal("room_price")),
 
             // Set derived fields
-            booking_status = "Confirmed", // Default status since not in DB
+            booking_status = bookingStatus,
         };
 
         // Set guest_count as alias for person_count
@@ -249,11 +265,11 @@ public class BookingService
         using var con = DbConnection.GetConnection();
         await con.OpenAsync();
 
-        // Get booking with room details by booking ID - get first room for basic info
+        // Get booking with room details by booking ID - INCLUDE booking_status
         string sql = @"
         SELECT 
         b.booking_id, b.client_id, b.[check-in_date], b.[check-out_date], b.person_count, b.client_request,
-        b.[check-in_time], b.[check-out_time],
+        b.[check-in_time], b.[check-out_time], b.booking_status,
         r.room_name, r.room_number, r.room_floor, r.room_price
         FROM Bookings b
         LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
@@ -497,9 +513,9 @@ public class BookingService
     }
 
     /// <summary>
-    /// Cancels a booking and returns rooms to Available status
+    /// Cancels a booking, returns rooms to Available status, and sends confirmation message
     /// </summary>
-    public async Task<bool> CancelBookingAsync(int bookingId)
+    public async Task<bool> CancelBookingAsync(int bookingId, string? cancellationReason = null)
     {
         try
         {
@@ -510,6 +526,36 @@ public class BookingService
 
             try
             {
+                // Get booking and client info for the confirmation message
+                string getBookingInfoSql = @"
+                SELECT b.client_id, b.[check-in_date], b.[check-out_date], r.room_name,
+                SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as total_amount
+                FROM Bookings b
+                LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
+                LEFT JOIN rooms r ON br.room_id = r.room_id
+                WHERE b.booking_id = @bookingId
+                GROUP BY b.client_id, b.[check-in_date], b.[check-out_date], r.room_name";
+
+                using var getInfoCmd = new SqlCommand(getBookingInfoSql, con, (SqlTransaction)tx);
+                getInfoCmd.Parameters.AddWithValue("@bookingId", bookingId);
+
+                int clientId = 0;
+                DateTime checkInDate = DateTime.Today;
+                DateTime checkOutDate = DateTime.Today;
+                string roomName = "Room";
+                decimal totalAmount = 0;
+
+                using var infoReader = await getInfoCmd.ExecuteReaderAsync();
+                if (await infoReader.ReadAsync())
+                {
+                    clientId = infoReader.GetInt32(0);
+                    checkInDate = infoReader.GetDateTime(1);
+                    checkOutDate = infoReader.GetDateTime(2);
+                    roomName = infoReader.IsDBNull(3) ? "Room" : infoReader.GetString(3);
+                    totalAmount = infoReader.IsDBNull(4) ? 0 : infoReader.GetDecimal(4);
+                }
+                await infoReader.CloseAsync();
+
                 // Get room IDs for this booking
                 string getRoomsSql = @"
                 SELECT br.room_id
@@ -526,11 +572,6 @@ public class BookingService
                     roomIds.Add(reader.GetInt32(0));
                 }
                 await reader.CloseAsync();
-
-                if (roomIds.Count == 0)
-                {
-                    return false; // No rooms found for this booking
-                }
 
                 // Update all rooms back to Available status
                 foreach (var roomId in roomIds)
@@ -551,6 +592,47 @@ public class BookingService
                 using var updateBookingCmd = new SqlCommand(updateBookingSql, con, (SqlTransaction)tx);
                 updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
                 await updateBookingCmd.ExecuteNonQueryAsync();
+
+                // Send cancellation confirmation message to client
+                if (clientId > 0)
+                {
+                    string messageBody = $@"Dear Guest,
+
+Your booking has been successfully cancelled.
+
+?? Cancellation Details:
+????????????????????????
+• Booking ID: #{bookingId:D7}
+• Room: {roomName}
+• Check-in: {checkInDate:dddd, MMMM dd, yyyy}
+• Check-out: {checkOutDate:dddd, MMMM dd, yyyy}
+• Original Amount: ?{totalAmount:N2}
+{(string.IsNullOrEmpty(cancellationReason) ? "" : $"• Reason: {cancellationReason}")}
+
+?? Refund Information:
+????????????????????????
+Your refund will be processed according to our cancellation policy. Please allow 5-7 business days for the refund to appear in your account.
+
+If you have any questions about your cancellation or refund, please don't hesitate to contact us.
+
+We hope to welcome you at InnSight Hotels in the future!
+
+Best regards,
+InnSight Hotels Team";
+
+                    string insertMessageSql = @"
+                    INSERT INTO Messages (client_id, booking_id, message_subject, message_body, message_type, message_category, regarding_text, sent_date, is_read)
+                    VALUES (@clientId, @bookingId, @subject, @body, 'service', 'Booking Cancellation', 'Booking Cancellation Confirmation', GETDATE(), 0)";
+
+                    using var msgCmd = new SqlCommand(insertMessageSql, con, (SqlTransaction)tx);
+                    msgCmd.Parameters.AddWithValue("@clientId", clientId);
+                    msgCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                    msgCmd.Parameters.AddWithValue("@subject", $"Booking #{bookingId:D7} Cancellation Confirmed");
+                    msgCmd.Parameters.AddWithValue("@body", messageBody);
+                    await msgCmd.ExecuteNonQueryAsync();
+
+                    Console.WriteLine($"?? Cancellation confirmation message sent to client {clientId}");
+                }
 
                 await ((SqlTransaction)tx).CommitAsync();
 

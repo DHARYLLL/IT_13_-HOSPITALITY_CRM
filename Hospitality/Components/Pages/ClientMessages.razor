@@ -4,37 +4,13 @@
 @inject Hospitality.Services.UserService UserService
 @inject Hospitality.Services.LoyaltyService LoyaltyService
 
+<link rel="stylesheet" href="css/clientprofile.css" />
+<link rel="stylesheet" href="css/client-layout.css" />
 <link rel="stylesheet" href="css/client-messages.css" />
 
 <div class="messages-page">
-	<!-- Top Navigation -->
-	<nav class="top-nav">
-		<div class="nav-left">
-			<div class="brand">
-				<img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
-				<span class="brand-name">InnSight</span>
-				<span class="brand-sub">Guest Portal</span>
-			</div>
-		</div>
-		<div class="nav-center">
-			<a href="/client/profile/@clientId" class="nav-link">Dashboard</a>
-			<a href="#" class="nav-link">Stays</a>
-			<a href="/client/loyalty/@clientId" class="nav-link">Loyalty</a>
-			<a href="/client/messages/@clientId" class="nav-link active">Messages</a>
-		</div>
-		<div class="nav-right">
-			<span class="points-badge">@CurrentTier • @LoyaltyPoints pts</span>
-			<div class="user-menu">
-				<div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
-				@if (isDropdownOpen)
-				{
-					<div class="user-dropdown">
-						<button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
-					</div>
-				}
-			</div>
-		</div>
-	</nav>
+	<!-- Shared Navigation Component -->
+	<ClientNavigation UserId="@clientId" ActivePage="messages" User="@user" LoyaltyProgram="@loyaltyProgram" />
 
 	<div class="messages-container">
 		<!-- Left Sidebar - Inbox List -->
@@ -303,7 +279,6 @@
 	string currentFilter = "All";
 
 	int actualClientId = 0;
-	bool isDropdownOpen = false;
 
 	bool showEmailForm = false;
 	bool isReplyMode = false;
@@ -312,9 +287,6 @@
 	string emailMessage = "";
 	string? successMessage = null;
 	string? errorMessage = null;
-
-	int LoyaltyPoints => loyaltyProgram?.total_points ?? 0;
-	string CurrentTier => loyaltyProgram?.current_tier ?? "Bronze";
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -438,20 +410,32 @@
 	void GroupConversations()
 	{
 		conversationGroups = messages
-			 .GroupBy(m => NormalizeSubject(m.message_subject ?? "No Subject"))
-		   .Select(g => new ConversationGroup
-		   {
-			   Subject = g.First().message_subject ?? "No Subject",
-			   Category = g.First().message_category ?? "General",
-			   LatestMessage = g.OrderByDescending(m => m.sent_date).First().message_body ?? "",
-			   LatestDate = g.Max(m => m.sent_date),
-			   HasUnread = g.Any(m => !m.is_read && !IsClientMessage(m)),
-			   MessageCount = g.Count(),
-			   HasAdminMessage = g.Any(m => !IsClientMessage(m)),
-			   Messages = g.ToList()
-		   })
-			 .OrderByDescending(g => g.LatestDate)
+			.GroupBy(m => NormalizeSubject(m.message_subject ?? "No Subject"))
+			.Select(g => new ConversationGroup
+			{
+				Subject = g.First().message_subject ?? "No Subject",
+				Category = GetCategoryFromType(g.First().message_type),
+				LatestMessage = g.OrderByDescending(m => m.sent_date).First().message_body ?? "",
+				LatestDate = g.Max(m => m.sent_date),
+				HasUnread = g.Any(m => !m.is_read && !IsClientMessage(m)),
+				MessageCount = g.Count(),
+				HasAdminMessage = g.Any(m => !IsClientMessage(m)),
+				Messages = g.ToList()
+			})
+			.OrderByDescending(g => g.LatestDate)
 			.ToList();
+	}
+
+	string GetCategoryFromType(string? messageType)
+	{
+		return messageType switch
+		{
+			"offer" => "Membership Rewards",
+			"service" => "Member Services",
+			"billing" => "Billing & Receipts",
+			"outgoing" => "Email Sent",
+			_ => "General"
+		};
 	}
 
 	string NormalizeSubject(string subject)
@@ -714,9 +698,6 @@
 		var preview = body.Replace("\r\n", " ").Replace("\n", " ");
 		return preview.Length > 80 ? preview.Substring(0, 80) + "..." : preview;
 	}
-
-	void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
-	void Logout() => Navigation.NavigateTo("/");
 
 	public class ConversationGroup
 	{

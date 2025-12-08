@@ -22,9 +22,9 @@
 		</div>
 		<div class="nav-center">
 			<a href="@GetDashboardLink()" class="nav-link">Dashboard</a>
-			<a href="#" class="nav-link">Stays</a>
-			<a href="@(clientId.HasValue ? $"/client/loyalty/{clientId.Value}" : "#")" class="nav-link">Loyalty</a>
-			<a href="@(clientId.HasValue ? $"/client/messages/{clientId.Value}" : "#")" class="nav-link">Messages</a>
+			<a href="@(clientId.HasValue ? $"/client/stays/{clientId.Value}" : "/")" class="nav-link">Stays</a>
+			<a href="@(clientId.HasValue ? $"/client/loyalty/{clientId.Value}" : "/")" class="nav-link">Loyalty</a>
+			<a href="@(clientId.HasValue ? $"/client/messages/{clientId.Value}" : "/")" class="nav-link">Messages</a>
 		</div>
 		<div class="nav-right">
 			<span class="points-badge">@loyaltyTier • @CurrentPoints pts</span>

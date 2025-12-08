@@ -42,6 +42,7 @@ namespace Hospitality
             builder.Services.AddSingleton<LoyaltyService>();
             builder.Services.AddSingleton<MessageService>();
             builder.Services.AddSingleton<PaymentService>();
+            builder.Services.AddSingleton<AnalyticsService>();
             builder.Services.AddTransient<PayMongoService>();
 
 #if DEBUG

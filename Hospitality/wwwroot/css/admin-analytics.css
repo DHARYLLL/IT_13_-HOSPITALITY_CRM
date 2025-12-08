@@ -1,0 +1,765 @@
+/* Admin Analytics Page Styles */
+
+/* Quick Stats Row */
+.quick-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    transition: all 0.3s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
+
+.stat-icon {
+    width: 56px;
+    height: 56px;
+  background: linear-gradient(135deg, #5e1369, #9937c8);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-content {
+    display: flex;
+flex-direction: column;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    font-family: 'Playfair Display', serif;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+/* Analytics Section */
+.analytics-section {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.section-header {
+    margin-bottom: 1.5rem;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 0.25rem 0;
+    font-family: 'Playfair Display', serif;
+}
+
+.section-subtitle {
+    font-size: 0.875rem;
+  color: #666;
+    margin: 0;
+}
+
+/* Customer Segmentation */
+.segment-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.segment-card {
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: all 0.3s;
+}
+
+.segment-card:hover {
+    transform: translateY(-4px);
+}
+
+.segment-card.tier-platinum {
+  background: linear-gradient(135deg, #e5e4e2, #c0c0c0);
+}
+
+.segment-card.tier-gold {
+    background: linear-gradient(135deg, #ffd700, #ffb800);
+}
+
+.segment-card.tier-silver {
+    background: linear-gradient(135deg, #c0c0c0, #a8a8a8);
+}
+
+.segment-card.tier-bronze {
+    background: linear-gradient(135deg, #cd7f32, #b8860b);
+}
+
+.segment-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.tier-icon {
+    font-size: 1.5rem;
+}
+
+.segment-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.segment-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+.segment-stats .stat {
+    display: flex;
+flex-direction: column;
+}
+
+.segment-stats .value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.segment-stats .label {
+    font-size: 0.75rem;
+    color: rgba(0,0,0,0.6);
+}
+
+/* Room Revenue Grid */
+.room-revenue-grid {
+  display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.room-card {
+ background: #f8f5fa;
+    border-radius: 12px;
+  padding: 1.25rem;
+    transition: all 0.3s;
+}
+
+.room-card:hover {
+    background: #f0e6f5;
+    transform: translateY(-2px);
+}
+
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.room-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.room-bookings {
+    font-size: 0.75rem;
+    color: #666;
+    background: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+.room-revenue {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #5e1369;
+    margin-bottom: 0.75rem;
+}
+
+.progress-bar {
+    height: 8px;
+    background: #e0d0e8;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.progress {
+    height: 100%;
+    background: linear-gradient(90deg, #5e1369, #9937c8);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.room-stats {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+/* Two Column Layout */
+.two-column-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Retention Section */
+.retention-container {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.retention-donut-container {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    flex-shrink: 0;
+}
+
+.retention-donut {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.circle-bg {
+    fill: none;
+  stroke: #e0d0e8;
+    stroke-width: 3.8;
+}
+
+.circle {
+    fill: none;
+    stroke: url(#gradient);
+    stroke: #5e1369;
+    stroke-width: 3.8;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease;
+}
+
+.retention-center {
+ position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.retention-value {
+    display: block;
+  font-size: 1.75rem;
+    font-weight: 700;
+    color: #5e1369;
+}
+
+.retention-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.retention-breakdown {
+    flex: 1;
+}
+
+.breakdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.breakdown-item:last-child {
+    border-bottom: none;
+}
+
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dot.one-time {
+    background: #e74c3c;
+}
+
+.dot.repeat {
+    background: #f39c12;
+}
+
+.dot.loyal {
+    background: #27ae60;
+}
+
+.breakdown-label {
+    flex: 1;
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.breakdown-item strong {
+    font-size: 1.125rem;
+    color: #1a1a1a;
+}
+
+/* Conversion Grid */
+.conversion-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.conversion-stat {
+    text-align: center;
+  padding: 1rem;
+    background: #f8f5fa;
+    border-radius: 12px;
+}
+
+.conversion-icon {
+  width: 48px;
+    height: 48px;
+    margin: 0 auto 0.75rem;
+    border-radius: 50%;
+    display: flex;
+  align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.conversion-icon.total {
+    background: #e3f2fd;
+}
+
+.conversion-icon.confirmed {
+    background: #e8f5e9;
+}
+
+.conversion-icon.completed {
+    background: #c8e6c9;
+}
+
+.conversion-icon.cancelled {
+    background: #ffebee;
+}
+
+.conversion-value {
+    display: block;
+ font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.conversion-label {
+    font-size: 0.75rem;
+  color: #666;
+}
+
+.conversion-rates {
+    display: flex;
+    gap: 1rem;
+}
+
+.rate-item {
+    flex: 1;
+    padding: 1rem;
+ border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rate-item.success {
+    background: #d4edda;
+}
+
+.rate-item.warning {
+    background: #fff3cd;
+}
+
+.rate-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.rate-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.rate-item.success .rate-value {
+    color: #155724;
+}
+
+.rate-item.warning .rate-value {
+    color: #856404;
+}
+
+/* Monthly Trend Chart */
+.trend-chart-container {
+    min-height: 300px;
+}
+
+.trend-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    height: 250px;
+    padding: 1rem 0;
+    border-bottom: 2px solid #e0e0e0;
+    margin-bottom: 1rem;
+}
+
+.trend-bar-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.trend-bar {
+    width: 100%;
+    max-width: 60px;
+    background: linear-gradient(180deg, #5e1369, #9937c8);
+    border-radius: 8px 8px 0 0;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: auto;
+}
+
+.trend-bar:hover {
+    transform: scaleY(1.02);
+    box-shadow: 0 -4px 12px rgba(94,19,105,0.3);
+}
+
+.trend-tooltip {
+    display: none;
+    position: absolute;
+  bottom: 100%;
+left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a1a;
+color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    margin-bottom: 0.5rem;
+    z-index: 10;
+}
+
+.trend-tooltip strong {
+  display: block;
+}
+
+.trend-tooltip small {
+    color: #aaa;
+}
+
+.trend-bar:hover .trend-tooltip {
+    display: block;
+}
+
+.trend-label {
+    font-size: 0.7rem;
+ color: #666;
+    margin-top: 0.5rem;
+text-align: center;
+}
+
+.trend-summary {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+}
+
+.trend-stat {
+    text-align: center;
+}
+
+.trend-stat-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 0.25rem;
+}
+
+.trend-stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #5e1369;
+}
+
+/* Day of Week Performance */
+.day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.75rem;
+}
+
+.day-card {
+    background: #f8f5fa;
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.day-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.day-card.best-day {
+    background: linear-gradient(135deg, #5e1369, #9937c8);
+    color: white;
+}
+
+.day-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+ margin-bottom: 0.5rem;
+}
+
+.day-card.best-day .day-name {
+    color: white;
+}
+
+.day-bookings {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.day-card.best-day .day-bookings {
+    color: rgba(255,255,255,0.8);
+}
+
+.day-revenue {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #5e1369;
+}
+
+.day-card.best-day .day-revenue {
+    color: white;
+}
+
+.best-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ffd700;
+    color: #1a1a1a;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+  border-radius: 10px;
+}
+
+/* Guest Demographics */
+.demographics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.demographic-card {
+    background: #f8f5fa;
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.demographic-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.demographic-icon {
+    font-size: 1.5rem;
+}
+
+.demographic-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+ background: white;
+    border-radius: 8px;
+}
+
+.category-name {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.category-count {
+    font-size: 0.875rem;
+    color: #666;
+}
+
+.party-size-display {
+    text-align: center;
+    padding: 2rem;
+}
+
+.party-size-value {
+    display: block;
+    font-size: 3rem;
+    font-weight: 700;
+    color: #5e1369;
+    line-height: 1;
+}
+
+.party-size-label {
+    display: block;
+ font-size: 0.875rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #666;
+}
+
+.empty-state.full-width {
+    grid-column: 1 / -1;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.no-data {
+    color: #999;
+  font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* Loading */
+.loading-container {
+    display: flex;
+  flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    color: #666;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #e0e0e0;
+    border-top-color: #5e1369;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+    .segment-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .day-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 1200px) {
+    .quick-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+  
+    .two-column-grid {
+   grid-template-columns: 1fr;
+    }
+    
+    .conversion-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .quick-stats {
+        grid-template-columns: 1fr;
+  }
+    
+    .segment-grid {
+  grid-template-columns: 1fr;
+    }
+    
+    .day-grid {
+   grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .demographics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .retention-container {
+        flex-direction: column;
+    }
+    
+    .trend-chart {
+        overflow-x: auto;
+    }
+}

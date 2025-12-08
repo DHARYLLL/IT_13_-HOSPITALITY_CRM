@@ -6,8 +6,7 @@ namespace Hospitality.Models
         public int client_id { get; set; }
         public string? message_subject { get; set; }
         public string? message_body { get; set; }
-        public string? message_type { get; set; } // "offer", "service", "billing", "general"
-        public string? message_category { get; set; } // "Member Services", "Billing & Receipts", "Harbourkey Waterfront", "Membership Rewards"
+        public string? message_type { get; set; } // "offer", "service", "billing", "general", "outgoing"
         public bool is_read { get; set; }
         public DateTime sent_date { get; set; }
         public int? booking_id { get; set; } // Optional: link to a booking

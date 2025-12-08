@@ -5,18 +5,17 @@
 IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Messages')
 BEGIN
     CREATE TABLE Messages (
- message_id INT IDENTITY(1,1) PRIMARY KEY,
+        message_id INT IDENTITY(1,1) PRIMARY KEY,
         client_id INT NOT NULL,
-        message_subject VARCHAR(500),
-      message_body TEXT,
-message_type VARCHAR(50), -- 'offer', 'service', 'billing', 'general', 'outgoing'
-      message_category VARCHAR(200), -- 'Member Services', 'Billing & Receipts', 'Harbourkey Waterfront', 'Membership Rewards'
-        is_read BIT DEFAULT 0,
-      sent_date DATETIME DEFAULT GETDATE(),
-        booking_id INT NULL,
-     action_label VARCHAR(200) NULL, -- e.g., 'Book a stay', 'See eligible dates'
-        action_url VARCHAR(500) NULL,
-        regarding_text VARCHAR(500) NULL, -- 'Regarding: Upcoming stay, billing, or general question'
+    message_subject VARCHAR(500),
+        message_body TEXT,
+  message_type VARCHAR(50), -- 'offer', 'service', 'billing', 'general', 'outgoing'
+  is_read BIT DEFAULT 0,
+        sent_date DATETIME DEFAULT GETDATE(),
+  booking_id INT NULL,
+    action_label VARCHAR(200) NULL,
+      action_url VARCHAR(500) NULL,
+        regarding_text VARCHAR(500) NULL,
         FOREIGN KEY (client_id) REFERENCES Clients(client_id) ON DELETE CASCADE,
         FOREIGN KEY (booking_id) REFERENCES Bookings(booking_id) ON DELETE SET NULL
     );
@@ -26,6 +25,13 @@ END
 ELSE
 BEGIN
     PRINT 'Messages table already exists';
+    
+    -- Drop message_category column if it exists
+    IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Messages') AND name = 'message_category')
+    BEGIN
+     ALTER TABLE Messages DROP COLUMN message_category;
+        PRINT 'Dropped message_category column';
+    END
 END
 GO
 
@@ -40,7 +46,7 @@ GO
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Messages_IsRead')
 BEGIN
     CREATE INDEX IX_Messages_IsRead ON Messages(is_read);
-PRINT 'Index created on Messages.is_read';
+    PRINT 'Index created on Messages.is_read';
 END
 GO
 
@@ -52,46 +58,45 @@ END
 GO
 
 -- Insert sample messages for testing
--- First, we need to get actual client_ids from the database
 DECLARE @SampleClientId INT;
 SELECT TOP 1 @SampleClientId = client_id FROM Clients ORDER BY client_id;
 
 IF @SampleClientId IS NOT NULL AND NOT EXISTS (SELECT * FROM Messages WHERE client_id = @SampleClientId)
 BEGIN
     -- Insert welcome message
-    INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date)
+    INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date)
     VALUES 
     (@SampleClientId, 'Welcome to InnSight!', 
      'Thank you for joining InnSight. We are excited to have you as a member. Start earning points with every stay!', 
-     'general', 'Member Services', 0, DATEADD(day, -5, GETDATE()));
+     'general', 0, DATEADD(day, -5, GETDATE()));
 
     -- Insert exclusive offer message
-    INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, action_label, action_url)
+    INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, action_label, action_url)
     VALUES 
     (@SampleClientId, 'Exclusive Gold member offer', 
-     'Hi Alex, As a valued Gold member, you have access to an exclusive offer on upcoming weekend stays. • Save 8% on weekend stays • +2x loyalty points on your stay • Flexible cancellation up to 24 hours before check-in • Higher room types (Standard, Deluxe, and Suite categories). Book a qualifying stay between your dashboard. This offer will be automatically applied to eligible dates. You can also mention this offer if you contact our reservations team. Now is also this offer', 
-     'offer', 'Membership Rewards', 0, DATEADD(day, -2, GETDATE()), 'Book a stay', '/booking/new');
+     'Hi, As a valued Gold member, you have access to an exclusive offer on upcoming weekend stays. Save 8% on weekend stays, +2x loyalty points on your stay, Flexible cancellation up to 24 hours before check-in.', 
+     'offer', 0, DATEADD(day, -2, GETDATE()), 'Book a stay', '/booking/new');
 
     -- Insert booking confirmation message
-    INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+    INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
     VALUES 
     (@SampleClientId, 'Booking Confirmation - Deluxe Suite', 
      'Your booking has been confirmed! Check-in: Tomorrow at 3:00 PM. We look forward to welcoming you.', 
-   'service', 'Harbourkey Waterfront', 1, DATEADD(hour, -18, GETDATE()), 'Regarding: Upcoming stay at Harbourkey Waterfront');
+     'service', 1, DATEADD(hour, -18, GETDATE()), 'Regarding: Upcoming stay');
 
- -- Insert thank you message
-    INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date)
+    -- Insert thank you message
+    INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date)
     VALUES 
-(@SampleClientId, 'Thank you for staying with us', 
-     'We hope you enjoyed your stay at Harbourkey Waterfront. You earned 1,248 points from this visit!', 
-     'service', 'Harbourkey Waterfront', 1, DATEADD(day, -15, GETDATE()));
+    (@SampleClientId, 'Thank you for staying with us', 
+     'We hope you enjoyed your stay. You earned 1,248 points from this visit!', 
+     'service', 1, DATEADD(day, -15, GETDATE()));
 
     -- Insert billing receipt message
-    INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date)
+    INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date)
     VALUES 
     (@SampleClientId, 'Receipt available for your stay', 
      'Your receipt for booking #H0000012 is now available for download. Total amount: $1,248.50', 
-     'billing', 'Billing & Receipts', 1, DATEADD(day, -14, GETDATE()));
+     'billing', 1, DATEADD(day, -14, GETDATE()));
 
     PRINT 'Sample messages inserted successfully for client_id: ' + CAST(@SampleClientId AS VARCHAR(10));
 END

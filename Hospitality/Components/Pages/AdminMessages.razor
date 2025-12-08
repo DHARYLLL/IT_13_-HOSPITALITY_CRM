@@ -11,12 +11,13 @@
 			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
 		</div>
 		<nav class="sidebar-nav">
-			<a href="/admin" class="nav-item"><span class="nav-icon">??</span><span>EMPLOYEES</span></a>
-			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon">??</span><span>DASHBOARD</span></a>
-			<a href="/admin/rooms" class="nav-item"><span class="nav-icon">??</span><span>ROOMS</span></a>
-			<a href="/admin/rewards" class="nav-item"><span class="nav-icon">??</span><span>REWARDS</span></a>
-			<a href="/admin/messages" class="nav-item active"><span class="nav-icon">??</span><span>MESSAGES</span></a>
-			<a href="/admin/reports" class="nav-item"><span class="nav-icon">??</span><span>REPORTS & ANALYTICS</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
+			<a href="/admin/messages" class="nav-item active"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
+			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
 		</nav>
 	</aside>
 
@@ -27,9 +28,9 @@
 				<p class="page-subtitle">View and respond to messages sent by guests</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">@unreadCount</span>??</button>
-				<button class="icon-btn" title="Profile">??</button>
-				<button class="icon-btn" title="Logout" @onclick="Logout">?</button>
+				<button class="icon-btn" title="Notifications"><span class="badge-dot">@unreadCount</span><i class="icon icon-notification"></i></button>
+				<button class="icon-btn" title="Profile"><i class="icon icon-profile"></i></button>
+				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
@@ -57,8 +58,8 @@
 				</div>
 
 				<!-- Moved search box here, right after filter tabs -->
-				<div class="search-box">
-					<span>??</span>
+				<div class="messages-search-box">
+					<i class="icon icon-search"></i>
 					<input type="text" placeholder="Search guest, email, booking..." @bind="searchQuery" @bind:event="oninput" />
 				</div>
 
@@ -72,7 +73,7 @@
 				else if (!FilteredConversations.Any())
 				{
 					<div class="empty-state">
-						<div class="empty-icon">??</div>
+						<div class="empty-icon"><i class="icon icon-inbox icon-xl"></i></div>
 						<h3>No conversations found</h3>
 						<p>@(currentFilter == "All" ? "No client messages yet." : $"No {currentFilter.ToLower()} conversations.")</p>
 					</div>
@@ -120,7 +121,7 @@
 				@if (selectedClientId == null)
 				{
 					<div class="no-selection">
-						<div class="no-selection-icon">??</div>
+						<div class="no-selection-icon"><i class="icon icon-messages icon-xl"></i></div>
 						<h3>Select a conversation</h3>
 						<p>Choose a conversation from the list to view and respond</p>
 					</div>
@@ -153,10 +154,10 @@
 						</div>
 						<div class="detail-actions">
 							<button class="btn-action" @onclick="MarkAsResolved" title="Mark as resolved">
-								? Resolve
+								<i class="icon icon-check"></i> Resolve
 							</button>
 							<button class="btn-action" @onclick="@(() => selectedClientId = null)" title="Close">
-								?
+								<i class="icon icon-close"></i>
 							</button>
 						</div>
 					</div>
@@ -174,7 +175,7 @@
 											}
 											else
 											{
-												<span>??</span>
+												<span><i class="icon icon-admin"></i></span>
 											}
 										</div>
 										<strong>@(message.message_type == "outgoing" ? message.client_name : "You (Admin)")</strong>
@@ -202,35 +203,26 @@
 					<div class="reply-section">
 						<div class="reply-form">
 							<div class="form-field">
-								<label>Reply as</label>
-								<select @bind="replyCategory">
-									<option value="Member Services">Member Services</option>
-									<option value="Front Desk">Front Desk</option>
-									<option value="Billing & Receipts">Billing & Receipts</option>
-									<option value="Management">Management</option>
-								</select>
-							</div>
-							<div class="form-field">
 								<label>Message</label>
 								<textarea @bind="replyMessage" 
-								     placeholder="Write your reply..."
-								          rows="3"></textarea>
+								  placeholder="Write your reply..."
+								       rows="3"></textarea>
 							</div>
 							<div class="reply-actions">
 								<button class="btn-secondary" @onclick="ClearReply">Clear</button>
 								<button class="btn-primary" @onclick="SendReply" disabled="@(isReplying || string.IsNullOrWhiteSpace(replyMessage))">
-									?? @(isReplying ? "Sending..." : "Send Reply")
+									<i class="icon icon-send"></i> @(isReplying ? "Sending..." : "Send Reply")
 								</button>
 							</div>
 						</div>
 						
 						@if (!string.IsNullOrWhiteSpace(replyError))
 						{
-							<div class="error-message">? @replyError</div>
+							<div class="error-message"><i class="icon icon-error"></i> @replyError</div>
 						}
 						@if (!string.IsNullOrWhiteSpace(replySuccess))
 						{
-							<div class="success-message">? @replySuccess</div>
+							<div class="success-message"><i class="icon icon-success"></i> @replySuccess</div>
 						}
 					</div>
 				}
@@ -263,7 +255,6 @@
 	
 	string replyMessage = string.Empty;
 	string replySubject = string.Empty;
-	string replyCategory = "Member Services";
 	string? replyError = null;
 	string? replySuccess = null;
 	
@@ -422,7 +413,6 @@
 						: "Response from InnSight Team"),
 				message_body = replyMessage,
 				message_type = "service", // Not "outgoing" - this is from admin
-				message_category = replyCategory,
 				regarding_text = latestClientMessage?.regarding_text,
 				booking_id = currentBookingId
 			};

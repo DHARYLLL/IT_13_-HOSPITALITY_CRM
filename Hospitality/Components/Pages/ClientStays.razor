@@ -1,0 +1,605 @@
+@page "/client/stays/{id:int}"
+@page "/client/stays/{id:int}/booking/{bookingId:int}"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.UserService UserService
+@inject Hospitality.Services.BookingService BookingService
+@inject Hospitality.Services.PaymentService PaymentService
+@inject Hospitality.Services.LoyaltyService LoyaltyService
+
+<link rel="stylesheet" href="css/clientprofile.css" />
+<link rel="stylesheet" href="css/client-layout.css" />
+<link rel="stylesheet" href="css/client-stays.css" />
+
+<div class="client-profile-page">
+  <!-- Shared Navigation Component -->
+    <ClientNavigation UserId="@id" ActivePage="stays" User="@user" LoyaltyProgram="@loyaltyProgram" />
+
+    <div class="profile-container">
+  @if (loading)
+     {
+      <div class="loading-container">
+   <p>Loading your stays...</p>
+            </div>
+        }
+   else if (user == null)
+        {
+       <div class="error-container">
+    <h3>User not found</h3>
+             <p>Could not find user with ID: @id</p>
+</div>
+        }
+        else
+     {
+            <!-- Page Header -->
+    <header class="page-header">
+            <div class="header-content">
+       <h1 class="page-title">Your Stays</h1>
+           <p class="page-subtitle">View all your bookings, upcoming stays, and travel history.</p>
+     </div>
+                <button class="btn btn-primary" @onclick="BookRoom">
+        <i class="icon icon-hotel-btn"></i> Book a Room
+       </button>
+            </header>
+
+            <!-- Stats Summary -->
+ <div class="stays-summary">
+     <div class="summary-card">
+    <span class="summary-icon"><i class="icon icon-calendar-lg"></i></span>
+        <div class="summary-content">
+     <span class="summary-value">@upcomingBookings.Count</span>
+              <span class="summary-label">Upcoming</span>
+    </div>
+      </div>
+           <div class="summary-card">
+             <span class="summary-icon"><i class="icon icon-check-lg"></i></span>
+              <div class="summary-content">
+      <span class="summary-value">@completedBookings.Count</span>
+           <span class="summary-label">Completed</span>
+         </div>
+                </div>
+    <div class="summary-card">
+          <span class="summary-icon"><i class="icon icon-moon-lg"></i></span>
+        <div class="summary-content">
+                 <span class="summary-value">@totalNights</span>
+       <span class="summary-label">Total Nights</span>
+     </div>
+  </div>
+    <div class="summary-card">
+            <span class="summary-icon"><i class="icon icon-money-lg"></i></span>
+    <div class="summary-content">
+  <span class="summary-value">@($"P{totalSpent:N0}")</span>
+       <span class="summary-label">Total Spent</span>
+        </div>
+     </div>
+    </div>
+
+            <!-- Tab Navigation -->
+       <div class="tabs-container">
+        <button class="tab @(activeTab == "all" ? "active" : "")" @onclick="@(() => SetTab("all"))">
+   All Bookings (@allBookings.Count)
+           </button>
+      <button class="tab @(activeTab == "upcoming" ? "active" : "")" @onclick="@(() => SetTab("upcoming"))">
+  Upcoming (@upcomingBookings.Count)
+          </button>
+     <button class="tab @(activeTab == "completed" ? "active" : "")" @onclick="@(() => SetTab("completed"))">
+          Completed (@completedBookings.Count)
+           </button>
+   <button class="tab @(activeTab == "cancelled" ? "active" : "")" @onclick="@(() => SetTab("cancelled"))">
+      Cancelled (@cancelledBookings.Count)
+            </button>
+            </div>
+
+            <!-- Booking Detail View (if booking selected) -->
+          @if (selectedBooking != null)
+            {
+           <div class="booking-detail-card">
+      <div class="detail-header">
+       <button class="back-btn" @onclick="CloseBookingDetail">
+ <span>&lt;-</span> Back to list
+    </button>
+            <span class="status-badge status-@GetStatusClass(selectedBooking.booking_status)">
+   @(selectedBooking.booking_status ?? "Pending")
+         </span>
+            </div>
+
+    <div class="detail-content">
+<div class="detail-main">
+     <h2 class="detail-room-name">@(selectedBooking.room_name ?? "Room")</h2>
+   <p class="detail-booking-id">Booking #@selectedBooking.booking_id.ToString("D7")</p>
+
+       <div class="detail-dates">
+             <div class="date-block">
+   <span class="date-label">Check-in</span>
+        <span class="date-value">@selectedBooking.check_in_date.ToString("ddd, MMM dd, yyyy")</span>
+             <span class="time-value">3:00 PM</span>
+  </div>
+      <div class="date-arrow">-></div>
+       <div class="date-block">
+          <span class="date-label">Check-out</span>
+ <span class="date-value">@selectedBooking.check_out_date.ToString("ddd, MMM dd, yyyy")</span>
+       <span class="time-value">11:00 AM</span>
+     </div>
+            </div>
+
+             <div class="detail-info-grid">
+      <div class="info-item">
+       <span class="info-label">Duration</span>
+            <span class="info-value">@GetNights(selectedBooking) night@(GetNights(selectedBooking) != 1 ? "s" : "")</span>
+     </div>
+ <div class="info-item">
+     <span class="info-label">Guests</span>
+     <span class="info-value">@selectedBooking.person_count adult@(selectedBooking.person_count != 1 ? "s" : "")</span>
+       </div>
+       <div class="info-item">
+              <span class="info-label">Room Number</span>
+           <span class="info-value">@(selectedBooking.room_number?.ToString() ?? "TBA")</span>
+          </div>
+  <div class="info-item">
+    <span class="info-label">Floor</span>
+   <span class="info-value">@(selectedBooking.room_floor?.ToString() ?? "TBA")</span>
+      </div>
+       </div>
+
+          @if (!string.IsNullOrEmpty(selectedBooking.client_request))
+  {
+      <div class="special-requests">
+           <h4>Special Requests</h4>
+              <p>@selectedBooking.client_request</p>
+            </div>
+           }
+        </div>
+
+          <div class="detail-sidebar">
+           <div class="price-breakdown">
+          <h4>Price Details</h4>
+ <div class="price-row">
+           <span>Room Rate x @GetNights(selectedBooking) nights</span>
+        <span>P@((selectedBooking.room_price ?? 0) * GetNights(selectedBooking))</span>
+     </div>
+          <div class="price-row total">
+   <span>Total</span>
+         <span>P@CalculateBookingTotal(selectedBooking).ToString("N2")</span>
+    </div>
+        </div>
+
+    @if (IsUpcoming(selectedBooking))
+                  {
+   <div class="detail-actions">
+               @if (HasBalance(selectedBooking.booking_id))
+    {
+             <button class="btn btn-primary" @onclick="() => PayBalance(selectedBooking.booking_id)">
+               <i class="icon icon-card"></i> Pay Balance
+        </button>
+           }
+            <button class="btn btn-secondary" @onclick="() => ContactSupport(selectedBooking.booking_id)">
+           <i class="icon icon-chat"></i> Contact Support
+      </button>
+            @if (CanCancelBooking(selectedBooking))
+      {
+   <button class="btn btn-danger" @onclick="() => ShowCancelModal(selectedBooking)">
+            <i class="icon icon-x"></i> Cancel Booking
+      </button>
+      }
+  </div>
+    }
+        </div>
+            </div>
+             </div>
+          }
+       else
+            {
+         <!-- Bookings List -->
+       <div class="bookings-list">
+         @if (!filteredBookings.Any())
+ {
+        <div class="empty-state">
+     <span class="empty-icon"><i class="icon icon-hotel-empty"></i></span>
+           <h3>No bookings found</h3>
+     <p>@GetEmptyMessage()</p>
+      @if (activeTab != "cancelled")
+         {
+ <button class="btn btn-primary" @onclick="BookRoom">
+      <i class="icon icon-hotel-btn"></i> Book Your First Stay
+       </button>
+    }
+            </div>
+   }
+      else
+           {
+@foreach (var booking in filteredBookings)
+       {
+      <div class="booking-card @(IsUpcoming(booking) ? "upcoming" : "")" @onclick="() => ViewBookingDetails(booking)">
+     <div class="booking-card-left">
+     <div class="booking-date-badge">
+      <span class="date-month">@booking.check_in_date.ToString("MMM")</span>
+     <span class="date-day">@booking.check_in_date.ToString("dd")</span>
+       </div>
+             </div>
+   <div class="booking-card-content">
+     <div class="booking-card-header">
+       <h3 class="booking-room-name">@(booking.room_name ?? "Room")</h3>
+    <span class="status-badge status-@GetStatusClass(booking.booking_status)">
+           @(booking.booking_status ?? "Pending")
+         </span>
+  </div>
+     <div class="booking-card-details">
+   <span class="detail-item">
+              <i class="icon icon-calendar-sm"></i>
+              @booking.check_in_date.ToString("MMM dd") - @booking.check_out_date.ToString("MMM dd, yyyy")
+    </span>
+   <span class="detail-item">
+    <i class="icon icon-moon-sm"></i>
+  @GetNights(booking) night@(GetNights(booking) != 1 ? "s" : "")
+              </span>
+   <span class="detail-item">
+     <i class="icon icon-guests-sm"></i>
+             @booking.person_count guest@(booking.person_count != 1 ? "s" : "")
+          </span>
+    </div>
+<div class="booking-card-footer">
+     <span class="booking-id">Booking #@booking.booking_id.ToString("D7")</span>
+     <span class="booking-price">P@CalculateBookingTotal(booking).ToString("N2")</span>
+</div>
+        </div>
+     <div class="booking-card-action">
+  <span class="view-arrow">></span>
+     </div>
+              </div>
+  }
+            }
+       </div>
+ }
+        }
+    </div>
+</div>
+
+<!-- Cancel Booking Modal -->
+@if (showCancelModal && bookingToCancel != null)
+{
+    <div class="modal-overlay" @onclick="CloseCancelModal">
+        <div class="modal-card cancel-modal" @onclick:stopPropagation>
+            <div class="modal-header">
+  <h2 class="modal-title">Cancel Booking</h2>
+  <button class="modal-close-btn" @onclick="CloseCancelModal">X</button>
+            </div>
+       <div class="modal-body">
+       <div class="cancel-warning">
+              <div class="warning-icon"><i class="icon icon-warning-lg"></i></div>
+     <h3>Are you sure you want to cancel this booking?</h3>
+           <p class="warning-text">This action cannot be undone.</p>
+        </div>
+
+   <div class="cancel-booking-details">
+   <div class="cancel-detail-row">
+ <span class="detail-label">Room</span>
+      <span class="detail-value">@(bookingToCancel.room_name ?? "Room")</span>
+  </div>
+       <div class="cancel-detail-row">
+         <span class="detail-label">Check-in</span>
+     <span class="detail-value">@bookingToCancel.check_in_date.ToString("ddd, MMM dd, yyyy")</span>
+      </div>
+     <div class="cancel-detail-row">
+              <span class="detail-label">Check-out</span>
+            <span class="detail-value">@bookingToCancel.check_out_date.ToString("ddd, MMM dd, yyyy")</span>
+   </div>
+       <div class="cancel-detail-row">
+   <span class="detail-label">Booking ID</span>
+      <span class="detail-value">#@bookingToCancel.booking_id.ToString("D7")</span>
+            </div>
+             <div class="cancel-detail-row total">
+     <span class="detail-label">Total Amount</span>
+      <span class="detail-value">P@CalculateBookingTotal(bookingToCancel).ToString("N2")</span>
+        </div>
+       </div>
+
+          <div class="cancellation-policy">
+ <h4><i class="icon icon-doc-sm"></i> Cancellation Policy</h4>
+         <ul>
+        @if (GetDaysUntilCheckIn(bookingToCancel) > 7)
+          {
+            <li class="policy-good"><i class="icon icon-check-sm"></i> Full refund - Cancelling more than 7 days before check-in</li>
+     }
+       else if (GetDaysUntilCheckIn(bookingToCancel) > 2)
+      {
+     <li class="policy-warning"><i class="icon icon-alert-sm"></i> 50% refund - Cancelling 2-7 days before check-in</li>
+                   }
+       else if (GetDaysUntilCheckIn(bookingToCancel) > 0)
+              {
+     <li class="policy-danger"><i class="icon icon-x-sm"></i> No refund - Cancelling less than 48 hours before check-in</li>
+     }
+ else
+        {
+    <li class="policy-danger"><i class="icon icon-x-sm"></i> No refund - Cancelling after check-in date</li>
+   }
+      <li>Room will be released for other guests</li>
+          <li>You will receive a cancellation confirmation message</li>
+          </ul>
+             </div>
+
+             <div class="cancel-reason">
+        <label for="cancelReason">Reason for cancellation (optional)</label>
+<select id="cancelReason" @bind="cancellationReason" class="cancel-reason-select">
+        <option value="">Select a reason</option>
+        <option value="change_of_plans">Change of plans</option>
+                  <option value="found_better_deal">Found a better deal</option>
+             <option value="health_emergency">Health emergency</option>
+            <option value="travel_restrictions">Travel restrictions</option>
+                   <option value="work_conflict">Work conflict</option>
+            <option value="other">Other</option>
+       </select>
+                </div>
+
+     @if (!string.IsNullOrEmpty(cancelError))
+        {
+    <div class="error-message">
+  <i class="icon icon-x-circle"></i> @cancelError
+           </div>
+     }
+          @if (!string.IsNullOrEmpty(cancelSuccess))
+       {
+        <div class="success-message">
+    <i class="icon icon-check-circle-sm"></i> @cancelSuccess
+            </div>
+       }
+            </div>
+        <div class="modal-footer">
+     <button class="btn btn-secondary" @onclick="CloseCancelModal" disabled="@cancelling">
+          Keep Booking
+       </button>
+  <button class="btn btn-danger" @onclick="ConfirmCancellation" disabled="@cancelling">
+       @if (cancelling)
+             {
+   <span>Cancelling...</span>
+         }
+         else
+{
+        <span><i class="icon icon-x"></i> Confirm Cancellation</span>
+    }
+   </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+    [Parameter] public int? bookingId { get; set; }
+
+    Hospitality.Models.User? user;
+    Hospitality.Models.LoyaltyProgram? loyaltyProgram;
+    List<Hospitality.Models.Booking> allBookings = new();
+    List<Hospitality.Services.BookingWithBalance> bookingsWithBalance = new();
+    Hospitality.Models.Booking? selectedBooking;
+
+    bool loading = true;
+    string activeTab = "all";
+    int actualClientId = 0;
+
+    // Cancel modal state
+    bool showCancelModal = false;
+    bool cancelling = false;
+ Hospitality.Models.Booking? bookingToCancel;
+    string cancellationReason = "";
+    string? cancelError;
+    string? cancelSuccess;
+
+    List<Hospitality.Models.Booking> upcomingBookings => allBookings
+        .Where(b => b.check_in_date >= DateTime.Today &&
+     !string.Equals(b.booking_status, "cancelled", StringComparison.OrdinalIgnoreCase) &&
+         !string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(b => b.check_in_date)
+        .ToList();
+
+    List<Hospitality.Models.Booking> completedBookings => allBookings
+  .Where(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase))
+     .OrderByDescending(b => b.check_out_date)
+        .ToList();
+
+    List<Hospitality.Models.Booking> cancelledBookings => allBookings
+        .Where(b => string.Equals(b.booking_status, "cancelled", StringComparison.OrdinalIgnoreCase))
+        .OrderByDescending(b => b.check_in_date)
+     .ToList();
+
+    List<Hospitality.Models.Booking> filteredBookings => activeTab switch
+    {
+     "upcoming" => upcomingBookings,
+        "completed" => completedBookings,
+    "cancelled" => cancelledBookings,
+     _ => allBookings.OrderByDescending(b => b.check_in_date).ToList()
+    };
+
+    int totalNights => allBookings
+   .Where(b => string.Equals(b.booking_status, "completed", StringComparison.OrdinalIgnoreCase))
+   .Sum(b => GetNights(b));
+
+    decimal totalSpent => allBookings
+        .Where(b => !string.Equals(b.booking_status, "cancelled", StringComparison.OrdinalIgnoreCase))
+        .Sum(b => CalculateBookingTotal(b));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadDataAsync();
+
+        if (bookingId.HasValue && allBookings.Any())
+        {
+            selectedBooking = allBookings.FirstOrDefault(b => b.booking_id == bookingId.Value);
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+ loading = true;
+        StateHasChanged();
+
+        try
+        {
+            user = await UserService.GetUserByIdAsync(id);
+
+       if (user != null)
+            {
+  actualClientId = await GetClientIdAsync(id);
+     allBookings = await BookingService.GetBookingsByUserIdAsync(id);
+
+ if (actualClientId > 0)
+        {
+         try { bookingsWithBalance = await PaymentService.GetBookingsWithBalanceAsync(actualClientId); }
+   catch { }
+
+  try { loyaltyProgram = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId); }
+             catch { }
+              }
+            }
+        }
+  catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading stays: {ex.Message}");
+        }
+        finally
+        {
+   loading = false;
+   StateHasChanged();
+        }
+    }
+
+    async Task<int> GetClientIdAsync(int userId)
+    {
+        try
+    {
+            using var con = Hospitality.Database.DbConnection.GetConnection();
+            await con.OpenAsync();
+     string sql = "SELECT client_id FROM Clients WHERE user_id = @userId";
+     using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con);
+   cmd.Parameters.AddWithValue("@userId", userId);
+ var result = await cmd.ExecuteScalarAsync();
+ return result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+        }
+        catch { return 0; }
+    }
+
+    void SetTab(string tab) { activeTab = tab; selectedBooking = null; }
+
+    void ViewBookingDetails(Hospitality.Models.Booking booking)
+    {
+selectedBooking = booking;
+        Navigation.NavigateTo($"/client/stays/{id}/booking/{booking.booking_id}", replace: true);
+    }
+
+ void CloseBookingDetail()
+    {
+        selectedBooking = null;
+    Navigation.NavigateTo($"/client/stays/{id}", replace: true);
+    }
+
+    bool IsUpcoming(Hospitality.Models.Booking booking) =>
+        booking.check_in_date >= DateTime.Today &&
+        !string.Equals(booking.booking_status, "cancelled", StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(booking.booking_status, "completed", StringComparison.OrdinalIgnoreCase);
+
+    bool CanCancelBooking(Hospitality.Models.Booking booking)
+    {
+ var status = booking.booking_status?.ToLowerInvariant() ?? "";
+        return status != "cancelled" && status != "completed" && status != "checked-in" && booking.check_in_date >= DateTime.Today;
+    }
+
+    int GetDaysUntilCheckIn(Hospitality.Models.Booking booking) => (booking.check_in_date - DateTime.Today).Days;
+
+    bool HasBalance(int bookingId) => bookingsWithBalance.Any(b => b.booking_id == bookingId);
+
+    int GetNights(Hospitality.Models.Booking booking) => Math.Max(1, (int)(booking.check_out_date - booking.check_in_date).TotalDays);
+
+    decimal CalculateBookingTotal(Hospitality.Models.Booking booking) => (booking.room_price ?? 0) * GetNights(booking);
+
+ string GetStatusClass(string? status) => status?.ToLowerInvariant() switch
+ {
+        "confirmed" => "confirmed",
+      "active" or "checked-in" => "active",
+      "completed" => "completed",
+    "cancelled" => "cancelled",
+        "partially_paid" => "pending",
+        _ => "pending"
+    };
+
+    string GetEmptyMessage() => activeTab switch
+    {
+        "upcoming" => "You don't have any upcoming stays. Book your next adventure!",
+      "completed" => "You haven't completed any stays yet.",
+        "cancelled" => "No cancelled bookings.",
+        _ => "You don't have any bookings yet. Start by booking a room!"
+    };
+
+    void ShowCancelModal(Hospitality.Models.Booking booking)
+    {
+  bookingToCancel = booking;
+        showCancelModal = true;
+        cancelError = null;
+        cancelSuccess = null;
+        cancellationReason = "";
+    }
+
+    void CloseCancelModal()
+    {
+        showCancelModal = false;
+        bookingToCancel = null;
+      cancelError = null;
+        cancelSuccess = null;
+      cancellationReason = "";
+    }
+
+    async Task ConfirmCancellation()
+    {
+        if (bookingToCancel == null) return;
+
+        cancelling = true;
+        cancelError = null;
+        cancelSuccess = null;
+        StateHasChanged();
+
+     try
+        {
+        string? reasonText = cancellationReason switch
+            {
+   "change_of_plans" => "Change of plans",
+    "found_better_deal" => "Found a better deal",
+      "health_emergency" => "Health emergency",
+  "travel_restrictions" => "Travel restrictions",
+ "work_conflict" => "Work conflict",
+       "other" => "Other",
+   _ => null
+};
+
+  var success = await BookingService.CancelBookingAsync(bookingToCancel.booking_id, reasonText);
+
+          if (success)
+     {
+          cancelSuccess = "Booking cancelled successfully! A confirmation has been sent to your messages.";
+          StateHasChanged();
+     await Task.Delay(2000);
+        await LoadDataAsync();
+          CloseCancelModal();
+  selectedBooking = null;
+   Navigation.NavigateTo($"/client/stays/{id}", replace: true);
+    }
+   else
+            {
+    cancelError = "Failed to cancel booking. Please try again or contact support.";
+     }
+      }
+        catch (Exception ex)
+        {
+          Console.WriteLine($"Error cancelling booking: {ex.Message}");
+   cancelError = "An error occurred while cancelling your booking. Please try again.";
+        }
+    finally
+        {
+ cancelling = false;
+     StateHasChanged();
+  }
+    }
+
+    void BookRoom() => Navigation.NavigateTo($"/booking/new/{id}");
+    void PayBalance(int bookingId) => Navigation.NavigateTo($"/booking/payment/{id}/{bookingId}");
+    void ContactSupport(int bookingId) => Navigation.NavigateTo($"/client/messages/{id}");
+
+    int LoyaltyPoints => loyaltyProgram?.total_points ?? 0;
+    string CurrentTier => loyaltyProgram?.current_tier ?? "Bronze";
+}

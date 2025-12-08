@@ -1,8 +1,591 @@
-<nav class="sidebar-nav">
-    <a href="/admin" class="nav-item"><span class="nav-icon">??</span><span>EMPLOYEES</span></a>
-    <a href="/admin/dashboard" class="nav-item active"><span class="nav-icon">??</span><span>DASHBOARD</span></a>
-    <a href="/admin/rooms" class="nav-item"><span class="nav-icon">??</span><span>ROOMS</span></a>
-    <a href="/admin/rewards" class="nav-item"><span class="nav-icon">??</span><span>REWARDS</span></a>
-    <a href="/admin/messages" class="nav-item"><span class="nav-icon">??</span><span>MESSAGES</span></a>
-    <a href="/admin/reports" class="nav-item"><span class="nav-icon">??</span><span>REPORTS & ANALYTICS</span></a>
-</nav>
+@page "/admin/dashboard"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.BookingService BookingService
+@inject Hospitality.Services.RoomService RoomService
+@inject Hospitality.Services.AnalyticsService AnalyticsService
+@inject Hospitality.Services.MessageService MessageService
+
+<link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-dashboard.css" />
+
+<div class="admin-page">
+    <aside class="admin-sidebar">
+        <div class="sidebar-header">
+            <img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+            <div class="admin-console-text">
+        <h4>InnSight Hotels</h4>
+       <span>Admin Console</span>
+    </div>
+ </div>
+ <nav class="sidebar-nav">
+     <a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+          <a href="/admin/dashboard" class="nav-item active"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
+         <a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+ <a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
+            <a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+            <a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
+            <a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
+  </nav>
+    </aside>
+
+    <main class="admin-main">
+        <header class="admin-header">
+        <div class="header-left">
+      <h1 class="page-title">Dashboard</h1>
+  <p class="page-subtitle">Welcome back! Here's what's happening at InnSight Hotels.</p>
+       </div>
+            <div class="header-actions">
+     <div class="date-display">
+    <i class="icon icon-calendar"></i>
+  <span>@DateTime.Now.ToString("dddd, MMMM dd, yyyy")</span>
+   </div>
+              <button class="btn-refresh" @onclick="RefreshData" disabled="@loading">
+         <i class="icon icon-refresh @(loading ? "spinning" : "")"></i> Refresh
+      </button>
+      <button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
+            </div>
+    </header>
+
+        @if (loading)
+    {
+  <div class="loading-container">
+<div class="spinner"></div>
+        <p>Loading dashboard data...</p>
+            </div>
+        }
+        else
+{
+          <!-- Key Metrics Row -->
+            <section class="metrics-row">
+  <div class="metric-card revenue">
+      <div class="metric-icon"><i class="icon icon-revenue"></i></div>
+          <div class="metric-content">
+     <span class="metric-value">@($"P{totalRevenue:N0}")</span>
+     <span class="metric-label">Total Revenue</span>
+ <span class="metric-period">Last 30 days</span>
+    </div>
+      <div class="metric-trend positive">
+        <i class="icon icon-trend-up"></i> +12%
+   </div>
+                </div>
+
+<div class="metric-card bookings">
+                 <div class="metric-icon"><i class="icon icon-bookings"></i></div>
+   <div class="metric-content">
+          <span class="metric-value">@totalBookings</span>
+      <span class="metric-label">Total Bookings</span>
+            <span class="metric-period">Last 30 days</span>
+        </div>
+       <div class="metric-trend positive">
+      <i class="icon icon-trend-up"></i> +8%
+   </div>
+       </div>
+
+        <div class="metric-card occupancy">
+              <div class="metric-icon"><i class="icon icon-hotel"></i></div>
+      <div class="metric-content">
+ <span class="metric-value">@occupancyRate.ToString("F0")%</span>
+             <span class="metric-label">Occupancy Rate</span>
+          <span class="metric-period">Current</span>
+   </div>
+ <div class="metric-trend @(occupancyRate > 70 ? "positive" : "neutral")">
+   <i class="icon @(occupancyRate > 70 ? "icon-check-circle" : "icon-info-circle")"></i> @(occupancyRate > 70 ? "Good" : "Normal")
+    </div>
+       </div>
+
+   <div class="metric-card guests">
+       <div class="metric-icon"><i class="icon icon-guests"></i></div>
+         <div class="metric-content">
+                <span class="metric-value">@totalGuests</span>
+  <span class="metric-label">Total Guests</span>
+      <span class="metric-period">Last 30 days</span>
+                  </div>
+       <div class="metric-trend positive">
+        <i class="icon icon-trend-up"></i> +5%
+ </div>
+                </div>
+            </section>
+
+            <!-- Quick Actions Row -->
+        <section class="quick-actions">
+      <h2 class="section-title">Quick Actions</h2>
+ <div class="actions-grid">
+<button class="action-card" @onclick="@(() => Navigation.NavigateTo("/admin/rooms"))">
+     <span class="action-icon"><i class="icon icon-rooms-lg"></i></span>
+         <span class="action-label">Manage Rooms</span>
+ </button>
+ <button class="action-card" @onclick="@(() => Navigation.NavigateTo("/admin/messages"))">
+      <span class="action-icon"><i class="icon icon-messages-lg"></i></span>
+    <span class="action-label">View Messages</span>
+      @if (unreadMessages > 0)
+        {
+          <span class="action-badge">@unreadMessages</span>
+        }
+               </button>
+             <button class="action-card" @onclick="@(() => Navigation.NavigateTo("/admin/reports"))">
+             <span class="action-icon"><i class="icon icon-reports-lg"></i></span>
+            <span class="action-label">Generate Report</span>
+  </button>
+     <button class="action-card" @onclick="@(() => Navigation.NavigateTo("/admin/rewards"))">
+            <span class="action-icon"><i class="icon icon-gift-lg"></i></span>
+       <span class="action-label">Loyalty Rewards</span>
+    </button>
+     </div>
+       </section>
+
+  <!-- Two Column Layout -->
+      <div class="dashboard-grid">
+        <!-- Room Status Overview -->
+ <section class="dashboard-card room-status">
+    <div class="card-header">
+           <h3><i class="icon icon-hotel-sm"></i> Room Status</h3>
+          <a href="/admin/rooms" class="view-all">View All ></a>
+    </div>
+    <div class="room-status-grid">
+         <div class="status-item available">
+        <span class="status-count">@availableRooms</span>
+             <span class="status-label">Available</span>
+         <div class="status-bar">
+      <div class="bar-fill" style="width: @GetRoomPercentage(availableRooms)%"></div>
+            </div>
+      </div>
+      <div class="status-item occupied">
+       <span class="status-count">@occupiedRooms</span>
+       <span class="status-label">Occupied</span>
+   <div class="status-bar">
+        <div class="bar-fill" style="width: @GetRoomPercentage(occupiedRooms)%"></div>
+   </div>
+  </div>
+      <div class="status-item reserved">
+                 <span class="status-count">@reservedRooms</span>
+     <span class="status-label">Reserved</span>
+                <div class="status-bar">
+              <div class="bar-fill" style="width: @GetRoomPercentage(reservedRooms)%"></div>
+   </div>
+</div>
+       <div class="status-item maintenance">
+           <span class="status-count">@maintenanceRooms</span>
+       <span class="status-label">Maintenance</span>
+        <div class="status-bar">
+<div class="bar-fill" style="width: @GetRoomPercentage(maintenanceRooms)%"></div>
+         </div>
+        </div>
+    </div>
+          <div class="room-total">
+      <span>Total Rooms: @totalRooms</span>
+        </div>
+         </section>
+
+    <!-- Today's Activity -->
+       <section class="dashboard-card today-activity">
+       <div class="card-header">
+     <h3><i class="icon icon-calendar-sm"></i> Today's Activity</h3>
+         <span class="today-date">@DateTime.Now.ToString("MMM dd")</span>
+            </div>
+      <div class="activity-stats">
+<div class="activity-item check-in">
+          <div class="activity-icon"><i class="icon icon-key"></i></div>
+         <div class="activity-content">
+             <span class="activity-count">@todayCheckIns</span>
+          <span class="activity-label">Check-ins Today</span>
+              </div>
+              </div>
+       <div class="activity-item check-out">
+ <div class="activity-icon"><i class="icon icon-door"></i></div>
+  <div class="activity-content">
+         <span class="activity-count">@todayCheckOuts</span>
+       <span class="activity-label">Check-outs Today</span>
+         </div>
+     </div>
+         <div class="activity-item new-bookings">
+            <div class="activity-icon"><i class="icon icon-new-booking"></i></div>
+        <div class="activity-content">
+           <span class="activity-count">@todayNewBookings</span>
+          <span class="activity-label">New Bookings</span>
+    </div>
+           </div>
+             <div class="activity-item cancellations">
+      <div class="activity-icon"><i class="icon icon-cancel"></i></div>
+  <div class="activity-content">
+      <span class="activity-count">@todayCancellations</span>
+               <span class="activity-label">Cancellations</span>
+        </div>
+    </div>
+      </div>
+   </section>
+
+    <!-- Recent Bookings -->
+   <section class="dashboard-card recent-bookings">
+   <div class="card-header">
+    <h3><i class="icon icon-bookings-sm"></i> Recent Bookings</h3>
+     <a href="/admin/reports" class="view-all">View All ></a>
+   </div>
+   <div class="bookings-list">
+       @if (recentBookings.Any())
+             {
+ @foreach (var booking in recentBookings.Take(5))
+     {
+       <div class="booking-item">
+      <div class="booking-info">
+      <span class="booking-id">#@booking.booking_id.ToString("D7")</span>
+    <span class="booking-guest">@booking.client_first_name @booking.client_last_name</span>
+          </div>
+  <div class="booking-details">
+        <span class="booking-room">@(booking.room_name ?? "Room")</span>
+    <span class="booking-dates">@booking.check_in_date.ToString("MMM dd") - @booking.check_out_date.ToString("MMM dd")</span>
+          </div>
+             <div class="booking-status">
+      <span class="status-badge status-@GetStatusClass(booking.booking_status)">
+           @(booking.booking_status ?? "Confirmed")
+      </span>
+     </div>
+ </div>
+   }
+   }
+  else
+        {
+          <div class="empty-state">
+    <span>No recent bookings</span>
+     </div>
+        }
+     </div>
+       </section>
+
+            <!-- Booking Conversion -->
+      <section class="dashboard-card conversion-stats">
+        <div class="card-header">
+             <h3><i class="icon icon-chart-sm"></i> Booking Status Breakdown</h3>
+        </div>
+     <div class="conversion-chart">
+         <div class="donut-container">
+         <svg class="donut" viewBox="0 0 36 36">
+      <circle class="donut-ring" cx="18" cy="18" r="15.915"/>
+    <circle class="donut-segment completed" cx="18" cy="18" r="15.915"
+         stroke-dasharray="@completedPercent 100"
+        stroke-dashoffset="0"/>
+  <circle class="donut-segment confirmed" cx="18" cy="18" r="15.915"
+     stroke-dasharray="@confirmedPercent 100"
+           stroke-dashoffset="@(-completedPercent)"/>
+             <circle class="donut-segment cancelled" cx="18" cy="18" r="15.915"
+  stroke-dasharray="@cancelledPercent 100"
+        stroke-dashoffset="@(-(completedPercent + confirmedPercent))"/>
+         </svg>
+       <div class="donut-center">
+        <span class="donut-value">@conversion?.TotalBookings</span>
+       <span class="donut-label">Total</span>
+             </div>
+          </div>
+  <div class="conversion-legend">
+        <div class="legend-item">
+     <span class="legend-color completed"></span>
+     <span class="legend-label">Completed</span>
+      <span class="legend-value">@(conversion?.CompletedBookings ?? 0)</span>
+    </div>
+    <div class="legend-item">
+   <span class="legend-color confirmed"></span>
+          <span class="legend-label">Confirmed</span>
+  <span class="legend-value">@(conversion?.ConfirmedBookings ?? 0)</span>
+      </div>
+     <div class="legend-item">
+ <span class="legend-color cancelled"></span>
+      <span class="legend-label">Cancelled</span>
+       <span class="legend-value">@(conversion?.CancelledBookings ?? 0)</span>
+       </div>
+       </div>
+          </div>
+        </section>
+
+    <!-- Revenue by Room Type -->
+  <section class="dashboard-card revenue-by-room full-width">
+       <div class="card-header">
+      <h3><i class="icon icon-revenue-sm"></i> Revenue by Room Type</h3>
+              <a href="/admin/analytics" class="view-all">View Analytics ></a>
+       </div>
+   <div class="room-revenue-chart">
+  @if (sales?.RevenueByRoomType.Any() == true)
+        {
+             @foreach (var room in sales.RevenueByRoomType.Take(6))
+        {
+          <div class="revenue-bar-container">
+  <div class="revenue-bar-info">
+   <span class="room-name">@room.RoomType</span>
+      <span class="room-bookings">@room.Bookings bookings</span>
+    </div>
+        <div class="revenue-bar-wrapper">
+     <div class="revenue-bar" style="width: @GetRevenuePercentage(room.Revenue)%">
+        <span class="revenue-amount">@($"P{room.Revenue:N0}")</span>
+</div>
+  </div>
+   </div>
+               }
+ }
+        else
+              {
+         <div class="empty-state">
+       <span>No revenue data available</span>
+           </div>
+ }
+           </div>
+          </section>
+
+       <!-- Customer Retention -->
+      <section class="dashboard-card customer-retention">
+      <div class="card-header">
+          <h3><i class="icon icon-guests-sm"></i> Customer Retention</h3>
+          </div>
+        <div class="retention-stats">
+     <div class="retention-circle">
+         <svg viewBox="0 0 36 36">
+                  <circle class="circle-bg" cx="18" cy="18" r="15.915"/>
+    <circle class="circle-fill" cx="18" cy="18" r="15.915"
+      stroke-dasharray="@(marketing?.RetentionRate ?? 0) 100"/>
+         </svg>
+    <div class="retention-center">
+      <span class="retention-value">@(marketing?.RetentionRate.ToString("F0") ?? "0")%</span>
+           <span class="retention-label">Retention</span>
+     </div>
+           </div>
+    <div class="retention-breakdown">
+        <div class="breakdown-item">
+          <span class="breakdown-dot one-time"></span>
+    <span>One-time: @(marketing?.OneTimeCustomers ?? 0)</span>
+             </div>
+                  <div class="breakdown-item">
+ <span class="breakdown-dot repeat"></span>
+        <span>Repeat: @(marketing?.RepeatCustomers ?? 0)</span>
+         </div>
+       <div class="breakdown-item">
+       <span class="breakdown-dot loyal"></span>
+      <span>Loyal: @(marketing?.LoyalCustomers ?? 0)</span>
+        </div>
+                 </div>
+             </div>
+           </section>
+
+    <!-- Upcoming Check-ins -->
+         <section class="dashboard-card upcoming-checkins">
+    <div class="card-header">
+         <h3><i class="icon icon-key-sm"></i> Upcoming Check-ins</h3>
+                 <span class="next-7-days">Next 7 days</span>
+     </div>
+<div class="checkin-list">
+                @if (upcomingCheckIns.Any())
+                  {
+          @foreach (var booking in upcomingCheckIns.Take(5))
+             {
+             <div class="checkin-item">
+   <div class="checkin-date">
+    <span class="date-day">@booking.check_in_date.ToString("dd")</span>
+      <span class="date-month">@booking.check_in_date.ToString("MMM")</span>
+        </div>
+        <div class="checkin-info">
+                  <span class="guest-name">@booking.client_first_name @booking.client_last_name</span>
+         <span class="room-info">@(booking.room_name ?? "Room") - @booking.person_count guests</span>
+   </div>
+    <div class="days-until">
+            @{
+           var daysUntil = (booking.check_in_date - DateTime.Today).Days;
+      }
+       @if (daysUntil == 0)
+           {
+      <span class="today-badge">Today</span>
+         }
+             else if (daysUntil == 1)
+   {
+             <span class="tomorrow-badge">Tomorrow</span>
+           }
+        else
+        {
+     <span class="days-badge">@daysUntil days</span>
+               }
+             </div>
+    </div>
+        }
+      }
+     else
+       {
+       <div class="empty-state">
+    <span>No upcoming check-ins</span>
+   </div>
+     }
+        </div>
+                </section>
+          </div>
+        }
+    </main>
+</div>
+
+@code {
+    bool loading = true;
+
+    // Metrics
+    decimal totalRevenue = 0;
+    int totalBookings = 0;
+    decimal occupancyRate = 0;
+    int totalGuests = 0;
+
+    // Room status
+    int totalRooms = 0;
+    int availableRooms = 0;
+    int occupiedRooms = 0;
+    int reservedRooms = 0;
+    int maintenanceRooms = 0;
+
+    // Today's activity
+    int todayCheckIns = 0;
+    int todayCheckOuts = 0;
+    int todayNewBookings = 0;
+    int todayCancellations = 0;
+
+    // Messages
+    int unreadMessages = 0;
+
+    // Data lists
+    List<Hospitality.Models.Booking> recentBookings = new();
+    List<Hospitality.Models.Booking> upcomingCheckIns = new();
+
+    // Analytics
+    SalesAnalytics? sales;
+    MarketingAnalytics? marketing;
+    ConversionAnalytics? conversion;
+
+    // Chart percentages
+    decimal completedPercent => conversion?.TotalBookings > 0 
+     ? (decimal)conversion.CompletedBookings / conversion.TotalBookings * 100 : 0;
+    decimal confirmedPercent => conversion?.TotalBookings > 0 
+      ? (decimal)conversion.ConfirmedBookings / conversion.TotalBookings * 100 : 0;
+    decimal cancelledPercent => conversion?.TotalBookings > 0 
+   ? (decimal)conversion.CancelledBookings / conversion.TotalBookings * 100 : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+   await LoadDashboardData();
+    }
+
+    async Task LoadDashboardData()
+    {
+        loading = true;
+        StateHasChanged();
+
+        try
+        {
+      // Load booking metrics
+      var metrics = await BookingService.GetBookingMetricsAsync(30);
+      totalRevenue = metrics.TotalRevenue;
+     totalBookings = metrics.TotalBookings;
+            totalGuests = metrics.TotalGuests;
+
+            // Load room status
+ var rooms = await RoomService.GetRoomsAsync();
+ totalRooms = rooms.Count;
+            availableRooms = rooms.Count(r => r.room_status == "Available");
+            occupiedRooms = rooms.Count(r => r.room_status == "Occupied");
+  reservedRooms = rooms.Count(r => r.room_status == "Reserved");
+            maintenanceRooms = rooms.Count(r => r.room_status == "Maintenance" || r.room_status == "Cleaning");
+
+  // Calculate occupancy rate
+            occupancyRate = totalRooms > 0 ? (decimal)occupiedRooms / totalRooms * 100 : 0;
+
+            // Load today's activity
+        await LoadTodayActivity();
+
+         // Load recent bookings
+      recentBookings = await BookingService.GetAllBookingsWithClientsAsync(
+         DateTime.Today.AddDays(-30), DateTime.Today.AddDays(30));
+
+ // Load upcoming check-ins
+  upcomingCheckIns = recentBookings
+  .Where(b => b.check_in_date >= DateTime.Today && 
+   b.check_in_date <= DateTime.Today.AddDays(7) &&
+       !string.Equals(b.booking_status, "cancelled", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(b => b.check_in_date)
+                .ToList();
+
+  // Load analytics
+  sales = await AnalyticsService.GetSalesAnalyticsAsync(30);
+            marketing = await AnalyticsService.GetMarketingAnalyticsAsync();
+      conversion = await AnalyticsService.GetConversionAnalyticsAsync(30);
+
+            // Load unread messages count
+         try
+            {
+      var filter = new Hospitality.Models.MessageFilter { FilterType = "Unassigned" };
+   var messages = await MessageService.GetAllMessagesForAdminAsync(filter);
+    unreadMessages = messages.Count(m => !m.is_read && m.message_type == "outgoing");
+    }
+            catch { unreadMessages = 0; }
+
+            Console.WriteLine($"Dashboard loaded: Revenue={totalRevenue:C}, Bookings={totalBookings}, Rooms={totalRooms}");
+        }
+        catch (Exception ex)
+  {
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+      }
+      finally
+        {
+          loading = false;
+     StateHasChanged();
+        }
+    }
+
+    async Task LoadTodayActivity()
+    {
+        try
+        {
+            using var con = Hospitality.Database.DbConnection.GetConnection();
+          await con.OpenAsync();
+
+var today = DateTime.Today;
+
+     // Check-ins today
+         string checkInSql = "SELECT COUNT(*) FROM Bookings WHERE CAST([check-in_date] AS DATE) = @today AND booking_status != 'cancelled'";
+ using var checkInCmd = new Microsoft.Data.SqlClient.SqlCommand(checkInSql, con);
+            checkInCmd.Parameters.AddWithValue("@today", today);
+            todayCheckIns = Convert.ToInt32(await checkInCmd.ExecuteScalarAsync());
+
+       // Check-outs today
+        string checkOutSql = "SELECT COUNT(*) FROM Bookings WHERE CAST([check-out_date] AS DATE) = @today AND booking_status != 'cancelled'";
+            using var checkOutCmd = new Microsoft.Data.SqlClient.SqlCommand(checkOutSql, con);
+            checkOutCmd.Parameters.AddWithValue("@today", today);
+            todayCheckOuts = Convert.ToInt32(await checkOutCmd.ExecuteScalarAsync());
+
+            // New bookings today (using check-in date as proxy since no created_at)
+ todayNewBookings = recentBookings.Count(b => b.check_in_date.Date == today);
+
+   // Cancellations today
+todayCancellations = recentBookings.Count(b => 
+        string.Equals(b.booking_status, "cancelled", StringComparison.OrdinalIgnoreCase));
+   }
+    catch (Exception ex)
+     {
+      Console.WriteLine($"Error loading today's activity: {ex.Message}");
+   }
+    }
+
+    async Task RefreshData()
+    {
+        await LoadDashboardData();
+    }
+
+    double GetRoomPercentage(int count)
+    {
+ return totalRooms > 0 ? (double)count / totalRooms * 100 : 0;
+    }
+
+    double GetRevenuePercentage(decimal revenue)
+    {
+        var max = sales?.RevenueByRoomType.Max(r => r.Revenue) ?? 1;
+        return max > 0 ? (double)(revenue / max * 100) : 0;
+    }
+
+    string GetStatusClass(string? status) => status?.ToLowerInvariant() switch
+    {
+        "confirmed" => "confirmed",
+    "completed" => "completed",
+     "cancelled" => "cancelled",
+        "checked-in" => "active",
+        _ => "pending"
+    };
+
+    void Logout() => Navigation.NavigateTo("/");
+}

@@ -43,13 +43,12 @@ PRINT '';
 -- ============================================
 PRINT 'Creating Scenario 1: Early Check-in Request (Unassigned)';
 
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, booking_id, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, booking_id, regarding_text)
 VALUES 
 (@Client1, 
  'Early check-in request', 
  'Hi! I''ll be arriving at the hotel around 8:00 AM on Tuesday. Is it possible to arrange an early check-in? I know the standard check-in time is 3:00 PM, but I have an important meeting at 10:00 AM and would like to freshen up first. Please let me know if this can be accommodated and if there are any additional fees. Thank you!',
  'outgoing', 
- 'Front Desk', 
  0, -- Unread by admin
  DATEADD(MINUTE, -15, GETDATE()), 
  @Booking1,
@@ -65,13 +64,12 @@ PRINT '';
 PRINT 'Creating Scenario 2: Airport Pickup (Conversation Thread)';
 
 -- Client's initial message
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
 VALUES 
 (@Client2,
  'Airport pickup service inquiry',
  'Hello, I''m arriving at the airport on Friday at 6:30 PM. Do you offer airport pickup service? If so, what are the rates and how do I arrange it? My flight is AA1234 from New York. Looking forward to my stay!',
  'outgoing',
- 'Member Services',
  1, -- Already read by admin
  DATEADD(HOUR, -4, GETDATE()),
  'Regarding: Transportation and airport services');
@@ -79,13 +77,12 @@ VALUES
 PRINT '? Created client inquiry about airport pickup';
 
 -- Admin's reply
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
 VALUES 
 (@Client2,
  'Re: Airport pickup service inquiry',
  'Hello! Thank you for reaching out. Yes, we do offer airport pickup service. The rate is $45 for a standard sedan (up to 3 passengers) or $65 for an SUV (up to 6 passengers). We can absolutely arrange a pickup for your 6:30 PM arrival on Friday. Please reply with your preferred vehicle type, and I''ll coordinate with our transportation team. We''ll track your flight AA1234 to adjust for any delays. Looking forward to welcoming you!',
  'service',
- 'Member Services',
  0, -- Client hasn't read yet
  DATEADD(HOUR, -3, GETDATE()),
  'Regarding: Transportation and airport services');
@@ -93,13 +90,12 @@ VALUES
 PRINT '? Created admin reply with service details';
 
 -- Client's follow-up
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
 VALUES 
 (@Client2,
  'Re: Airport pickup service inquiry',
  'Perfect! I''d like to book the standard sedan for $45. Is it okay if I have two large suitcases? Also, will the driver have a sign with my name at arrivals? Thanks so much!',
  'outgoing',
- 'Member Services',
  0, -- Admin needs to respond
  DATEADD(HOUR, -2, GETDATE()),
  'Regarding: Transportation and airport services');
@@ -113,13 +109,12 @@ PRINT '? Created client follow-up question (needs admin response)';
 PRINT '';
 PRINT 'Creating Scenario 3: Dietary Requirements (Unassigned)';
 
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, booking_id, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, booking_id, regarding_text)
 VALUES 
 (@Client3,
  'Special dietary requirements',
  'Hi there! I have a confirmed booking for next weekend and wanted to inform you that I have a severe peanut allergy. Could you please ensure that the room minibar and any complimentary items are peanut-free? Also, are your restaurant kitchen staff trained to handle food allergies? This is very important for my safety. Thank you for your understanding.',
  'outgoing',
- 'Front Desk',
  0, -- Unread by admin
  DATEADD(MINUTE, -45, GETDATE()),
  @Booking2,
@@ -135,13 +130,12 @@ PRINT '';
 PRINT 'Creating Scenario 4: Billing Question (Resolved)';
 
 -- Client's question
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
 VALUES 
 (@Client1,
  'Question about receipt',
  'I stayed at your hotel last week and need a detailed receipt for my company reimbursement. The email receipt doesn''t break down the charges. Could you send me an itemized bill showing room rate, taxes, and any additional charges separately? My booking number was ' + CAST(@Booking1 AS VARCHAR) + '. Thanks!',
  'outgoing',
- 'Billing & Receipts',
  1, -- Already read
  DATEADD(DAY, -2, GETDATE()),
  'Regarding: Receipt and billing documentation');
@@ -149,7 +143,7 @@ VALUES
 PRINT '? Created billing inquiry';
 
 -- Admin's resolution
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, booking_id, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, booking_id, regarding_text)
 VALUES 
 (@Client1,
  'Re: Question about receipt',
@@ -164,7 +158,6 @@ Total: $544.00
 
 I''ve sent the official itemized receipt to your email as a PDF attachment. It should arrive within the next few minutes. If you need any additional documentation or have questions about specific charges, please don''t hesitate to reach out. Have a great day!',
  'billing',
- 'Billing & Receipts',
  1, -- Client has read it
  DATEADD(DAY, -2, DATEADD(HOUR, 2, GETDATE())),
  @Booking1,
@@ -180,13 +173,12 @@ PRINT '';
 PRINT 'Creating Scenario 5: Room Upgrade Request (Open)';
 
 -- Initial request
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, booking_id, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, booking_id, regarding_text)
 VALUES 
 (@Client2,
  'Room upgrade inquiry',
  'Hello! I''ve booked a Standard Room for my anniversary next month. I''d love to surprise my wife with an upgrade to a Deluxe Suite. What would be the price difference? Also, is it possible to have champagne and flowers in the room when we arrive? This is our 10th anniversary, so I want to make it special!',
  'outgoing',
- 'Member Services',
  1,
  DATEADD(DAY, -1, GETDATE()),
  @Booking2,
@@ -195,7 +187,7 @@ VALUES
 PRINT '? Created room upgrade request';
 
 -- Admin's offer
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, booking_id, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, booking_id, regarding_text)
 VALUES 
 (@Client2,
  'Re: Room upgrade inquiry',
@@ -210,7 +202,6 @@ Package price: $150 (that''s $145 in savings!)
 
 Would you like to proceed with the upgrade and anniversary package?',
  'offer',
- 'Member Services',
  0, -- Client needs to respond
  DATEADD(DAY, -1, DATEADD(HOUR, 3, GETDATE())),
  @Booking2,
@@ -224,13 +215,12 @@ PRINT '? Created admin offer with anniversary package';
 PRINT '';
 PRINT 'Creating Scenario 6: Loyalty Points (Waiting for reply)';
 
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
 VALUES 
 (@Client3,
  'Loyalty points not credited',
  'Hi, I completed my stay last week but I don''t see the loyalty points in my account yet. According to your website, I should have earned 500 points. My booking confirmation was #' + CAST(COALESCE(@Booking2, 99999) AS VARCHAR) + '. Can you please look into this? I''m hoping to use those points for my next booking. Thank you!',
  'outgoing',
- 'Membership Rewards',
  0, -- Needs admin attention
  DATEADD(MINUTE, -90, GETDATE()),
  'Regarding: Loyalty points and rewards program');
@@ -243,13 +233,12 @@ PRINT '? Created loyalty program inquiry';
 PRINT '';
 PRINT 'Creating Scenario 7: Positive Feedback (Read)';
 
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
 VALUES 
 (@Client1,
  'Thank you for wonderful stay!',
  'I just wanted to send a quick message to thank your entire team for the exceptional service during my recent stay. The front desk staff were incredibly helpful, the room was spotless, and the breakfast buffet was delicious. Special shoutout to Maria at the front desk who went above and beyond to help with my late checkout request. I''ve already recommended your hotel to several colleagues. Will definitely be back!',
  'outgoing',
- 'Member Services',
  1, -- Admin has read
  DATEADD(DAY, -3, GETDATE()),
  'Regarding: General feedback and compliments');
@@ -257,13 +246,12 @@ VALUES
 PRINT '? Created positive feedback message';
 
 -- Admin's thank you reply
-INSERT INTO Messages (client_id, message_subject, message_body, message_type, message_category, is_read, sent_date, regarding_text)
+INSERT INTO Messages (client_id, message_subject, message_body, message_type, is_read, sent_date, regarding_text)
 VALUES 
 (@Client1,
  'Re: Thank you for wonderful stay!',
- 'Thank you so much for taking the time to share your wonderful feedback! We''re thrilled to hear you had such a positive experience. I''ve passed your kind words along to Maria and the entire team – they''ll be delighted to know their efforts made a difference. As a token of our appreciation, I''ve added 200 bonus loyalty points to your account. We look forward to welcoming you back soon! Safe travels!',
+ 'Thank you so much for taking the time to share your wonderful feedback! We''re thrilled to hear you had such a positive experience. I''ve passed your kind words along to Maria and the entire team ? they''ll be delighted to know their efforts made a difference. As a token of our appreciation, I''ve added 200 bonus loyalty points to your account. We look forward to welcoming you back soon! Safe travels!',
  'service',
- 'Member Services',
  1,
  DATEADD(DAY, -3, DATEADD(HOUR, 5, GETDATE())),
  'Regarding: General feedback and compliments');

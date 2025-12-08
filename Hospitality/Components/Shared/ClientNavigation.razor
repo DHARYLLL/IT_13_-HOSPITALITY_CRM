@@ -1,0 +1,84 @@
+@inject NavigationManager Navigation
+@inject Hospitality.Services.UserService UserService
+@inject Hospitality.Services.LoyaltyService LoyaltyService
+
+<!-- Top Navigation Bar -->
+<nav class="top-nav">
+    <div class="nav-left">
+        <div class="brand">
+       <img src="images/InnSight.png" alt="InnSight" style="height: 32px; width: auto; margin-right: 8px;" />
+            <span class="brand-name">InnSight</span>
+     <span class="brand-sub">Guest Portal</span>
+        </div>
+    </div>
+    <div class="nav-center">
+        <a href="/client/profile/@UserId" class="nav-link @(IsActive("profile") ? "active" : "")">Dashboard</a>
+        <a href="/client/stays/@UserId" class="nav-link @(IsActive("stays") ? "active" : "")">Stays</a>
+        <a href="/client/loyalty/@UserId" class="nav-link @(IsActive("loyalty") ? "active" : "")">Loyalty</a>
+  <a href="/client/messages/@UserId" class="nav-link @(IsActive("messages") ? "active" : "")">Messages</a>
+    </div>
+    <div class="nav-right">
+        <span class="points-badge">@CurrentTier • @LoyaltyPoints pts</span>
+        <div class="user-menu">
+ <div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
+            @if (isDropdownOpen)
+         {
+      <div class="user-dropdown">
+   <button class="dropdown-item @(IsActive("edit-profile") ? "active-page" : "")" @onclick="GoToEditProfile">
+<span class="dropdown-icon">??</span> Edit Profile
+          </button>
+          <button class="dropdown-item" @onclick="GoToReceipts">
+              <span class="dropdown-icon">??</span> View Receipts
+  </button>
+                    <div class="dropdown-divider"></div>
+    <button class="dropdown-item logout" @onclick="Logout">
+         <span class="dropdown-icon">??</span> Logout
+         </button>
+  </div>
+     }
+    </div>
+    </div>
+</nav>
+
+@code {
+    [Parameter] public int UserId { get; set; }
+    [Parameter] public string ActivePage { get; set; } = "";
+    [Parameter] public Hospitality.Models.User? User { get; set; }
+    [Parameter] public Hospitality.Models.LoyaltyProgram? LoyaltyProgram { get; set; }
+
+    bool isDropdownOpen = false;
+
+    bool IsActive(string page) => string.Equals(ActivePage, page, StringComparison.OrdinalIgnoreCase);
+
+    string GetInitials()
+    {
+      if (User == null) return "G";
+     var initials = new[] { User.user_fname, User.user_mname, User.user_lname }
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+  .Select(s => s![0].ToString().ToUpper());
+     return string.Join("", initials);
+    }
+
+    void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
+    
+    void GoToEditProfile()
+    {
+        isDropdownOpen = false;
+      Navigation.NavigateTo($"/client/edit-profile/{UserId}");
+    }
+
+    void GoToReceipts()
+    {
+        isDropdownOpen = false;
+        Navigation.NavigateTo($"/client/receipts/{UserId}");
+    }
+
+    void Logout()
+    {
+      isDropdownOpen = false;
+ Navigation.NavigateTo("/");
+    }
+
+    int LoyaltyPoints => LoyaltyProgram?.total_points ?? 0;
+    string CurrentTier => LoyaltyProgram?.current_tier ?? "Bronze";
+}

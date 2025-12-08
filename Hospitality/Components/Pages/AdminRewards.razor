@@ -13,28 +13,32 @@
 		</div>
 		<nav class="sidebar-nav">
 			<a href="/admin" class="nav-item">
-				<span class="nav-icon">??</span>
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
 				<span>EMPLOYEES</span>
 			</a>
 			<a href="/admin/dashboard" class="nav-item">
-				<span class="nav-icon">??</span>
+				<span class="nav-icon"><i class="icon icon-dashboard"></i></span>
 				<span>DASHBOARD</span>
 			</a>
 			<a href="/admin/rooms" class="nav-item">
-				<span class="nav-icon">??</span>
+				<span class="nav-icon"><i class="icon icon-rooms"></i></span>
 				<span>ROOMS</span>
 			</a>
 			<a href="/admin/rewards" class="nav-item active">
-				<span class="nav-icon">??</span>
+				<span class="nav-icon"><i class="icon icon-gift"></i></span>
 				<span>REWARDS</span>
 			</a>
 			<a href="/admin/messages" class="nav-item">
-				<span class="nav-icon">??</span>
+				<span class="nav-icon"><i class="icon icon-messages"></i></span>
 				<span>MESSAGES</span>
 			</a>
 			<a href="/admin/reports" class="nav-item">
-				<span class="nav-icon">??</span>
-				<span>REPORTS & ANALYTICS</span>
+				<span class="nav-icon"><i class="icon icon-reports"></i></span>
+				<span>REPORTS</span>
+			</a>
+			<a href="/admin/analytics" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-analytics"></i></span>
+				<span>SALES & MARKETING</span>
 			</a>
 		</nav>
 	</aside>
@@ -47,37 +51,37 @@
 				<p class="page-subtitle">Manage rewards that clients can redeem with their points</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span>??</button>
-				<button class="icon-btn" title="Profile">??</button>
-				<button class="icon-btn" title="Logout" @onclick="Logout">?</button>
+				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span><i class="icon icon-notification"></i></button>
+				<button class="icon-btn" title="Profile"><i class="icon icon-profile"></i></button>
+				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
 		<!-- Stats Cards -->
 		<div class="stats-row">
 			<div class="stat-card">
-				<div class="stat-icon">??</div>
+				<div class="stat-icon"><i class="icon icon-gift icon-xl"></i></div>
 				<div class="stat-info">
 					<div class="stat-value">@totalRewards</div>
 					<div class="stat-label">Total Rewards</div>
 				</div>
 			</div>
 			<div class="stat-card">
-				<div class="stat-icon">?</div>
+				<div class="stat-icon"><i class="icon icon-toggle-on icon-xl"></i></div>
 				<div class="stat-info">
 					<div class="stat-value">@activeRewards</div>
 					<div class="stat-label">Active Rewards</div>
 				</div>
 			</div>
 			<div class="stat-card">
-				<div class="stat-icon">??</div>
+				<div class="stat-icon"><i class="icon icon-voucher icon-xl"></i></div>
 				<div class="stat-info">
 					<div class="stat-value">@voucherCount</div>
 					<div class="stat-label">Vouchers</div>
 				</div>
 			</div>
 			<div class="stat-card">
-				<div class="stat-icon">??</div>
+				<div class="stat-icon"><i class="icon icon-upgrade icon-xl"></i></div>
 				<div class="stat-info">
 					<div class="stat-value">@upgradeCount</div>
 					<div class="stat-label">Upgrades</div>
@@ -87,7 +91,7 @@
 
 		<div class="toolbar">
 			<div class="search-box">
-				<span>??</span>
+				<span><i class="icon icon-search"></i></span>
 				<input type="text" placeholder="Search rewards..." @bind="searchQuery" @bind:event="oninput" @onkeyup="OnSearchChanged" />
 			</div>
 			<button class="btn-sort" @onclick="ToggleTypeFilter">Type: @(string.IsNullOrEmpty(typeFilter) ? "All" : typeFilter)</button>
@@ -105,7 +109,7 @@
 		else if (loadError)
 		{
 			<div class="error-banner">
-				<span>??</span>
+				<span><i class="icon icon-error"></i></span>
 				<span>Failed to load rewards. Please try again.</span>
 				<button @onclick="LoadRewardsAsync">Retry</button>
 			</div>
@@ -130,7 +134,7 @@
 						{
 							<tr>
 								<td colspan="6" class="empty-state">
-									<div class="empty-icon">??</div>
+									<div class="empty-icon"><i class="icon icon-gift icon-xl"></i></div>
 									<p>No rewards found matching your criteria.</p>
 								</td>
 							</tr>
@@ -142,7 +146,7 @@
 								<tr class="@(!reward.is_active ? "inactive-row" : "")">
 									<td>
 										<div class="reward-info">
-											<div class="reward-icon">@GetRewardIcon(reward.reward_type)</div>
+											<div class="reward-icon"><i class="icon @GetRewardIconClass(reward.reward_type) icon-lg"></i></div>
 											<div class="reward-details">
 												<div class="reward-name">@reward.reward_name</div>
 												<div class="reward-desc">@TruncateText(reward.reward_description, 60)</div>
@@ -179,11 +183,11 @@
 									</td>
 									<td>
 										<div class="action-buttons">
-											<button class="action-btn edit" title="Edit" @onclick="() => EditReward(reward)">??</button>
+											<button class="action-btn edit" title="Edit" @onclick="() => EditReward(reward)"><i class="icon icon-edit"></i></button>
 											<button class="action-btn toggle" title="@(reward.is_active ? "Deactivate" : "Activate")" @onclick="() => ToggleStatus(reward)">
-												@(reward.is_active ? "??" : "??")
+												<i class="icon @(reward.is_active ? "icon-toggle-off" : "icon-toggle-on")"></i>
 											</button>
-											<button class="action-btn delete" title="Delete" @onclick="() => ConfirmDelete(reward)">???</button>
+											<button class="action-btn delete" title="Delete" @onclick="() => ConfirmDelete(reward)"><i class="icon icon-delete"></i></button>
 										</div>
 									</td>
 								</tr>
@@ -221,13 +225,13 @@
 		<div class="modal-card" @onclick:stopPropagation>
 			<div class="modal-header">
 				<h2 class="modal-title">@(isEdit ? "Edit Reward" : "New Reward")</h2>
-				<button class="modal-close-btn" @onclick="CloseModal">?</button>
+				<button class="modal-close-btn" @onclick="CloseModal"><i class="icon icon-close"></i></button>
 			</div>
 			<div class="modal-body">
 				@if (!string.IsNullOrEmpty(modalError))
 				{
 					<div class="modal-error">
-						<span>??</span> @modalError
+						<span><i class="icon icon-error"></i></span> @modalError
 					</div>
 				}
 
@@ -282,7 +286,7 @@
 				<div class="reward-preview">
 					<h4>Preview</h4>
 					<div class="preview-card">
-						<div class="preview-icon">@GetRewardIcon(formType)</div>
+						<div class="preview-icon"><i class="icon @GetRewardIconClass(formType) icon-xl"></i></div>
 						<div class="preview-content">
 							<div class="preview-name">@(string.IsNullOrEmpty(formName) ? "Reward Name" : formName)</div>
 							<div class="preview-desc">@(string.IsNullOrEmpty(formDescription) ? "Reward description will appear here" : TruncateText(formDescription, 80))</div>
@@ -315,11 +319,11 @@
 		<div class="modal-card delete-modal" @onclick:stopPropagation>
 			<div class="modal-header">
 				<h2 class="modal-title">Delete Reward</h2>
-				<button class="modal-close-btn" @onclick="CloseDeleteModal">?</button>
+				<button class="modal-close-btn" @onclick="CloseDeleteModal"><i class="icon icon-close"></i></button>
 			</div>
 			<div class="modal-body">
 				<div class="delete-warning">
-					<div class="warning-icon">??</div>
+					<div class="warning-icon"><i class="icon icon-warning icon-xl"></i></div>
 					<p>Are you sure you want to delete this reward?</p>
 					<div class="delete-reward-info">
 						<strong>@rewardToDelete?.reward_name</strong>
@@ -669,12 +673,21 @@
 	}
 
 	// Helpers
+	string GetRewardIconClass(string type) => type switch
+	{
+		"voucher" => "icon-voucher",
+		"upgrade" => "icon-upgrade",
+		"service" => "icon-service",
+		_ => "icon-gift"
+	};
+
+	// Keep existing GetRewardIcon for backward compatibility
 	string GetRewardIcon(string type) => type switch
 	{
-		"voucher" => "??",
-		"upgrade" => "??",
-		"service" => "???",
-		_ => "??"
+		"voucher" => "",
+		"upgrade" => "",
+		"service" => "",
+		_ => ""
 	};
 
 	string GetTypeBadgeClass(string type) => type switch

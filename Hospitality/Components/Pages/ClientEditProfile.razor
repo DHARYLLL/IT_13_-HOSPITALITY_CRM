@@ -1,0 +1,418 @@
+@page "/client/edit-profile/{id:int}"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.UserService UserService
+@inject Hospitality.Services.LoyaltyService LoyaltyService
+
+<link rel="stylesheet" href="css/clientprofile.css" />
+<link rel="stylesheet" href="css/client-layout.css" />
+<link rel="stylesheet" href="css/client-edit-profile.css" />
+
+<div class="client-profile-page">
+	<!-- Shared Navigation Component -->
+	<ClientNavigation UserId="@id" ActivePage="edit-profile" User="@user" LoyaltyProgram="@loyaltyProgram" />
+
+	<div class="profile-container">
+		@if (loading)
+		{
+			<div class="loading-container">
+				<p>Loading profile...</p>
+			</div>
+		}
+		else if (user == null)
+		{
+			<div class="error-container">
+				<h3>User not found</h3>
+				<p>Could not find user with ID: @id</p>
+			</div>
+		}
+		else
+		{
+			<!-- Page Header -->
+			<header class="page-header">
+				<div class="header-content">
+					<button class="back-btn" @onclick="GoBack">
+						<span>?</span> Back to Dashboard
+					</button>
+					<h1 class="page-title">Edit Profile</h1>
+					<p class="page-subtitle">Update your personal information and account settings.</p>
+				</div>
+			</header>
+
+			<div class="edit-profile-grid">
+				<!-- Profile Picture Section -->
+				<div class="card profile-picture-card">
+					<div class="profile-picture-section">
+						<div class="profile-avatar">
+							<span>@GetInitials()</span>
+						</div>
+						<div class="profile-picture-info">
+							<h3>Profile Picture</h3>
+							<p>Your initials are displayed as your avatar.</p>
+							<span class="tier-badge">@GetTierBadge() @CurrentTier Member</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Personal Information -->
+				<div class="card personal-info-card">
+					<div class="card-header">
+						<h3>?? Personal Information</h3>
+					</div>
+					<div class="form-grid">
+						<div class="form-group">
+							<label for="firstName">First Name</label>
+							<input type="text" id="firstName" @bind="editModel.FirstName" class="form-input" placeholder="Enter first name" />
+						</div>
+						<div class="form-group">
+							<label for="middleName">Middle Name</label>
+							<input type="text" id="middleName" @bind="editModel.MiddleName" class="form-input" placeholder="Enter middle name (optional)" />
+						</div>
+						<div class="form-group">
+							<label for="lastName">Last Name</label>
+							<input type="text" id="lastName" @bind="editModel.LastName" class="form-input" placeholder="Enter last name" />
+						</div>
+						<div class="form-group">
+							<label for="birthDate">Date of Birth</label>
+							<input type="date" id="birthDate" @bind="editModel.BirthDate" class="form-input" />
+						</div>
+					</div>
+				</div>
+
+				<!-- Contact Information -->
+				<div class="card contact-info-card">
+					<div class="card-header">
+						<h3>?? Contact Information</h3>
+					</div>
+					<div class="form-grid">
+						<div class="form-group full-width">
+							<label for="email">Email Address</label>
+							<input type="email" id="email" @bind="editModel.Email" class="form-input" placeholder="Enter email address" />
+							<span class="input-hint">This is used for booking confirmations and notifications.</span>
+						</div>
+						<div class="form-group full-width">
+							<label for="phone">Contact Number</label>
+							<input type="tel" id="phone" @bind="editModel.ContactNumber" class="form-input" placeholder="Enter contact number" />
+						</div>
+					</div>
+				</div>
+
+				<!-- Security Settings -->
+				<div class="card security-card">
+					<div class="card-header">
+						<h3>?? Security Settings</h3>
+					</div>
+					<div class="form-grid">
+						<div class="form-group">
+							<label for="currentPassword">Current Password</label>
+							<input type="password" id="currentPassword" @bind="editModel.CurrentPassword" class="form-input" placeholder="Enter current password" />
+						</div>
+						<div class="form-group">
+							<label for="newPassword">New Password</label>
+							<input type="password" id="newPassword" @bind="editModel.NewPassword" class="form-input" placeholder="Enter new password" />
+						</div>
+						<div class="form-group">
+							<label for="confirmPassword">Confirm New Password</label>
+							<input type="password" id="confirmPassword" @bind="editModel.ConfirmPassword" class="form-input" placeholder="Confirm new password" />
+						</div>
+					</div>
+					<p class="password-hint">Leave password fields empty if you don't want to change your password.</p>
+				</div>
+
+				<!-- Account Info -->
+				<div class="card account-info-card">
+					<div class="card-header">
+						<h3>?? Account Information</h3>
+					</div>
+					<div class="account-details">
+						<div class="account-item">
+							<span class="account-label">Account ID</span>
+							<span class="account-value">#@id.ToString("D6")</span>
+						</div>
+						<div class="account-item">
+							<span class="account-label">Member Since</span>
+							<span class="account-value">@MemberSinceYear</span>
+						</div>
+						<div class="account-item">
+							<span class="account-label">Loyalty Tier</span>
+							<span class="account-value tier">@GetTierBadge() @CurrentTier</span>
+						</div>
+						<div class="account-item">
+							<span class="account-label">Loyalty Points</span>
+							<span class="account-value points">@LoyaltyPoints pts</span>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Action Buttons -->
+			<div class="form-actions">
+				@if (!string.IsNullOrEmpty(errorMessage))
+				{
+					<div class="error-message">
+						<span>??</span> @errorMessage
+					</div>
+				}
+				@if (!string.IsNullOrEmpty(successMessage))
+				{
+					<div class="success-message">
+						<span>?</span> @successMessage
+					</div>
+				}
+				<div class="action-buttons-row">
+					<button class="btn btn-secondary" @onclick="GoBack">Cancel</button>
+					<button class="btn btn-primary" @onclick="SaveChanges" disabled="@saving">
+						@if (saving)
+						{
+							<span>Saving...</span>
+						}
+						else
+						{
+							<span>?? Save Changes</span>
+						}
+					</button>
+				</div>
+			</div>
+		}
+	</div>
+</div>
+
+@code {
+	[Parameter] public int id { get; set; }
+
+	Hospitality.Models.User? user;
+	Hospitality.Models.LoyaltyProgram? loyaltyProgram;
+	EditProfileModel editModel = new();
+
+	bool loading = true;
+	bool saving = false;
+	string? errorMessage;
+	string? successMessage;
+	int actualClientId = 0;
+
+	protected override async Task OnParametersSetAsync()
+	{
+		await LoadDataAsync();
+	}
+
+	private async Task LoadDataAsync()
+	{
+		loading = true;
+		StateHasChanged();
+
+		try
+		{
+			user = await UserService.GetUserByIdAsync(id);
+
+			if (user != null)
+			{
+				// Populate edit model
+				editModel = new EditProfileModel
+				{
+					FirstName = user.user_fname,
+					MiddleName = user.user_mname,
+					LastName = user.user_lname,
+					Email = user.user_email,
+					ContactNumber = user.user_contact_number,
+					BirthDate = user.user_brith_date
+				};
+
+				actualClientId = await GetClientIdAsync(id);
+
+				if (actualClientId > 0)
+				{
+					try
+					{
+						loyaltyProgram = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
+					}
+					catch { }
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Error loading profile: {ex.Message}");
+		}
+		finally
+		{
+			loading = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task SaveChanges()
+	{
+		errorMessage = null;
+		successMessage = null;
+
+		// Validation
+		if (string.IsNullOrWhiteSpace(editModel.FirstName))
+		{
+			errorMessage = "First name is required.";
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(editModel.LastName))
+		{
+			errorMessage = "Last name is required.";
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(editModel.Email))
+		{
+			errorMessage = "Email address is required.";
+			return;
+		}
+
+		// Password validation
+		if (!string.IsNullOrWhiteSpace(editModel.NewPassword))
+		{
+			if (string.IsNullOrWhiteSpace(editModel.CurrentPassword))
+			{
+				errorMessage = "Current password is required to set a new password.";
+				return;
+			}
+
+			if (editModel.NewPassword != editModel.ConfirmPassword)
+			{
+				errorMessage = "New password and confirmation do not match.";
+				return;
+			}
+
+			if (editModel.NewPassword.Length < 6)
+			{
+				errorMessage = "New password must be at least 6 characters long.";
+				return;
+			}
+		}
+
+		saving = true;
+		StateHasChanged();
+
+		try
+		{
+			using var con = Hospitality.Database.DbConnection.GetConnection();
+			await con.OpenAsync();
+
+			// Verify current password if changing password
+			if (!string.IsNullOrWhiteSpace(editModel.NewPassword))
+			{
+				string verifyPasswordSql = "SELECT user_password FROM users WHERE user_id = @userId";
+				using var verifyCmd = new Microsoft.Data.SqlClient.SqlCommand(verifyPasswordSql, con);
+				verifyCmd.Parameters.AddWithValue("@userId", id);
+				var currentStoredPassword = await verifyCmd.ExecuteScalarAsync() as string;
+
+				if (currentStoredPassword != editModel.CurrentPassword)
+				{
+					errorMessage = "Current password is incorrect.";
+					saving = false;
+					return;
+				}
+			}
+
+			// Update user profile
+			string updateSql = @"
+  UPDATE users
+    SET user_fname = @firstName,
+         user_mname = @middleName,
+           user_lname = @lastName,
+        user_email = @email,
+ user_contact_number = @contactNumber,
+   user_brith_date = @birthDate" +
+		(string.IsNullOrWhiteSpace(editModel.NewPassword) ? "" : ", user_password = @newPassword") +
+				 @" WHERE user_id = @userId";
+
+			using var cmd = new Microsoft.Data.SqlClient.SqlCommand(updateSql, con);
+			cmd.Parameters.AddWithValue("@userId", id);
+			cmd.Parameters.AddWithValue("@firstName", (object?)editModel.FirstName ?? DBNull.Value);
+			cmd.Parameters.AddWithValue("@middleName", (object?)editModel.MiddleName ?? DBNull.Value);
+			cmd.Parameters.AddWithValue("@lastName", (object?)editModel.LastName ?? DBNull.Value);
+			cmd.Parameters.AddWithValue("@email", (object?)editModel.Email ?? DBNull.Value);
+			cmd.Parameters.AddWithValue("@contactNumber", (object?)editModel.ContactNumber ?? DBNull.Value);
+			cmd.Parameters.AddWithValue("@birthDate", (object?)editModel.BirthDate ?? DBNull.Value);
+
+			if (!string.IsNullOrWhiteSpace(editModel.NewPassword))
+			{
+				cmd.Parameters.AddWithValue("@newPassword", editModel.NewPassword);
+			}
+
+			await cmd.ExecuteNonQueryAsync();
+
+			// Reload user data
+			user = await UserService.GetUserByIdAsync(id);
+
+			// Clear password fields
+			editModel.CurrentPassword = null;
+			editModel.NewPassword = null;
+			editModel.ConfirmPassword = null;
+
+			successMessage = "Profile updated successfully!";
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Error saving profile: {ex.Message}");
+			errorMessage = "Failed to save changes. Please try again.";
+		}
+		finally
+		{
+			saving = false;
+			StateHasChanged();
+		}
+	}
+
+	async Task<int> GetClientIdAsync(int userId)
+	{
+		try
+		{
+			using var con = Hospitality.Database.DbConnection.GetConnection();
+			await con.OpenAsync();
+
+			string sql = "SELECT client_id FROM Clients WHERE user_id = @userId";
+			using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con);
+			cmd.Parameters.AddWithValue("@userId", userId);
+
+			var result = await cmd.ExecuteScalarAsync();
+			return result != null && result != DBNull.Value ? Convert.ToInt32(result) : 0;
+		}
+		catch
+		{
+			return 0;
+		}
+	}
+
+	string GetInitials()
+	{
+		if (user == null) return "G";
+		var initials = new[] { user.user_fname, user.user_mname, user.user_lname }
+				 .Where(s => !string.IsNullOrWhiteSpace(s))
+				 .Select(s => s![0].ToString().ToUpper());
+		return string.Join("", initials);
+	}
+
+	string GetTierBadge() => CurrentTier switch
+	{
+		"Bronze" => "??",
+		"Silver" => "??",
+		"Gold" => "??",
+		"Platinum" => "??",
+		_ => "?"
+	};
+
+	void GoBack() => Navigation.NavigateTo($"/client/profile/{id}");
+
+	int LoyaltyPoints => loyaltyProgram?.total_points ?? 0;
+	string CurrentTier => loyaltyProgram?.current_tier ?? "Bronze";
+	int MemberSinceYear => loyaltyProgram?.member_since.Year ?? DateTime.Now.Year;
+
+	public class EditProfileModel
+	{
+		public string? FirstName { get; set; }
+		public string? MiddleName { get; set; }
+		public string? LastName { get; set; }
+		public string? Email { get; set; }
+		public string? ContactNumber { get; set; }
+		public DateTime? BirthDate { get; set; }
+		public string? CurrentPassword { get; set; }
+		public string? NewPassword { get; set; }
+		public string? ConfirmPassword { get; set; }
+	}
+}
