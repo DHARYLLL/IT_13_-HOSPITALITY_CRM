@@ -381,6 +381,68 @@ align-items: flex-start;
 }
 
 /* Responsive Design for Signup */
+/* Error Banner - Same as login */
+.error-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: #fee;
+    border: 1px solid #fcc;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    color: #c00;
+    font-size: 0.9rem;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.error-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.error-text {
+    flex: 1;
+    font-weight: 500;
+}
+
+.field-error {
+    display: block;
+    color: #c00;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.input-error {
+    background: #fee !important;
+    border: 1px solid #fcc !important;
+}
+
+.input-error:focus-within {
+    box-shadow: 0 0 0 2px rgba(204, 0, 0, 0.3) !important;
+}
+
+.input-valid {
+    background: #efe !important;
+    border: 1px solid #cfc !important;
+}
+
+.input-valid:focus-within {
+    box-shadow: 0 0 0 2px rgba(0, 204, 0, 0.3) !important;
+}
+
+.validation-message {
+    display: block;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.validation-message.success {
+    color: #16a34a;
+}
+
 @media (max-width: 768px) {
     .signup-right-noscroll {
     padding: 1.5rem;

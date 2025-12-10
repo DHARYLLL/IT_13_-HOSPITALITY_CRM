@@ -7,6 +7,20 @@ namespace Hospitality.Services
 {
     public class UserService
     {
+        private readonly DualWriteService? _dualWriteService;
+        private readonly SyncService? _syncService;
+
+        public UserService()
+        {
+            // Default constructor for backward compatibility
+        }
+
+        public UserService(DualWriteService dualWriteService, SyncService syncService)
+        {
+            _dualWriteService = dualWriteService;
+            _syncService = syncService;
+        }
+
         public async Task<User?> LoginAsync(string email, string password)
         {
             User? user = null;
@@ -48,6 +62,95 @@ namespace Hospitality.Services
         {
             try
             {
+                // If DualWriteService is available, use it for dual-write
+                if (_dualWriteService != null)
+                {
+                    // First, determine role name if not supplied
+                    string? userRoleName = user.roleName;
+                    if (string.IsNullOrWhiteSpace(userRoleName))
+                    {
+                        using var roleCon = DbConnection.GetConnection();
+                        await roleCon.OpenAsync();
+                        using var roleCmd = new SqlCommand("SELECT role_name FROM Roles WHERE role_id=@rid", roleCon);
+                        roleCmd.Parameters.AddWithValue("@rid", user.role_id);
+                        var rn = await roleCmd.ExecuteScalarAsync();
+                        userRoleName = rn?.ToString();
+                    }
+
+                    // Register user with DualWriteService
+                    int registeredUserId = await _dualWriteService.ExecuteWriteAsync(
+                        "User",
+                        "Users",
+                        "INSERT",
+                        async (dbCon, dbTx) =>
+                        {
+                            // Check if sync_status column exists
+                            bool hasSyncColumn = await HasSyncStatusColumnAsync(dbCon, dbTx, "Users");
+
+                            string sql = hasSyncColumn
+                                ? @"INSERT INTO Users (role_id, user_fname, user_mname, user_lname, user_brith_date, user_email, user_contact_number, user_password, sync_status)
+                                   VALUES (@role_id, @fname, @mname, @lname, @birth, @email, @contact, @password, 'pending'); 
+                                   SELECT CAST(SCOPE_IDENTITY() AS int);"
+                                : @"INSERT INTO Users (role_id, user_fname, user_mname, user_lname, user_brith_date, user_email, user_contact_number, user_password)
+                                   VALUES (@role_id, @fname, @mname, @lname, @birth, @email, @contact, @password); 
+                                   SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+                            using var cmd = new SqlCommand(sql, dbCon, dbTx);
+                            cmd.Parameters.AddWithValue("@role_id", user.role_id);
+                            cmd.Parameters.AddWithValue("@fname", (object?)user.user_fname ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@mname", (object?)user.user_mname ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@lname", (object?)user.user_lname ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@birth", (object?)user.user_brith_date ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@email", (object?)user.user_email ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@contact", (object?)user.user_contact_number ?? DBNull.Value);
+                            cmd.Parameters.AddWithValue("@password", (object?)user.user_password ?? DBNull.Value);
+
+                            var idObj = await cmd.ExecuteScalarAsync();
+                            return (idObj is int i) ? i : Convert.ToInt32(idObj);
+                        });
+
+                    // After user is created, create Client/Employee record if needed
+                    if (!string.IsNullOrWhiteSpace(userRoleName))
+                    {
+                        var roleLower = userRoleName.ToLowerInvariant();
+                        if (roleLower == "client")
+                        {
+                            // Insert into Clients using DualWriteService
+                            await _dualWriteService.ExecuteWriteAsync(
+                                "Client",
+                                "Clients",
+                                "INSERT",
+                                async (clientCon, clientTx) =>
+                                {
+                                    bool hasSyncColumn = await HasSyncStatusColumnAsync(clientCon, clientTx, "Clients");
+                                    string clientSql = hasSyncColumn
+                                        ? @"INSERT INTO Clients (user_id, sync_status) VALUES (@user_id, 'pending'); 
+                                           SELECT CAST(SCOPE_IDENTITY() AS int);"
+                                        : @"INSERT INTO Clients (user_id) VALUES (@user_id); 
+                                           SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+                                    using var clientCmd = new SqlCommand(clientSql, clientCon, clientTx);
+                                    clientCmd.Parameters.AddWithValue("@user_id", registeredUserId);
+                                    var clientIdObj = await clientCmd.ExecuteScalarAsync();
+                                    return (clientIdObj is int ci) ? ci : Convert.ToInt32(clientIdObj);
+                                });
+                        }
+                        else if (roleLower == "staff" || roleLower == "admin")
+                        {
+                            // Insert into Employees (note: Employees table may not have sync support yet)
+                            using var empCon = DbConnection.GetConnection();
+                            await empCon.OpenAsync();
+                            string employeeSql = "INSERT INTO Employees (user_id) VALUES (@user_id);";
+                            using var empCmd = new SqlCommand(employeeSql, empCon);
+                            empCmd.Parameters.AddWithValue("@user_id", registeredUserId);
+                            await empCmd.ExecuteNonQueryAsync();
+                        }
+                    }
+
+                    return registeredUserId;
+                }
+
+                // Fallback to original implementation (no DualWriteService)
                 using var con = DbConnection.GetConnection();
                 await con.OpenAsync();
 
@@ -108,6 +211,27 @@ namespace Hospitality.Services
                 // Log the exception for debugging
                 System.Diagnostics.Debug.WriteLine($"Registration error: {ex}");
                 throw;
+            }
+        }
+
+        private async Task<bool> HasSyncStatusColumnAsync(SqlConnection con, SqlTransaction? tx, string tableName)
+        {
+            try
+            {
+                string sql = @"
+                    SELECT COUNT(*) 
+                    FROM sys.columns 
+                    WHERE object_id = OBJECT_ID(@tableName) 
+                    AND name = 'sync_status'";
+                
+                using var cmd = new SqlCommand(sql, con, tx);
+                cmd.Parameters.AddWithValue("@tableName", tableName);
+                var result = await cmd.ExecuteScalarAsync();
+                return Convert.ToInt32(result) > 0;
+            }
+            catch
+            {
+                return false;
             }
         }
 

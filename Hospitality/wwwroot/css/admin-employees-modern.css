@@ -364,3 +364,128 @@ padding: 1.5rem 2rem;
     color: #9937c8;
     font-size: 0.875rem;
 }
+
+/* Modern Pagination - Matching Rooms Style */
+.pagination-modern {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    flex-wrap: wrap;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-btn-modern {
+    min-width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0 0.75rem;
+}
+
+.page-btn-modern:hover:not(:disabled) {
+    border-color: #5e1369;
+    color: #5e1369;
+    background: #f8f4f9;
+    transform: translateY(-2px);
+}
+
+.page-btn-modern.active {
+    background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(94, 19, 105, 0.2);
+}
+
+.page-btn-modern:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-dots {
+    padding: 0 0.5rem;
+    color: #adb5bd;
+    font-weight: 600;
+}
+
+.pagination-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-info-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.page-size-selector {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-size-selector label {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.page-size-select {
+    padding: 0.5rem 1rem;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.page-size-select:hover {
+    border-color: #5e1369;
+}
+
+.page-size-select:focus {
+    outline: none;
+    border-color: #5e1369;
+    box-shadow: 0 0 0 3px rgba(94, 19, 105, 0.1);
+}
+
+@media (max-width: 768px) {
+    .pagination-modern {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pagination-controls {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .pagination-info {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+}

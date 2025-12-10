@@ -16,6 +16,13 @@
 		<div class="login-right">
 			<div class="login-form">
 				<h2 class="login-title">Log in</h2>
+				@if (!string.IsNullOrEmpty(errorMessage))
+				{
+					<div class="error-banner">
+						<span class="error-icon">⚠️</span>
+						<span class="error-text">@errorMessage</span>
+					</div>
+				}
 				<div class="form-group">
 					<div class="input-wrapper @(emailError ? "input-error" : "")">
 						<span class="input-icon">✉️</span>
@@ -112,7 +119,7 @@
 			if(role==Hospitality.Models.UserRoles.Admin) 
 			{
 				Console.WriteLine("Navigating to admin dashboard");
-				Navigation.NavigateTo("/admin");
+				Navigation.NavigateTo("/admin/dashboard");
 			}
 			else if(role==Hospitality.Models.UserRoles.Staff) 
 			{
@@ -134,7 +141,21 @@
 		catch (Exception ex)
 		{
 			Console.WriteLine($"Login error: {ex.Message}");
-			errorMessage = "An error occurred while logging in. Please try again.";
+			Console.WriteLine($"Stack trace: {ex.StackTrace}");
+			
+			// More specific error messages based on exception type
+			if (ex.Message.Contains("timeout") || ex.Message.Contains("connection"))
+			{
+				errorMessage = "Connection error. Please check your internet connection and try again.";
+			}
+			else if (ex.Message.Contains("database") || ex.Message.Contains("SQL"))
+			{
+				errorMessage = "Database error. Please try again later or contact support.";
+			}
+			else
+			{
+				errorMessage = "An error occurred while logging in. Please try again.";
+			}
 		}
 		finally
 		{

@@ -43,7 +43,10 @@ namespace Hospitality
             builder.Services.AddSingleton<DualWriteService>();
 
             // Register application services with dual-write support
-            builder.Services.AddSingleton<UserService>();
+            builder.Services.AddSingleton<UserService>(sp =>
+                new UserService(
+                    sp.GetRequiredService<DualWriteService>(),
+                    sp.GetRequiredService<SyncService>()));
             builder.Services.AddSingleton<RoomService>(sp => 
         new RoomService(
               sp.GetRequiredService<SyncService>(),

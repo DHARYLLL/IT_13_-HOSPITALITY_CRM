@@ -47,10 +47,10 @@
 			<!-- Action Buttons -->
 			<div class="action-buttons">
 				<button class="btn btn-primary" @onclick="BookRoom">
-					<span class="btn-icon">??</span> Book a Room
+					<i class="icon icon-calendar"></i> Book a Room
 				</button>
 				<button class="btn btn-secondary" @onclick="ViewReceipts">
-					<span class="btn-icon">??</span> View Receipts
+					<i class="icon icon-receipt"></i> View Receipts
 				</button>
 			</div>
 
@@ -59,7 +59,7 @@
 			{
 				<div class="card" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #ff9800; margin-bottom: 24px;">
 					<div class="card-icon-header">
-						<span class="icon">??</span>
+						<i class="icon icon-payment"></i>
 						<h3 style="color: #e65100;">Pending Payments</h3>
 						<span style="margin-left: auto; background: #ff9800; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
 							@bookingsWithBalance.Count booking@(bookingsWithBalance.Count != 1 ? "s" : "") with balance
@@ -77,10 +77,10 @@
 										@booking.room_name
 									</div>
 									<div style="font-size: 13px; color: #6e6e73;">
-										Booking #@booking.booking_id • @booking.check_in_date.ToString("MMM dd") - @booking.check_out_date.ToString("MMM dd")
+										Booking #@booking.booking_id ï¿½ @booking.check_in_date.ToString("MMM dd") - @booking.check_out_date.ToString("MMM dd")
 									</div>
 									<div style="font-size: 12px; color: #86868b; margin-top: 4px;">
-										@booking.nights night@(booking.nights != 1 ? "s" : "") • @booking.person_count guest@(booking.person_count != 1 ? "s" : "")
+										@booking.nights night@(booking.nights != 1 ? "s" : "") ï¿½ @booking.person_count guest@(booking.person_count != 1 ? "s" : "")
 									</div>
 								</div>
 								<div style="text-align: right;">
@@ -90,7 +90,7 @@
 									</div>
 								</div>
 								<button class="btn btn-primary" style="min-width: 140px;" @onclick="() => PayRemainingBalance(booking.booking_id)">
-									?? Pay Balance
+									<i class="icon icon-payment"></i> Pay Balance
 								</button>
 							</div>
 						}
@@ -103,7 +103,7 @@
 				<!-- Upcoming Booking Card -->
 				<div class="card upcoming-card">
 					<div class="card-icon-header">
-						<span class="icon">??</span>
+						<i class="icon icon-calendar"></i>
 						<h3>Upcoming Booking</h3>
 					</div>
 					@if (currentBooking == null)
@@ -115,13 +115,22 @@
 						<div class="booking-content">
 							<div class="booking-info-left">
 								<h4 class="room-title">@(currentBooking.room_name ?? "Room")</h4>
-								<p class="booking-dates">Check-in @currentBooking.check_in_date.ToString("ddd, MMM dd") • Check-out @currentBooking.check_out_date.ToString("ddd, MMM dd")</p>
-								<p class="booking-meta">Guests: @currentBooking.person_count adult@(currentBooking.person_count != 1 ? "s" : "") • @GetNights(currentBooking) night@(GetNights(currentBooking) != 1 ? "s" : "")</p>
-								<p class="booking-id-text">@GetDaysUntilCheckIn(currentBooking) • Booking ID #@currentBooking.booking_id</p>
-								<a href="/client/stays/@id/booking/@currentBooking.booking_id" class="view-link">View details ?</a>
+								<p class="booking-dates">Check-in @currentBooking.check_in_date.ToString("ddd, MMM dd") ï¿½ Check-out @currentBooking.check_out_date.ToString("ddd, MMM dd")</p>
+								<p class="booking-meta">Guests: @currentBooking.person_count adult@(currentBooking.person_count != 1 ? "s" : "") ï¿½ @GetNights(currentBooking) night@(GetNights(currentBooking) != 1 ? "s" : "")</p>
+								<p class="booking-id-text">@GetDaysUntilCheckIn(currentBooking) ï¿½ Booking ID #@currentBooking.booking_id</p>
+								<a href="/client/stays/@id/booking/@currentBooking.booking_id" class="view-link">View details <i class="icon icon-arrow-right"></i></a>
 							</div>
-							<div class="booking-map-placeholder">
-								<div class="map-icon">???</div>
+							<div class="booking-image-container">
+								@if (currentBookingRoomImage != null && currentBookingRoomImage.Length > 0)
+								{
+									<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(currentBookingRoomImage)}")" alt="@(currentBooking.room_name ?? "Room")" class="booking-room-image" />
+								}
+								else
+								{
+									<div class="booking-image-placeholder">
+										<i class="icon icon-rooms"></i>
+									</div>
+								}
 							</div>
 						</div>
 					}
@@ -140,7 +149,7 @@
 						<div class="stays-number">@TotalStays</div>
 						<p class="stays-label">Completed bookings</p>
 						<p class="stays-avg">
-							Average @(AverageNights > 0 ? AverageNights.ToString("0.1") : "–") nights / stay
+							Average @(AverageNights > 0 ? AverageNights.ToString("0.1") : "ï¿½") nights / stay
 						</p>
 						<div class="month-pills">
 							@foreach (var month in new[] { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" })
@@ -269,8 +278,8 @@
 									<td>#@booking.booking_id.ToString("D7")</td>
 									<td>@(booking.room_name ?? "Unknown Room")</td>
 									<td>
-										@GetNights(booking) night@(GetNights(booking) != 1 ? "s" : "") • @booking.person_count guest@(booking.person_count != 1 ? "s" : "")<br />
-										<small>@booking.check_in_date.ToString("MMM dd")–@booking.check_out_date.ToString("MMM dd")</small>
+										@GetNights(booking) night@(GetNights(booking) != 1 ? "s" : "") ï¿½ @booking.person_count guest@(booking.person_count != 1 ? "s" : "")<br />
+										<small>@booking.check_in_date.ToString("MMM dd")ï¿½@booking.check_out_date.ToString("MMM dd")</small>
 									</td>
 									<td>
 										<span class="status-badge status-@(GetStatusBadge(booking.booking_status ?? "pending"))">
@@ -288,7 +297,7 @@
 										}
 										else
 										{
-											<span style="color: #86868b; font-size: 12px;">—</span>
+											<span style="color: #86868b; font-size: 12px;">ï¿½</span>
 										}
 									</td>
 								</tr>
@@ -306,6 +315,7 @@
 
 	Hospitality.Models.User? user;
 	Hospitality.Models.Booking? currentBooking;
+	byte[]? currentBookingRoomImage;
 	List<Hospitality.Models.Booking> bookingHistory = new();
 	List<Hospitality.Models.Message> recentMessages = new();
 	List<Hospitality.Services.BookingWithBalance> bookingsWithBalance = new();
@@ -347,6 +357,16 @@
 				// Load current/upcoming booking
 				currentBooking = await BookingService.GetCurrentBookingByUserIdAsync(id);
 				Console.WriteLine($"? Current booking: {(currentBooking != null ? $"#{currentBooking.booking_id}" : "None")}");
+				
+				// Load room image for current booking
+				if (currentBooking != null)
+				{
+					currentBookingRoomImage = await GetRoomImageForBookingAsync(currentBooking.booking_id);
+				}
+				else
+				{
+					currentBookingRoomImage = null;
+				}
 
 				// Load booking history
 				bookingHistory = await BookingService.GetBookingsByUserIdAsync(id);
@@ -596,6 +616,37 @@
 		if (timeSpan.TotalHours < 24) return $"{(int)timeSpan.TotalHours}h ago";
 		if (timeSpan.TotalDays < 7) return date.ToString("ddd");
 		return date.ToString("MMM dd");
+	}
+
+	async Task<byte[]?> GetRoomImageForBookingAsync(int bookingId)
+	{
+		try
+		{
+			using var con = Hospitality.Database.DbConnection.GetConnection();
+			await con.OpenAsync();
+
+			string sql = @"
+				SELECT TOP 1 r.room_picture
+				FROM Booking_rooms br
+				INNER JOIN rooms r ON br.room_id = r.room_id
+				WHERE br.booking_id = @bookingId
+				AND r.room_picture IS NOT NULL";
+
+			using var cmd = new Microsoft.Data.SqlClient.SqlCommand(sql, con);
+			cmd.Parameters.AddWithValue("@bookingId", bookingId);
+
+			var result = await cmd.ExecuteScalarAsync();
+			if (result != null && result != DBNull.Value)
+			{
+				return (byte[])result;
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"?? Error loading room image: {ex.Message}");
+		}
+
+		return null;
 	}
 
 	string GetMessagePreview(string? body)

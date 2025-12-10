@@ -176,8 +176,9 @@ async (con, tx) =>
         // Queue for sync to online database
      if (_syncService != null)
        {
-   await _syncService.QueueChangeAsync("Booking", bookingId, "INSERT", "Bookings");
-            }
+   await _syncService.MarkForSyncAsync("Bookings", bookingId, "INSERT");
+            Console.WriteLine($"?? Booking {bookingId} marked for sync");
+  }
 
           return bookingId;
    }
@@ -738,8 +739,8 @@ InnSight Hotels Team";
      // Queue for sync
      if (_syncService != null)
      {
-              await _syncService.QueueChangeAsync("Booking", bookingId, "UPDATE", "Bookings");
-                }
+      await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
+            }
 
    Console.WriteLine($"? Booking {bookingId} cancelled successfully");
      return true;
@@ -810,6 +811,7 @@ string getBookingInfoSql = @"
  using var updateRoomCmd = new SqlCommand(updateRoomSql, con, (SqlTransaction)tx);
          updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
      await updateRoomCmd.ExecuteNonQueryAsync();
+
      Console.WriteLine($"? Room {roomId} set back to Available (booking cancelled)");
          }
 
@@ -869,8 +871,8 @@ InnSight Hotels Team";
      // Queue for sync
      if (_syncService != null)
      {
-              await _syncService.QueueChangeAsync("Booking", bookingId, "UPDATE", "Bookings");
-                }
+      await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
+            }
 
    Console.WriteLine($"? Booking {bookingId} cancelled successfully");
      return true;
@@ -945,20 +947,20 @@ InnSight Hotels Team";
 
           if (rowsAffected > 0)
        {
-      Console.WriteLine($"? Booking {bookingId} status updated to: {status}");
+     Console.WriteLine($"? Booking {bookingId} status updated to: {status}");
  
-              // Queue for sync
+    // Queue for sync
    if (_syncService != null)
           {
-       await _syncService.QueueChangeAsync("Booking", bookingId, "UPDATE", "Bookings");
-            }
+       await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
+   }
        
        if (!string.IsNullOrEmpty(paymentIntentId))
         {
-              Console.WriteLine($"  Payment Intent ID: {paymentIntentId}");
+      Console.WriteLine($"  Payment Intent ID: {paymentIntentId}");
         }
     
-           if (!string.IsNullOrEmpty(paymentMethod))
+         if (!string.IsNullOrEmpty(paymentMethod))
     {
   Console.WriteLine($"  Payment Method: {paymentMethod}");
     }

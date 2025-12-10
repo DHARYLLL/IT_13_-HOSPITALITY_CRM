@@ -211,9 +211,9 @@ namespace Hospitality.Services
 
             // Queue for sync
         if (_syncService != null)
-         {
-         await _syncService.QueueChangeAsync("Message", messageId, "INSERT", "Messages");
-  }
+   {
+       await _syncService.MarkForSyncAsync("Messages", messageId, "INSERT");
+     }
 
             return messageId;
         }
@@ -289,7 +289,7 @@ cmd.Parameters.AddWithValue("@bookingId", message.booking_id ?? (object)DBNull.V
     // Queue for sync
             if (_syncService != null)
         {
- await _syncService.QueueChangeAsync("Message", messageId, "INSERT", "Messages");
+ await _syncService.MarkForSyncAsync("Messages", messageId, "INSERT");
        }
 
             return messageId;
@@ -528,7 +528,7 @@ while (await reader.ReadAsync())
        // Queue for sync
             if (_syncService != null)
       {
-                await _syncService.QueueChangeAsync("Message", messageId, "INSERT", "Messages");
+                await _syncService.MarkForSyncAsync("Messages", messageId, "INSERT");
    }
 
             return messageId;

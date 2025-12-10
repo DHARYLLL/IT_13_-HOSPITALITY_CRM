@@ -87,14 +87,20 @@
 				@foreach (var room in PagedRooms)
 				{
 					<div class="room-card">
-						<div class="room-card-image">
-							@if (room.room_picture != null)
-							{
-								<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" alt="@room.room_name" />
-							}
-							<div class="room-number-badge-new">@room.room_number</div>
-							<div class="room-status-badge-new status-@room.room_status.ToLower()">@room.room_status</div>
-						</div>
+					<div class="room-card-image">
+						@if (room.room_picture != null && room.room_picture.Length > 0)
+						{
+							<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" alt="@room.room_name" />
+						}
+						else
+						{
+							<div class="room-image-placeholder">
+								<i class="icon icon-rooms" style="font-size: 3rem; opacity: 0.3;"></i>
+							</div>
+						}
+						<div class="room-number-badge-new">@room.room_number</div>
+						<div class="room-status-badge-new status-@room.room_status.ToLower()">@room.room_status</div>
+					</div>
 						<div class="room-card-body">
 							<div class="room-card-title">
 								<span>@room.room_name</span>

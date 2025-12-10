@@ -148,7 +148,7 @@ cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
     // Queue for sync
      if (_syncService != null)
         {
-  await _syncService.QueueChangeAsync("Payment", paymentId, "INSERT", "Payments");
+  await _syncService.MarkForSyncAsync("Payments", paymentId, "INSERT");
         }
 
         return paymentId;

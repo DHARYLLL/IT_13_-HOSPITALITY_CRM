@@ -36,208 +36,203 @@ public class DualWriteService
         string tableName,
         string changeType,
         Func<SqlConnection, SqlTransaction?, Task<int>> localAction,
-      Func<SqlConnection, SqlTransaction?, int, Task<bool>>? onlineAction = null)
+        Func<SqlConnection, SqlTransaction?, int, Task<bool>>? onlineAction = null)
     {
         int entityId = 0;
         bool isOnline = await _connectivity.CheckOnlineDatabaseAsync();
 
-   Console.WriteLine($"?? DualWrite: {changeType} {entityType} - Mode: {(isOnline ? "Online (dual-write)" : "Offline (queue)")}");
+        Console.WriteLine($"?? DualWrite: {changeType} {entityType} - Mode: {(isOnline ? "Online (dual-write)" : "Offline (pending)")}");
 
-      // Step 1: Always write to local database first
+        // Step 1: Always write to local database first
         using var localCon = DbConnection.GetLocalConnection();
-        await localCon.OpenAsync();
+ await localCon.OpenAsync();
 
-    using var localTx = (SqlTransaction)(await localCon.BeginTransactionAsync());
+     using var localTx = (SqlTransaction)(await localCon.BeginTransactionAsync());
 
-    try
-   {
-            entityId = await localAction(localCon, localTx);
+   try
+        {
+       entityId = await localAction(localCon, localTx);
 
-          // Mark as pending sync initially
-     await UpdateSyncStatusAsync(localCon, localTx, tableName, entityId, "pending");
+    // Mark as pending sync initially
+            await UpdateSyncStatusAsync(localCon, localTx, tableName, entityId, "pending");
 
-     await localTx.CommitAsync();
-            Console.WriteLine($"? Local write successful: {entityType} #{entityId}");
-        }
+   await localTx.CommitAsync();
+      Console.WriteLine($"? Local write successful: {entityType} #{entityId}");
+     }
     catch (Exception ex)
         {
-   await localTx.RollbackAsync();
-        Console.WriteLine($"? Local write failed: {ex.Message}");
-     throw;
-      }
+            await localTx.RollbackAsync();
+            Console.WriteLine($"? Local write failed: {ex.Message}");
+            throw;
+     }
 
         // Step 2: If online, write to online database immediately
         if (isOnline && entityId > 0)
-     {
-            try
-            {
-                using var onlineCon = DbConnection.GetOnlineConnection();
-        await onlineCon.OpenAsync();
-         Console.WriteLine($"? Connected to online database for {entityType} #{entityId}");
-
-        using var onlineTx = (SqlTransaction)(await onlineCon.BeginTransactionAsync());
-
-           try
-  {
-        bool onlineSuccess = false;
-
-      if (onlineAction != null)
-  {
-              // Custom online action provided
-      onlineSuccess = await onlineAction(onlineCon, onlineTx, entityId);
-   }
-              else
-           {
-         // Use default sync method - need fresh local connection for reading
-      using var localConForRead = DbConnection.GetLocalConnection();
-        await localConForRead.OpenAsync();
-       onlineSuccess = await SyncEntityToOnlineAsync(entityType, entityId, localConForRead, onlineCon, onlineTx);
-   }
-
-              if (onlineSuccess)
- {
-       await onlineTx.CommitAsync();
-
-         // Mark as synced in local database
-   await MarkAsSyncedAsync(tableName, entityId);
-    Console.WriteLine($"? Online write successful: {entityType} #{entityId}");
-    }
-      else
-         {
-           await onlineTx.RollbackAsync();
-// Queue for later sync
-     await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-       Console.WriteLine($"?? Online write failed, queued for sync: {entityType} #{entityId}");
-            }
-           }
-     catch (Exception ex)
-                {
-        await onlineTx.RollbackAsync();
-    // Queue for later sync
-     await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-      Console.WriteLine($"?? Online write error, queued for sync: {ex.Message}");
-      }
-            }
-            catch (Exception ex)
-          {
-// Connection to online failed, queue for sync
-           await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-                Console.WriteLine($"?? Cannot connect to online database, queued for sync: {ex.Message}");
-      }
-        }
-        else if (entityId > 0)
       {
-          // Offline - queue for sync
-     await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-      Console.WriteLine($"?? Offline mode: {entityType} #{entityId} queued for sync");
+      try
+            {
+   using var onlineCon = DbConnection.GetOnlineConnection();
+ await onlineCon.OpenAsync();
+                Console.WriteLine($"? Connected to online database for {entityType} #{entityId}");
+
+                using var onlineTx = (SqlTransaction)(await onlineCon.BeginTransactionAsync());
+
+       try
+   {
+bool onlineSuccess = false;
+
+    if (onlineAction != null)
+    {
+// Custom online action provided
+                onlineSuccess = await onlineAction(onlineCon, onlineTx, entityId);
+         }
+ else
+ {
+          // Use default sync method - need fresh local connection for reading
+        using var localConForRead = DbConnection.GetLocalConnection();
+         await localConForRead.OpenAsync();
+      onlineSuccess = await SyncEntityToOnlineAsync(entityType, entityId, localConForRead, onlineCon, onlineTx);
+                    }
+
+      if (onlineSuccess)
+          {
+             await onlineTx.CommitAsync();
+
+              // Mark as synced in local database
+       await MarkAsSyncedAsync(tableName, entityId);
+       Console.WriteLine($"? Online write successful: {entityType} #{entityId}");
+         }
+ else
+    {
+      await onlineTx.RollbackAsync();
+  // Stays as 'pending' in local DB for later sync
+    Console.WriteLine($"?? Online write failed, will retry later: {entityType} #{entityId}");
+          }
+            }
+ catch (Exception ex)
+           {
+   await onlineTx.RollbackAsync();
+    // Stays as 'pending' in local DB for later sync
+         Console.WriteLine($"?? Online write error, will retry later: {ex.Message}");
+   }
+            }
+          catch (Exception ex)
+      {
+ // Connection to online failed, record stays as 'pending' for sync
+     Console.WriteLine($"?? Cannot connect to online database, will sync later: {ex.Message}");
+     }
+        }
+   else if (entityId > 0)
+ {
+            // Offline - record stays as 'pending' for sync
+            Console.WriteLine($"?? Offline mode: {entityType} #{entityId} marked pending, will sync when online");
         }
 
-      return entityId;
+     return entityId;
     }
 
     /// <summary>
     /// Executes a write operation that doesn't return an ID (UPDATE/DELETE)
     /// </summary>
     public async Task<bool> ExecuteWriteAsync(
-      string entityType,
-        string tableName,
-string changeType,
+        string entityType,
+      string tableName,
+        string changeType,
         int entityId,
         Func<SqlConnection, SqlTransaction?, Task<bool>> localAction,
         Func<SqlConnection, SqlTransaction?, Task<bool>>? onlineAction = null)
     {
         bool isOnline = await _connectivity.CheckOnlineDatabaseAsync();
 
-        Console.WriteLine($"?? DualWrite: {changeType} {entityType} #{entityId} - Mode: {(isOnline ? "Online (dual-write)" : "Offline (queue)")}");
+        Console.WriteLine($"?? DualWrite: {changeType} {entityType} #{entityId} - Mode: {(isOnline ? "Online (dual-write)" : "Offline (pending)")}");
 
-        // Step 1: Always write to local database first
+      // Step 1: Always write to local database first
         using var localCon = DbConnection.GetLocalConnection();
         await localCon.OpenAsync();
 
         using var localTx = await localCon.BeginTransactionAsync() as SqlTransaction;
 
-     try
-    {
-       bool localSuccess = await localAction(localCon, localTx);
+try
+   {
+      bool localSuccess = await localAction(localCon, localTx);
 
-            if (!localSuccess)
+        if (!localSuccess)
             {
-         await localTx!.RollbackAsync();
-     Console.WriteLine($"? Local {changeType} failed for {entityType} #{entityId}");
-     return false;
-            }
+     await localTx!.RollbackAsync();
+            Console.WriteLine($"? Local {changeType} failed for {entityType} #{entityId}");
+    return false;
+   }
 
-       // Mark as pending sync
-            await UpdateSyncStatusAsync(localCon, localTx, tableName, entityId, "pending");
+    // Mark as pending sync
+          await UpdateSyncStatusAsync(localCon, localTx, tableName, entityId, "pending");
 
    await localTx!.CommitAsync();
-       Console.WriteLine($"? Local {changeType} successful: {entityType} #{entityId}");
+         Console.WriteLine($"? Local {changeType} successful: {entityType} #{entityId}");
         }
         catch (Exception ex)
-      {
-       await localTx!.RollbackAsync();
-      Console.WriteLine($"? Local {changeType} failed: {ex.Message}");
-            throw;
+        {
+ await localTx!.RollbackAsync();
+            Console.WriteLine($"? Local {changeType} failed: {ex.Message}");
+    throw;
         }
 
         // Step 2: If online, write to online database immediately
         if (isOnline)
-        {
-     try
-            {
- using var onlineCon = DbConnection.GetOnlineConnection();
-           await onlineCon.OpenAsync();
-
-      using var onlineTx = await onlineCon.BeginTransactionAsync() as SqlTransaction;
-
+   {
         try
-        {
-         bool onlineSuccess = false;
-
-               if (onlineAction != null)
-            {
-   onlineSuccess = await onlineAction(onlineCon, onlineTx);
-      }
-          else
-        {
-                // Use default sync method
-        using var localCon2 = DbConnection.GetLocalConnection();
-   await localCon2.OpenAsync();
-    onlineSuccess = await SyncEntityToOnlineAsync(entityType, entityId, localCon2, onlineCon, onlineTx);
-         }
-
-      if (onlineSuccess)
-   {
-           await onlineTx!.CommitAsync();
-         await MarkAsSyncedAsync(tableName, entityId);
-             Console.WriteLine($"? Online {changeType} successful: {entityType} #{entityId}");
-      }
-     else
      {
-             await onlineTx!.RollbackAsync();
-         await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-      Console.WriteLine($"?? Online {changeType} failed, queued for sync");
-          }
-     }
-      catch (Exception ex)
-  {
-         await onlineTx!.RollbackAsync();
-      await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-    Console.WriteLine($"?? Online {changeType} error, queued: {ex.Message}");
-          }
-      }
-            catch (Exception ex)
-   {
-            await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-     Console.WriteLine($"?? Cannot connect to online database, queued: {ex.Message}");
-     }
-  }
-        else
+   using var onlineCon = DbConnection.GetOnlineConnection();
+await onlineCon.OpenAsync();
+
+  using var onlineTx = await onlineCon.BeginTransactionAsync() as SqlTransaction;
+
+            try
         {
-         // Offline - queue for sync
-      await _syncService.QueueChangeAsync(entityType, entityId, changeType, tableName);
-   Console.WriteLine($"?? Offline mode: {entityType} #{entityId} queued for sync");
+          bool onlineSuccess = false;
+
+          if (onlineAction != null)
+         {
+         onlineSuccess = await onlineAction(onlineCon, onlineTx);
+   }
+         else
+      {
+   // Use default sync method
+            using var localCon2 = DbConnection.GetLocalConnection();
+        await localCon2.OpenAsync();
+ onlineSuccess = await SyncEntityToOnlineAsync(entityType, entityId, localCon2, onlineCon, onlineTx);
+             }
+
+               if (onlineSuccess)
+{
+               await onlineTx!.CommitAsync();
+  await MarkAsSyncedAsync(tableName, entityId);
+        Console.WriteLine($"? Online {changeType} successful: {entityType} #{entityId}");
+       }
+         else
+         {
+              await onlineTx!.RollbackAsync();
+          // Stays as 'pending' in local DB for later sync
+     Console.WriteLine($"?? Online {changeType} failed, will retry later");
+      }
+      }
+         catch (Exception ex)
+    {
+    await onlineTx!.RollbackAsync();
+        // Stays as 'pending' in local DB for later sync
+       Console.WriteLine($"?? Online {changeType} error, will retry later: {ex.Message}");
         }
+            }
+        catch (Exception ex)
+     {
+ // Connection to online failed, record stays as 'pending' for sync
+    Console.WriteLine($"?? Cannot connect to online database, will sync later: {ex.Message}");
+            }
+        }
+        else
+ {
+          // Offline - record stays as 'pending' for sync
+            Console.WriteLine($"?? Offline mode: {entityType} #{entityId} marked pending, will sync when online");
+  }
 
         return true;
     }
@@ -602,54 +597,61 @@ MERGE INTO Messages AS target
         using var selectCmd = new SqlCommand(selectSql, localCon);
         selectCmd.Parameters.AddWithValue("@id", userId);
 
- using var reader = await selectCmd.ExecuteReaderAsync();
-    if (!await reader.ReadAsync()) return true;
+        using var reader = await selectCmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return true;
 
-        // Store values before closing reader
-   var userIdValue = reader["user_id"];
-        var username = reader["username"];
-   var password = reader["password"];
-        var role = reader["role"] ?? DBNull.Value;
+        // Store values before closing reader - using correct column names
+        var userIdValue = reader["user_id"];
+        var roleId = reader["role_id"];
+        var userFname = reader["user_fname"] ?? DBNull.Value;
+        var userMname = reader["user_mname"] ?? DBNull.Value;
+        var userLname = reader["user_lname"] ?? DBNull.Value;
+        var userBirthDate = reader["user_brith_date"] ?? DBNull.Value;
+        var userEmail = reader["user_email"] ?? DBNull.Value;
+        var userContact = reader["user_contact_number"] ?? DBNull.Value;
+        var userPassword = reader["user_password"] ?? DBNull.Value;
 
         await reader.CloseAsync();
 
         // Enable IDENTITY_INSERT
-    string enableIdentitySql = "SET IDENTITY_INSERT Users ON;";
-     using var enableCmd = new SqlCommand(enableIdentitySql, onlineCon, tx);
+        string enableIdentitySql = "SET IDENTITY_INSERT Users ON;";
+        using var enableCmd = new SqlCommand(enableIdentitySql, onlineCon, tx);
         await enableCmd.ExecuteNonQueryAsync();
 
         try
         {
-       string mergeSql = @"
-MERGE INTO Users AS target
-    USING (SELECT @user_id AS user_id) AS source
- ON target.user_id = source.user_id
-   WHEN MATCHED THEN
-   UPDATE SET 
-  username = @username,
-     password = @password,
-      role = @role
-   WHEN NOT MATCHED THEN
-          INSERT (user_id, username, password, role)
-VALUES (@user_id, @username, @password, @role);";
+            // Use DELETE + INSERT for simplicity (matches SyncService approach)
+            string deleteSql = "DELETE FROM Users WHERE user_id = @user_id;";
+            using var deleteCmd = new SqlCommand(deleteSql, onlineCon, tx);
+            deleteCmd.Parameters.AddWithValue("@user_id", userIdValue);
+            await deleteCmd.ExecuteNonQueryAsync();
 
-using var mergeCmd = new SqlCommand(mergeSql, onlineCon, tx);
- mergeCmd.Parameters.AddWithValue("@user_id", userIdValue);
-  mergeCmd.Parameters.AddWithValue("@username", username);
-      mergeCmd.Parameters.AddWithValue("@password", password);
-   mergeCmd.Parameters.AddWithValue("@role", role);
+            string insertSql = @"
+                INSERT INTO Users (user_id, role_id, user_fname, user_mname, user_lname, user_brith_date, user_email, user_contact_number, user_password)
+                VALUES (@user_id, @role_id, @user_fname, @user_mname, @user_lname, @user_brith_date, @user_email, @user_contact_number, @user_password);";
 
-     await mergeCmd.ExecuteNonQueryAsync();
-            Console.WriteLine($"? User #{userId} synced to online database");
+            using var insertCmd = new SqlCommand(insertSql, onlineCon, tx);
+            insertCmd.Parameters.AddWithValue("@user_id", userIdValue);
+            insertCmd.Parameters.AddWithValue("@role_id", roleId);
+            insertCmd.Parameters.AddWithValue("@user_fname", userFname);
+            insertCmd.Parameters.AddWithValue("@user_mname", userMname);
+            insertCmd.Parameters.AddWithValue("@user_lname", userLname);
+            insertCmd.Parameters.AddWithValue("@user_brith_date", userBirthDate);
+            insertCmd.Parameters.AddWithValue("@user_email", userEmail);
+            insertCmd.Parameters.AddWithValue("@user_contact_number", userContact);
+            insertCmd.Parameters.AddWithValue("@user_password", userPassword);
+
+            await insertCmd.ExecuteNonQueryAsync();
+            Console.WriteLine($"✅ User #{userId} synced to online database");
         }
-      finally
-  {
+        finally
+        {
             string disableIdentitySql = "SET IDENTITY_INSERT Users OFF;";
             using var disableCmd = new SqlCommand(disableIdentitySql, onlineCon, tx);
-    await disableCmd.ExecuteNonQueryAsync();
-    }
+            await disableCmd.ExecuteNonQueryAsync();
+        }
 
-       return true;
+        return true;
     }
 
     private async Task<bool> SyncClientToOnlineAsync(int clientId, SqlConnection localCon, SqlConnection onlineCon, SqlTransaction? tx)
@@ -659,16 +661,11 @@ using var mergeCmd = new SqlCommand(mergeSql, onlineCon, tx);
         selectCmd.Parameters.AddWithValue("@id", clientId);
 
         using var reader = await selectCmd.ExecuteReaderAsync();
-    if (!await reader.ReadAsync()) return true;
+        if (!await reader.ReadAsync()) return true;
 
-        // Store values before closing reader
+        // Store values before closing reader - Clients table only has client_id and user_id
         var clientIdValue = reader["client_id"];
- var userId = reader["user_id"];
-  var firstName = reader["first_name"];
-        var lastName = reader["last_name"];
- var email = reader["email"];
-        var phone = reader["phone"] ?? DBNull.Value;
-    var address = reader["address"] ?? DBNull.Value;
+        var userId = reader["user_id"];
 
         await reader.CloseAsync();
 
@@ -679,40 +676,29 @@ using var mergeCmd = new SqlCommand(mergeSql, onlineCon, tx);
 
         try
         {
-        string mergeSql = @"
-        MERGE INTO Clients AS target
-             USING (SELECT @client_id AS client_id) AS source
-  ON target.client_id = source.client_id
-     WHEN MATCHED THEN
-              UPDATE SET 
-       user_id = @user_id,
-   first_name = @first_name,
-       last_name = @last_name,
-    email = @email,
-           phone = @phone,
- address = @address
-     WHEN NOT MATCHED THEN
-       INSERT (client_id, user_id, first_name, last_name, email, phone, address)
-     VALUES (@client_id, @user_id, @first_name, @last_name, @email, @phone, @address);";
+            // Use DELETE + INSERT for simplicity (matches SyncService approach)
+            string deleteSql = "DELETE FROM Clients WHERE client_id = @client_id;";
+            using var deleteCmd = new SqlCommand(deleteSql, onlineCon, tx);
+            deleteCmd.Parameters.AddWithValue("@client_id", clientIdValue);
+            await deleteCmd.ExecuteNonQueryAsync();
 
-          using var mergeCmd = new SqlCommand(mergeSql, onlineCon, tx);
-     mergeCmd.Parameters.AddWithValue("@client_id", clientIdValue);
-    mergeCmd.Parameters.AddWithValue("@user_id", userId);
-  mergeCmd.Parameters.AddWithValue("@first_name", firstName);
-     mergeCmd.Parameters.AddWithValue("@last_name", lastName);
-            mergeCmd.Parameters.AddWithValue("@email", email);
-       mergeCmd.Parameters.AddWithValue("@phone", phone);
-         mergeCmd.Parameters.AddWithValue("@address", address);
+            string insertSql = @"
+                INSERT INTO Clients (client_id, user_id)
+                VALUES (@client_id, @user_id);";
 
- await mergeCmd.ExecuteNonQueryAsync();
-  Console.WriteLine($"? Client #{clientId} synced to online database");
+            using var insertCmd = new SqlCommand(insertSql, onlineCon, tx);
+            insertCmd.Parameters.AddWithValue("@client_id", clientIdValue);
+            insertCmd.Parameters.AddWithValue("@user_id", userId);
+
+            await insertCmd.ExecuteNonQueryAsync();
+            Console.WriteLine($"✅ Client #{clientId} synced to online database");
         }
-  finally
-    {
+        finally
+        {
             string disableIdentitySql = "SET IDENTITY_INSERT Clients OFF;";
-      using var disableCmd = new SqlCommand(disableIdentitySql, onlineCon, tx);
-       await disableCmd.ExecuteNonQueryAsync();
-  }
+            using var disableCmd = new SqlCommand(disableIdentitySql, onlineCon, tx);
+            await disableCmd.ExecuteNonQueryAsync();
+        }
 
         return true;
     }

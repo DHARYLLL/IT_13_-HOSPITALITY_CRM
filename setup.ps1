@@ -134,6 +134,7 @@ Write-Host "   Connect to: $serverName" -ForegroundColor Gray
 Write-Host ""
 Write-Host "2. Run these SQL scripts IN ORDER:" -ForegroundColor White
 Write-Host "   ? Database/CreateDatabase.sql" -ForegroundColor Gray
+Write-Host "   ? Database/SyncSetup.sql (adds sync tracking)" -ForegroundColor Gray
 Write-Host "   ? Database/MessagesSetup.sql" -ForegroundColor Gray
 Write-Host "   ? Database/LoyaltyProgramSetup.sql" -ForegroundColor Gray
 Write-Host "   ? Database/PaymentsSetup.sql" -ForegroundColor Gray

@@ -19,7 +19,13 @@
 		<div class="login-right signup-right-noscroll">
 			<div class="login-form signup-form-compact">
 				<h2 class="login-title">Create Account</h2>
-
+				@if (!string.IsNullOrEmpty(errorMessage))
+				{
+					<div class="error-banner">
+						<span class="error-icon">⚠️</span>
+						<span class="error-text">@errorMessage</span>
+					</div>
+				}
 				<div class="form-section-compact">
 					<div class="form-row">
 						<div class="form-group form-group-half">
@@ -283,7 +289,27 @@
 		catch (Exception ex)
 		{
 			Console.WriteLine($"Signup error: {ex.Message}");
-			errorMessage = "An error occurred during registration. Please try again.";
+			Console.WriteLine($"Stack trace: {ex.StackTrace}");
+			
+			// More specific error messages based on exception type
+			if (ex.Message.Contains("timeout") || ex.Message.Contains("connection"))
+			{
+				errorMessage = "Connection error. Please check your internet connection and try again.";
+			}
+			else if (ex.Message.Contains("database") || ex.Message.Contains("SQL"))
+			{
+				errorMessage = "Database error. Please try again later or contact support.";
+			}
+			else if (ex.Message.Contains("email") || ex.Message.Contains("Email"))
+			{
+				emailError = true;
+				emailErrorMessage = "This email is already registered or invalid.";
+				errorMessage = "Registration failed. Please check your email address.";
+			}
+			else
+			{
+				errorMessage = "An error occurred during registration. Please try again.";
+			}
 		}
 		finally
 		{

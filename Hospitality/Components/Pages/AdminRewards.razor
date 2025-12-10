@@ -203,15 +203,15 @@
 
 			<!-- Pagination -->
 			<div class="pagination">
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">« First</button>
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">‹ Prev</button>
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">ï¿½ First</button>
+				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">ï¿½ Prev</button>
 				@foreach (var p in PageNumbers)
 				{
 					<button class="page-btn @(p == page ? "active" : "")" @onclick="() => GoPage(p)">@p</button>
 				}
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ›</button>
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last »</button>
-				<span class="page-info">Page @(page) of @totalPages • Total @totalCount</span>
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ï¿½</button>
+				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last ï¿½</button>
+				<span class="page-info">Page @(page) of @totalPages ï¿½ Total @totalCount</span>
 				<select class="page-size" @onchange="PageSizeChanged">
 					<option value="10" selected="@(pageSize == 10)">10</option>
 					<option value="20" selected="@(pageSize == 20)">20</option>

@@ -4,6 +4,9 @@
 @inject Hospitality.Services.RoomService RoomService
 @inject Hospitality.Services.AnalyticsService AnalyticsService
 @inject Hospitality.Services.MessageService MessageService
+@inject Hospitality.Services.SyncService SyncService
+@inject Hospitality.Services.ConnectivityService ConnectivityService
+@implements IDisposable
 
 <link rel="stylesheet" href="css/admin.css" />
 <link rel="stylesheet" href="css/admin-dashboard.css" />
@@ -40,6 +43,31 @@
 					<i class="icon icon-calendar"></i>
 					<span>@DateTime.Now.ToString("dddd, MMMM dd, yyyy")</span>
 				</div>
+				
+				<!-- Automatic Sync Status Indicator (read-only) -->
+				<div class="sync-status-wrapper" title="@GetSyncTooltip()">
+					<div class="sync-status-badge @(isSyncing ? "syncing" : "") @(isOnline ? "online" : "offline")">
+						<i class="icon icon-database @(isSyncing ? "spinning" : "")"></i>
+						@if (pendingChanges > 0)
+						{
+							<span class="sync-pending-badge">@pendingChanges</span>
+						}
+					</div>
+					<div class="sync-info">
+						<span class="sync-mode @(isOnline ? "online" : "offline")">
+							@(isOnline ? "?? Online" : "?? Offline")
+						</span>
+						@if (pendingChanges > 0)
+						{
+							<span class="sync-pending">@pendingChanges pending</span>
+						}
+						else if (isOnline)
+						{
+							<span class="sync-synced">? All synced</span>
+						}
+					</div>
+				</div>
+				
 				<button class="btn-refresh" @onclick="RefreshData" disabled="@loading">
 					<i class="icon icon-refresh @(loading ? "spinning" : "")"></i> Refresh
 				</button>
@@ -416,8 +444,23 @@
 	</main>
 </div>
 
+@if (!string.IsNullOrEmpty(syncMessage))
+{
+	<div class="sync-toast @syncMessageType" @onclick="DismissSyncMessage">
+		<i class="icon @GetSyncIcon()"></i>
+		<span>@syncMessage</span>
+	</div>
+}
+
 @code {
 	bool loading = true;
+	
+	// Sync status
+	bool isOnline = false;
+	bool isSyncing = false;
+	int pendingChanges = 0;
+	string? syncMessage;
+	string syncMessageType = "success";
 
 	// Metrics
 	decimal totalRevenue = 0;
@@ -460,8 +503,30 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		// Subscribe to connectivity and sync changes
+		ConnectivityService.ConnectivityChanged += OnConnectivityChanged;
+		SyncService.SyncStatusChanged += OnSyncStatusChanged;
+		SyncService.SyncCompleted += OnSyncCompleted;
+
+		// Check initial connectivity and pending count
+		isOnline = await ConnectivityService.CheckOnlineDatabaseAsync();
+		pendingChanges = await SyncService.GetPendingChangesCountAsync();
+		
 		await LoadDashboardData();
+		
+		// Start periodic refresh of pending count
+		_ = Task.Run(async () =>
+		{
+			while (!_disposed)
+			{
+				await Task.Delay(5000); // Check every 5 seconds (more frequent)
+				pendingChanges = await SyncService.GetPendingChangesCountAsync();
+				await InvokeAsync(StateHasChanged);
+			}
+		});
 	}
+
+	private bool _disposed = false;
 
 	async Task LoadDashboardData()
 	{
@@ -566,6 +631,92 @@
 	async Task RefreshData()
 	{
 		await LoadDashboardData();
+		// Also refresh pending count after data refresh
+		pendingChanges = await SyncService.GetPendingChangesCountAsync();
+		StateHasChanged();
+	}
+
+	void OnConnectivityChanged(bool online)
+	{
+		isOnline = online;
+		_ = InvokeAsync(async () =>
+		{
+			pendingChanges = await SyncService.GetPendingChangesCountAsync();
+			
+			if (online && pendingChanges > 0)
+			{
+				syncMessage = "?? Auto-sync in progress...";
+				syncMessageType = "syncing";
+			}
+			
+			StateHasChanged();
+		});
+	}
+
+	void OnSyncStatusChanged(string status)
+	{
+		isSyncing = status.Contains("Syncing");
+		_ = InvokeAsync(StateHasChanged);
+	}
+
+	void OnSyncCompleted(SyncResult result)
+	{
+		isSyncing = false;
+		_ = InvokeAsync(async () =>
+		{
+			// Refresh pending count immediately after sync
+			pendingChanges = await SyncService.GetPendingChangesCountAsync();
+			
+			if (result.Success && result.PushedCount > 0)
+			{
+				syncMessage = $"? Auto-synced {result.PushedCount} records";
+				syncMessageType = "success";
+				
+				// Auto-dismiss after 3 seconds
+				_ = Task.Delay(3000).ContinueWith(_ => DismissSyncMessage());
+			}
+			else if (!result.Success)
+			{
+				syncMessage = $"? Sync error: {result.Message}";
+				syncMessageType = "error";
+			}
+			
+			// Refresh pending count again after a short delay to catch any updates
+			await Task.Delay(500);
+			pendingChanges = await SyncService.GetPendingChangesCountAsync();
+			
+			StateHasChanged();
+		});
+	}
+
+	void DismissSyncMessage()
+	{
+		syncMessage = null;
+		_ = InvokeAsync(StateHasChanged);
+	}
+
+	string GetSyncTooltip()
+	{
+		if (!isOnline) return "Offline - Will auto-sync when online";
+		if (isSyncing) return "Auto-syncing...";
+		if (pendingChanges > 0) return $"Auto-sync will push {pendingChanges} pending records";
+		return "? All data synced to online database";
+	}
+
+	string GetSyncIcon() => syncMessageType switch
+	{
+		"success" => "icon-check-circle",
+		"error" => "icon-error-circle",
+		"syncing" => "icon-sync spinning",
+		_ => "icon-info-circle"
+	};
+
+	public void Dispose()
+	{
+		_disposed = true;
+		ConnectivityService.ConnectivityChanged -= OnConnectivityChanged;
+		SyncService.SyncStatusChanged -= OnSyncStatusChanged;
+		SyncService.SyncCompleted -= OnSyncCompleted;
 	}
 
 	double GetRoomPercentage(int count)

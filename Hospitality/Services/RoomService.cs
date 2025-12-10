@@ -130,8 +130,8 @@ public class RoomService
         // Queue for sync to online database
         if (_syncService != null)
         {
-  await _syncService.QueueChangeAsync("Room", roomIdFallback, "INSERT", "rooms");
-            Console.WriteLine($"?? Room {roomIdFallback} queued for sync");
+await _syncService.MarkForSyncAsync("rooms", roomIdFallback, "INSERT");
+   Console.WriteLine($"?? Room {roomIdFallback} marked for sync");
         }
 
         return roomIdFallback;
@@ -202,10 +202,10 @@ cmdFallback.Parameters.AddWithValue("@photo", (object?)room.room_picture ?? DBNu
         await cmdFallback.ExecuteNonQueryAsync();
 
         // Queue for sync to online database
-        if (_syncService != null)
+   if (_syncService != null)
         {
-            await _syncService.QueueChangeAsync("Room", room.room_id, "UPDATE", "rooms");
-        Console.WriteLine($"?? Room {room.room_id} update queued for sync");
+    await _syncService.MarkForSyncAsync("rooms", room.room_id, "UPDATE");
+        Console.WriteLine($"?? Room {room.room_id} update marked for sync");
   }
     }
 
@@ -249,8 +249,8 @@ cmdFallback.Parameters.AddWithValue("@photo", (object?)room.room_picture ?? DBNu
         // Queue for sync to online database
     if (_syncService != null)
       {
-   await _syncService.QueueChangeAsync("Room", id, "DELETE", "rooms");
-    Console.WriteLine($"?? Room {id} deletion queued for sync");
+   await _syncService.MarkForSyncAsync("rooms", id, "DELETE");
+    Console.WriteLine($"?? Room {id} deletion marked for sync");
  }
     }
 

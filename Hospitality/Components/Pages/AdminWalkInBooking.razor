@@ -65,7 +65,7 @@
 				<div class="error-banner">
 					<i class="icon icon-error"></i>
 					<span>@errorMessage</span>
-					<button class="error-dismiss" @onclick="() => errorMessage = null">×</button>
+					<button class="error-dismiss" @onclick="() => errorMessage = null">ï¿½</button>
 				</div>
 			}
 
@@ -171,7 +171,7 @@
 					<div class="form-section">
 						<div class="section-header">
 							<h2><span class="section-icon">??</span> Available Rooms</h2>
-							<p>Select @numberOfRooms room@(numberOfRooms != 1 ? "s" : "") for @guestFirstName @guestLastName • @checkInDate?.ToString("MMM dd") – @checkOutDate?.ToString("MMM dd") (@NightsCount night@(NightsCount != 1 ? "s" : ""))</p>
+							<p>Select @numberOfRooms room@(numberOfRooms != 1 ? "s" : "") for @guestFirstName @guestLastName ï¿½ @checkInDate?.ToString("MMM dd") ï¿½ @checkOutDate?.ToString("MMM dd") (@NightsCount night@(NightsCount != 1 ? "s" : ""))</p>
 						</div>
 
 						@if (loadingRooms)
@@ -302,11 +302,11 @@
 										<h4>Stay Details</h4>
 										<div class="summary-row">
 											<span class="label">Check-in:</span>
-											<span class="value">@checkInDate?.ToString("dddd, MMMM dd, yyyy") • 3:00 PM</span>
+											<span class="value">@checkInDate?.ToString("dddd, MMMM dd, yyyy") ï¿½ 3:00 PM</span>
 										</div>
 										<div class="summary-row">
 											<span class="label">Check-out:</span>
-											<span class="value">@checkOutDate?.ToString("dddd, MMMM dd, yyyy") • 11:00 AM</span>
+											<span class="value">@checkOutDate?.ToString("dddd, MMMM dd, yyyy") ï¿½ 11:00 AM</span>
 										</div>
 										<div class="summary-row">
 											<span class="label">Duration:</span>
@@ -325,7 +325,7 @@
 											<div class="room-summary-item">
 												<div class="room-info">
 													<span class="room-name">@room.room_name</span>
-													<span class="room-number">Room @room.room_number • Floor @room.room_floor</span>
+													<span class="room-number">Room @room.room_number ï¿½ Floor @room.room_floor</span>
 												</div>
 												<span class="room-price">?@((room.room_price * NightsCount).ToString("N2"))</span>
 											</div>
