@@ -156,35 +156,35 @@ public class SyncService : IDisposable
     {
      try
         {
-            using var con = DbConnection.GetLocalConnection();
-  await con.OpenAsync();
+          using var con = DbConnection.GetLocalConnection();
+          await con.OpenAsync();
 
-            int total = 0;
+          int total = 0;
 
-     // Count pending records in each table (including Users and Clients for complete count)
-            string[] tables = { "Users", "Clients", "rooms", "Bookings", "Payments", "Messages", "LoyaltyPrograms", "LoyaltyTransactions" };
+          // Count pending records in each table (including Users and Clients for complete count)
+          string[] tables = { "Users", "Clients", "rooms", "Bookings", "Payments", "Messages", "LoyaltyPrograms", "LoyaltyTransactions" };
        
-   foreach (var table in tables)
+        foreach (var table in tables)
           {
-                try
-        {
-          string sql = $"SELECT COUNT(*) FROM {table} WHERE sync_status = 'pending'";
-         using var cmd = new SqlCommand(sql, con);
-    var result = await cmd.ExecuteScalarAsync();
-           total += Convert.ToInt32(result);
-      }
-              catch
-     {
-          // Table might not have sync_status column, skip
-    }
+            try
+            {
+            string sql = $"SELECT COUNT(*) FROM {table} WHERE sync_status = 'pending'";
+            using var cmd = new SqlCommand(sql, con);
+            var result = await cmd.ExecuteScalarAsync();
+            total += Convert.ToInt32(result);
             }
+            catch
+            {
+            // Table might not have sync_status column, skip
+            }
+          }
 
        return total;
-      }
-    catch
+        }
+        catch
         {
-      return 0;
-  }
+        return 0;
+        }
     }
 
     /// <summary>
@@ -995,43 +995,43 @@ cmd.Parameters.AddWithValue("@id", recordId);
      errorCount += clientsResult.Errors;
 
      // 3. Rooms
- var roomsResult = await SyncPendingFromTableAsync("rooms", "room_id", "Room");
+      var roomsResult = await SyncPendingFromTableAsync("rooms", "room_id", "Room");
       syncedCount += roomsResult.Synced;
-   errorCount += roomsResult.Errors;
+      errorCount += roomsResult.Errors;
 
   // 4. Bookings (depends on Clients)
-var bookingsResult = await SyncPendingFromTableAsync("Bookings", "booking_id", "Booking");
- syncedCount += bookingsResult.Synced;
-   errorCount += bookingsResult.Errors;
+      var bookingsResult = await SyncPendingFromTableAsync("Bookings", "booking_id", "Booking");
+      syncedCount += bookingsResult.Synced;
+      errorCount += bookingsResult.Errors;
 
     // 5. Payments (depends on Bookings)
-     var paymentsResult = await SyncPendingFromTableAsync("Payments", "payment_id", "Payment");
-  syncedCount += paymentsResult.Synced;
-          errorCount += paymentsResult.Errors;
+      var paymentsResult = await SyncPendingFromTableAsync("Payments", "payment_id", "Payment");
+      syncedCount += paymentsResult.Synced;
+      errorCount += paymentsResult.Errors;
 
  // 6. Messages (depends on Clients)
-   var messagesResult = await SyncPendingFromTableAsync("Messages", "message_id", "Message");
-   syncedCount += messagesResult.Synced;
- errorCount += messagesResult.Errors;
+      var messagesResult = await SyncPendingFromTableAsync("Messages", "message_id", "Message");
+      syncedCount += messagesResult.Synced;
+      errorCount += messagesResult.Errors;
 
-            // 7. Loyalty Programs (depends on Clients)
-            var loyaltyProgramsResult = await SyncPendingFromTableAsync("LoyaltyPrograms", "loyalty_id", "LoyaltyProgram");
-            syncedCount += loyaltyProgramsResult.Synced;
-            errorCount += loyaltyProgramsResult.Errors;
+      // 7. Loyalty Programs (depends on Clients)
+      var loyaltyProgramsResult = await SyncPendingFromTableAsync("LoyaltyPrograms", "loyalty_id", "LoyaltyProgram");
+      syncedCount += loyaltyProgramsResult.Synced;
+      errorCount += loyaltyProgramsResult.Errors;
 
-            // 8. Loyalty Transactions (depends on Loyalty Programs)
-            var loyaltyTransactionsResult = await SyncPendingFromTableAsync("LoyaltyTransactions", "transaction_id", "LoyaltyTransaction");
-            syncedCount += loyaltyTransactionsResult.Synced;
-            errorCount += loyaltyTransactionsResult.Errors;
+      // 8. Loyalty Transactions (depends on Loyalty Programs)
+      var loyaltyTransactionsResult = await SyncPendingFromTableAsync("LoyaltyTransactions", "transaction_id", "LoyaltyTransaction");
+      syncedCount += loyaltyTransactionsResult.Synced;
+      errorCount += loyaltyTransactionsResult.Errors;
 
-     result.Success = errorCount == 0;
-   result.PushedCount = syncedCount;
+    result.Success = errorCount == 0;
+    result.PushedCount = syncedCount;
     result.PushErrors = errorCount;
-     result.Message = $"Synced {syncedCount} records from tables, {errorCount} errors";
+    result.Message = $"Synced {syncedCount} records from tables, {errorCount} errors";
 
-        Log($"? Table sync completed: {result.Message}");
+    Log($"? Table sync completed: {result.Message}");
     SyncStatusChanged?.Invoke(result.Success ? "Synced" : "Sync errors");
- SyncCompleted?.Invoke(result);
+    SyncCompleted?.Invoke(result);
         }
    catch (Exception ex)
   {

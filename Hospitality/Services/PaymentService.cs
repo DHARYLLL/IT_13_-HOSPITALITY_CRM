@@ -18,7 +18,7 @@ public class PaymentService
     public PaymentService(DualWriteService dualWriteService, SyncService syncService)
     {
         _dualWriteService = dualWriteService;
- _syncService = syncService;
+        _syncService = syncService;
     }
 
     /// <summary>
@@ -29,7 +29,7 @@ public class PaymentService
         return tier.ToLower() switch
         {
             "bronze" => 0m,      // No discount
-   "silver" => 5m,      // 5% discount
+            "silver" => 5m,      // 5% discount
             "gold" => 10m,       // 10% discount
             "platinum" => 15m,   // 15% discount
             _ => 0m
@@ -41,84 +41,83 @@ public class PaymentService
     /// </summary>
     public async Task<PendingBooking> CalculatePricingAsync(
         int clientId,
-    List<Room> selectedRooms,
+        List<Room> selectedRooms,
         DateTime checkIn,
         DateTime checkOut,
         int personCount,
         string? specialRequests = null)
     {
-    // Get client's loyalty tier
-      var loyalty = await _loyaltyService.GetLoyaltyProgramAsync(clientId);
+        // Get client's loyalty tier
+        var loyalty = await _loyaltyService.GetLoyaltyProgramAsync(clientId);
         string tier = loyalty?.current_tier ?? "Bronze";
-      decimal discountPercentage = GetLoyaltyDiscount(tier);
+        decimal discountPercentage = GetLoyaltyDiscount(tier);
 
-  int nights = (checkOut - checkIn).Days;
-    decimal subtotal = selectedRooms.Sum(r => r.room_price * nights);
-    decimal discountAmount = subtotal * (discountPercentage / 100m);
-      decimal taxRate = 0.12m; // 12% tax
-        decimal taxesAndFees = (subtotal - discountAmount) * taxRate;
-        decimal totalAmount = subtotal - discountAmount + taxesAndFees;
+        int nights = (checkOut - checkIn).Days;
+        decimal subtotal = selectedRooms.Sum(r => r.room_price * nights);
+        decimal discountAmount = subtotal * (discountPercentage / 100m);
+        decimal taxesAndFees = 0m; // No taxes and fees
+        decimal totalAmount = subtotal - discountAmount;
 
         return new PendingBooking
-     {
-         client_id = clientId,
-        check_in_date = checkIn,
-          check_out_date = checkOut,
+        {
+            client_id = clientId,
+            check_in_date = checkIn,
+            check_out_date = checkOut,
             person_count = personCount,
             check_in_time = new TimeOnly(15, 0),
-      check_out_time = new TimeOnly(11, 0),
+            check_out_time = new TimeOnly(11, 0),
             room_ids = selectedRooms.Select(r => r.room_id).ToList(),
             special_requests = specialRequests,
-      loyalty_tier = tier,
-  discount_percentage = discountPercentage,
-   subtotal = subtotal,
-          discount_amount = discountAmount,
-          taxes_and_fees = taxesAndFees,
-     total_amount = totalAmount
-};
-}
+            loyalty_tier = tier,
+            discount_percentage = discountPercentage,
+            subtotal = subtotal,
+            discount_amount = discountAmount,
+            taxes_and_fees = taxesAndFees,
+            total_amount = totalAmount
+        };
+    }
 
     /// <summary>
     /// Records a payment for a booking
     /// </summary>
     public async Task<int> RecordPaymentAsync(
-  int bookingId,
-     decimal amount,
-        string paymentMethod,
-   string paymentType,
-  string? paymentIntentId = null,
-  string? checkoutSessionId = null,
-        string? notes = null)
+    int bookingId,
+    decimal amount,
+    string paymentMethod,
+    string paymentType,
+    string? paymentIntentId = null,
+    string? checkoutSessionId = null,
+    string? notes = null)
     {
-        // If DualWriteService is available, use it for dual-write
-        if (_dualWriteService != null)
-  {
-      return await _dualWriteService.ExecuteWriteAsync(
-     "Payment",
-      "Payments",
-    "INSERT",
-       async (con, tx) =>
-       {
-        string sql = @"
-           INSERT INTO Payments (booking_id, amount, payment_method, payment_status, 
-    payment_intent_id, checkout_session_id, payment_date, payment_type, notes, sync_status)
-             VALUES (@bookingId, @amount, @paymentMethod, 'completed', 
-         @paymentIntentId, @checkoutSessionId, @paymentDate, @paymentType, @notes, 'pending');
-         SELECT CAST(SCOPE_IDENTITY() AS INT);";
+      // If DualWriteService is available, use it for dual-write
+      if (_dualWriteService != null)
+      {
+          return await _dualWriteService.ExecuteWriteAsync(
+          "Payment",
+          "Payments",
+          "INSERT",
+            async (con, tx) =>
+            {
+                string sql = @"
+            INSERT INTO Payments (booking_id, amount, payment_method, payment_status, 
+            payment_intent_id, checkout_session_id, payment_date, payment_type, notes, sync_status)
+            VALUES (@bookingId, @amount, @paymentMethod, 'completed', 
+            @paymentIntentId, @checkoutSessionId, @paymentDate, @paymentType, @notes, 'pending');
+            SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
- using var cmd = new SqlCommand(sql, con, tx);
-              cmd.Parameters.AddWithValue("@bookingId", bookingId);
-      cmd.Parameters.AddWithValue("@amount", amount);
-   cmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
-          cmd.Parameters.AddWithValue("@paymentIntentId", (object?)paymentIntentId ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@checkoutSessionId", (object?)checkoutSessionId ?? DBNull.Value);
-          cmd.Parameters.AddWithValue("@paymentDate", DateTime.Now);
-            cmd.Parameters.AddWithValue("@paymentType", paymentType);
-cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
+                using var cmd = new SqlCommand(sql, con, tx);
+                cmd.Parameters.AddWithValue("@bookingId", bookingId);
+                cmd.Parameters.AddWithValue("@amount", amount);
+                cmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
+                cmd.Parameters.AddWithValue("@paymentIntentId", (object?)paymentIntentId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@checkoutSessionId", (object?)checkoutSessionId ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@paymentDate", DateTime.Now);
+                cmd.Parameters.AddWithValue("@paymentType", paymentType);
+                cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
 
-      var result = await cmd.ExecuteScalarAsync();
-          return Convert.ToInt32(result);
-    });
+                var result = await cmd.ExecuteScalarAsync();
+                return Convert.ToInt32(result);
+            });
         }
 
         // Fallback to original implementation
@@ -133,7 +132,7 @@ cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
             SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
         using var cmd = new SqlCommand(sql, con);
-      cmd.Parameters.AddWithValue("@bookingId", bookingId);
+        cmd.Parameters.AddWithValue("@bookingId", bookingId);
         cmd.Parameters.AddWithValue("@amount", amount);
         cmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
         cmd.Parameters.AddWithValue("@paymentIntentId", (object?)paymentIntentId ?? DBNull.Value);
@@ -142,13 +141,13 @@ cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@paymentType", paymentType);
         cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
 
-     var result = await cmd.ExecuteScalarAsync();
- int paymentId = Convert.ToInt32(result);
+        var result = await cmd.ExecuteScalarAsync();
+        int paymentId = Convert.ToInt32(result);
 
-    // Queue for sync
-     if (_syncService != null)
+        // Queue for sync
+        if (_syncService != null)
         {
-  await _syncService.MarkForSyncAsync("Payments", paymentId, "INSERT");
+            await _syncService.MarkForSyncAsync("Payments", paymentId, "INSERT");
         }
 
         return paymentId;
@@ -161,10 +160,10 @@ cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
     {
         var payments = new List<Payment>();
 
- using var con = DbConnection.GetConnection();
+        using var con = DbConnection.GetConnection();
         await con.OpenAsync();
 
-      string sql = @"
+        string sql = @"
             SELECT payment_id, booking_id, amount, payment_method, payment_status,
            payment_intent_id, checkout_session_id, payment_date, payment_type, notes
         FROM Payments
@@ -177,22 +176,22 @@ cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
         using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-    payments.Add(new Payment
-      {
-      payment_id = reader.GetInt32(0),
-          booking_id = reader.GetInt32(1),
-   amount = reader.GetDecimal(2),
-        payment_method = reader.GetString(3),
-     payment_status = reader.GetString(4),
-           payment_intent_id = reader.IsDBNull(5) ? null : reader.GetString(5),
-       checkout_session_id = reader.IsDBNull(6) ? null : reader.GetString(6),
-      payment_date = reader.GetDateTime(7),
-      payment_type = reader.GetString(8),
-       notes = reader.IsDBNull(9) ? null : reader.GetString(9)
+            payments.Add(new Payment
+            {
+                payment_id = reader.GetInt32(0),
+                booking_id = reader.GetInt32(1),
+                amount = reader.GetDecimal(2),
+                payment_method = reader.GetString(3),
+                payment_status = reader.GetString(4),
+                payment_intent_id = reader.IsDBNull(5) ? null : reader.GetString(5),
+                checkout_session_id = reader.IsDBNull(6) ? null : reader.GetString(6),
+                payment_date = reader.GetDateTime(7),
+                payment_type = reader.GetString(8),
+                notes = reader.IsDBNull(9) ? null : reader.GetString(9)
             });
-   }
+        }
 
-   return payments;
+        return payments;
     }
 
     /// <summary>
@@ -203,19 +202,19 @@ cmd.Parameters.AddWithValue("@notes", (object?)notes ?? DBNull.Value);
         var payments = await GetPaymentsForBookingAsync(bookingId);
         var totalPaid = payments.Where(p => p.payment_status == "completed").Sum(p => p.amount);
 
-     return new BookingPaymentSummary
-   {
-   booking_id = bookingId,
+        return new BookingPaymentSummary
+        {
+            booking_id = bookingId,
             total_amount = totalAmount,
-total_paid = totalPaid,
-       remaining_balance = totalAmount - totalPaid,
+            total_paid = totalPaid,
+            remaining_balance = totalAmount - totalPaid,
             is_fully_paid = totalPaid >= totalAmount,
-     payments = payments
+            payments = payments
         };
     }
 
     /// <summary>
-  /// Creates a booking only after successful payment
+    /// Creates a booking only after successful payment
     /// This is the main method to finalize a booking with payment
     /// </summary>
     public async Task<(int bookingId, bool success, string message)> CreateBookingWithPaymentAsync(
@@ -229,166 +228,166 @@ string paymentMethod,
         // If DualWriteService is available, use it for dual-write
         if (_dualWriteService != null)
         {
-  int createdBookingId = 0;
+            int createdBookingId = 0;
             int createdPaymentId = 0;
 
-    try
+            try
             {
-    // Create booking with dual-write
- createdBookingId = await _dualWriteService.ExecuteWriteAsync(
-  "Booking",
-       "Bookings",
-     "INSERT",
-        async (con, tx) =>
-          {
-             string status = paymentType == "full" ? "confirmed" : "partially_paid";
+                // Create booking with dual-write
+                createdBookingId = await _dualWriteService.ExecuteWriteAsync(
+                 "Booking",
+                      "Bookings",
+                    "INSERT",
+                       async (con, tx) =>
+                         {
+                             string status = paymentType == "full" ? "confirmed" : "partially_paid";
 
-  string bookingSql = @"
+                             string bookingSql = @"
                  INSERT INTO Bookings (client_id, [check-in_date], [check-out_date], person_count, 
        client_request, [check-in_time], [check-out_time], booking_status, sync_status)
        VALUES (@clientId, @checkIn, @checkOut, @personCount, 
         @clientRequest, @checkInTime, @checkOutTime, @status, 'pending');
              SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-    using var bookingCmd = new SqlCommand(bookingSql, con, tx);
-      bookingCmd.Parameters.AddWithValue("@clientId", pendingBooking.client_id);
-                 bookingCmd.Parameters.AddWithValue("@checkIn", pendingBooking.check_in_date);
-        bookingCmd.Parameters.AddWithValue("@checkOut", pendingBooking.check_out_date);
-            bookingCmd.Parameters.AddWithValue("@personCount", pendingBooking.person_count);
-      bookingCmd.Parameters.AddWithValue("@clientRequest", (object?)pendingBooking.special_requests ?? DBNull.Value);
-    bookingCmd.Parameters.AddWithValue("@checkInTime", pendingBooking.check_in_time);
-  bookingCmd.Parameters.AddWithValue("@checkOutTime", pendingBooking.check_out_time);
- bookingCmd.Parameters.AddWithValue("@status", status);
+                             using var bookingCmd = new SqlCommand(bookingSql, con, tx);
+                             bookingCmd.Parameters.AddWithValue("@clientId", pendingBooking.client_id);
+                             bookingCmd.Parameters.AddWithValue("@checkIn", pendingBooking.check_in_date);
+                             bookingCmd.Parameters.AddWithValue("@checkOut", pendingBooking.check_out_date);
+                             bookingCmd.Parameters.AddWithValue("@personCount", pendingBooking.person_count);
+                             bookingCmd.Parameters.AddWithValue("@clientRequest", (object?)pendingBooking.special_requests ?? DBNull.Value);
+                             bookingCmd.Parameters.AddWithValue("@checkInTime", pendingBooking.check_in_time);
+                             bookingCmd.Parameters.AddWithValue("@checkOutTime", pendingBooking.check_out_time);
+                             bookingCmd.Parameters.AddWithValue("@status", status);
 
-       var result = await bookingCmd.ExecuteScalarAsync();
-        int bookingId = Convert.ToInt32(result);
+                             var result = await bookingCmd.ExecuteScalarAsync();
+                             int bookingId = Convert.ToInt32(result);
 
-             // Add rooms to booking
-           foreach (var roomId in pendingBooking.room_ids)
-        {
-              string roomSql = @"INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
-    using var roomCmd = new SqlCommand(roomSql, con, tx);
-roomCmd.Parameters.AddWithValue("@bookingId", bookingId);
-                  roomCmd.Parameters.AddWithValue("@roomId", roomId);
-   await roomCmd.ExecuteNonQueryAsync();
+                             // Add rooms to booking
+                             foreach (var roomId in pendingBooking.room_ids)
+                             {
+                                 string roomSql = @"INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
+                                 using var roomCmd = new SqlCommand(roomSql, con, tx);
+                                 roomCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                                 roomCmd.Parameters.AddWithValue("@roomId", roomId);
+                                 await roomCmd.ExecuteNonQueryAsync();
 
-           string updateRoomSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
- using var updateRoomCmd = new SqlCommand(updateRoomSql, con, tx);
-  updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
-  await updateRoomCmd.ExecuteNonQueryAsync();
-           }
+                                 string updateRoomSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
+                                 using var updateRoomCmd = new SqlCommand(updateRoomSql, con, tx);
+                                 updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
+                                 await updateRoomCmd.ExecuteNonQueryAsync();
+                             }
 
-              return bookingId;
-         });
+                             return bookingId;
+                         });
 
-       if (createdBookingId > 0)
-          {
-        // Create payment with dual-write
-        createdPaymentId = await RecordPaymentAsync(
-         createdBookingId,
-        paymentAmount,
-      paymentMethod,
-    paymentType,
-       paymentIntentId,
-            checkoutSessionId,
-           $"{pendingBooking.loyalty_tier} member - {pendingBooking.discount_percentage}% discount applied");
+                if (createdBookingId > 0)
+                {
+                    // Create payment with dual-write
+                    createdPaymentId = await RecordPaymentAsync(
+                     createdBookingId,
+                    paymentAmount,
+                  paymentMethod,
+                paymentType,
+                   paymentIntentId,
+                        checkoutSessionId,
+                       $"{pendingBooking.loyalty_tier} member - {pendingBooking.discount_percentage}% discount applied");
 
-  Console.WriteLine($"? Booking {createdBookingId} and Payment {createdPaymentId} created with dual-write");
-       return (createdBookingId, true, "Booking created successfully");
-              }
+                    Console.WriteLine($"? Booking {createdBookingId} and Payment {createdPaymentId} created with dual-write");
+                    return (createdBookingId, true, "Booking created successfully");
+                }
 
-   return (0, false, "Failed to create booking");
+                return (0, false, "Failed to create booking");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"? Error creating booking with payment: {ex.Message}");
-         return (0, false, ex.Message);
-        }
+                return (0, false, ex.Message);
+            }
         }
 
-     // Fallback to original implementation
+        // Fallback to original implementation
         using var con = DbConnection.GetConnection();
         await con.OpenAsync();
         using var transaction = con.BeginTransaction();
 
-      try
+        try
         {
- // 1. Create the booking
-  string bookingSql = @"
+            // 1. Create the booking
+            string bookingSql = @"
      INSERT INTO Bookings (client_id, [check-in_date], [check-out_date], person_count, 
                client_request, [check-in_time], [check-out_time], booking_status)
        VALUES (@clientId, @checkIn, @checkOut, @personCount, 
         @clientRequest, @checkInTime, @checkOutTime, @status);
     SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-        using var bookingCmd = new SqlCommand(bookingSql, con, transaction);
+            using var bookingCmd = new SqlCommand(bookingSql, con, transaction);
             bookingCmd.Parameters.AddWithValue("@clientId", pendingBooking.client_id);
-          bookingCmd.Parameters.AddWithValue("@checkIn", pendingBooking.check_in_date);
-   bookingCmd.Parameters.AddWithValue("@checkOut", pendingBooking.check_out_date);
+            bookingCmd.Parameters.AddWithValue("@checkIn", pendingBooking.check_in_date);
+            bookingCmd.Parameters.AddWithValue("@checkOut", pendingBooking.check_out_date);
             bookingCmd.Parameters.AddWithValue("@personCount", pendingBooking.person_count);
             bookingCmd.Parameters.AddWithValue("@clientRequest", (object?)pendingBooking.special_requests ?? DBNull.Value);
-         bookingCmd.Parameters.AddWithValue("@checkInTime", pendingBooking.check_in_time);
+            bookingCmd.Parameters.AddWithValue("@checkInTime", pendingBooking.check_in_time);
             bookingCmd.Parameters.AddWithValue("@checkOutTime", pendingBooking.check_out_time);
 
             string status = paymentType == "full" ? "confirmed" : "partially_paid";
             bookingCmd.Parameters.AddWithValue("@status", status);
 
-        var bookingIdResult = await bookingCmd.ExecuteScalarAsync();
+            var bookingIdResult = await bookingCmd.ExecuteScalarAsync();
             int bookingId = Convert.ToInt32(bookingIdResult);
 
             Console.WriteLine($"? Created booking {bookingId}");
 
-       // 2. Add rooms to booking and update their status
-        foreach (var roomId in pendingBooking.room_ids)
+            // 2. Add rooms to booking and update their status
+            foreach (var roomId in pendingBooking.room_ids)
             {
-      string roomSql = @"INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
-   using var roomCmd = new SqlCommand(roomSql, con, transaction);
-            roomCmd.Parameters.AddWithValue("@bookingId", bookingId);
-     roomCmd.Parameters.AddWithValue("@roomId", roomId);
-    await roomCmd.ExecuteNonQueryAsync();
+                string roomSql = @"INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
+                using var roomCmd = new SqlCommand(roomSql, con, transaction);
+                roomCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                roomCmd.Parameters.AddWithValue("@roomId", roomId);
+                await roomCmd.ExecuteNonQueryAsync();
 
-          string updateRoomSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
-      using var updateRoomCmd = new SqlCommand(updateRoomSql, con, transaction);
+                string updateRoomSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
+                using var updateRoomCmd = new SqlCommand(updateRoomSql, con, transaction);
                 updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
-      await updateRoomCmd.ExecuteNonQueryAsync();
+                await updateRoomCmd.ExecuteNonQueryAsync();
 
-      Console.WriteLine($"? Room {roomId} added to booking and marked as Reserved");
+                Console.WriteLine($"? Room {roomId} added to booking and marked as Reserved");
             }
 
-     // 3. Record the payment
-  string paymentSql = @"
+            // 3. Record the payment
+            string paymentSql = @"
               INSERT INTO Payments (booking_id, amount, payment_method, payment_status, 
           payment_intent_id, checkout_session_id, payment_date, payment_type, notes)
            VALUES (@bookingId, @amount, @paymentMethod, 'completed', 
       @paymentIntentId, @checkoutSessionId, @paymentDate, @paymentType, @notes);
    SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-    using var paymentCmd = new SqlCommand(paymentSql, con, transaction);
-    paymentCmd.Parameters.AddWithValue("@bookingId", bookingId);
-    paymentCmd.Parameters.AddWithValue("@amount", paymentAmount);
+            using var paymentCmd = new SqlCommand(paymentSql, con, transaction);
+            paymentCmd.Parameters.AddWithValue("@bookingId", bookingId);
+            paymentCmd.Parameters.AddWithValue("@amount", paymentAmount);
             paymentCmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
-     paymentCmd.Parameters.AddWithValue("@paymentIntentId", (object?)paymentIntentId ?? DBNull.Value);
+            paymentCmd.Parameters.AddWithValue("@paymentIntentId", (object?)paymentIntentId ?? DBNull.Value);
             paymentCmd.Parameters.AddWithValue("@checkoutSessionId", (object?)checkoutSessionId ?? DBNull.Value);
-       paymentCmd.Parameters.AddWithValue("@paymentDate", DateTime.Now);
-   paymentCmd.Parameters.AddWithValue("@paymentType", paymentType);
+            paymentCmd.Parameters.AddWithValue("@paymentDate", DateTime.Now);
+            paymentCmd.Parameters.AddWithValue("@paymentType", paymentType);
 
-      string paymentNote = $"{pendingBooking.loyalty_tier} member - {pendingBooking.discount_percentage}% discount applied";
+            string paymentNote = $"{pendingBooking.loyalty_tier} member - {pendingBooking.discount_percentage}% discount applied";
             paymentCmd.Parameters.AddWithValue("@notes", paymentNote);
 
             await paymentCmd.ExecuteScalarAsync();
 
             Console.WriteLine($"? Payment of {paymentAmount:C} recorded for booking {bookingId}");
 
-        await transaction.CommitAsync();
+            await transaction.CommitAsync();
 
-    return (bookingId, true, "Booking created successfully");
+            return (bookingId, true, "Booking created successfully");
         }
         catch (Exception ex)
         {
-       await transaction.RollbackAsync();
-         Console.WriteLine($"? Error creating booking with payment: {ex.Message}");
+            await transaction.RollbackAsync();
+            Console.WriteLine($"? Error creating booking with payment: {ex.Message}");
             return (0, false, ex.Message);
-    }
+        }
     }
 
     /// <summary>
@@ -403,9 +402,9 @@ roomCmd.Parameters.AddWithValue("@bookingId", bookingId);
     string? paymentIntentId = null,
  string? checkoutSessionId = null)
     {
-  using var con = DbConnection.GetConnection();
+        using var con = DbConnection.GetConnection();
         await con.OpenAsync();
-  using var transaction = con.BeginTransaction();
+        using var transaction = con.BeginTransaction();
 
         try
         {
@@ -417,48 +416,48 @@ roomCmd.Parameters.AddWithValue("@bookingId", bookingId);
   @paymentIntentId, @checkoutSessionId, @paymentDate, @paymentType, @notes);";
 
             using var paymentCmd = new SqlCommand(paymentSql, con, transaction);
-         paymentCmd.Parameters.AddWithValue("@bookingId", bookingId);
-       paymentCmd.Parameters.AddWithValue("@amount", paymentAmount);
-         paymentCmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
-   paymentCmd.Parameters.AddWithValue("@paymentIntentId", (object?)paymentIntentId ?? DBNull.Value);
+            paymentCmd.Parameters.AddWithValue("@bookingId", bookingId);
+            paymentCmd.Parameters.AddWithValue("@amount", paymentAmount);
+            paymentCmd.Parameters.AddWithValue("@paymentMethod", paymentMethod);
+            paymentCmd.Parameters.AddWithValue("@paymentIntentId", (object?)paymentIntentId ?? DBNull.Value);
             paymentCmd.Parameters.AddWithValue("@checkoutSessionId", (object?)checkoutSessionId ?? DBNull.Value);
             paymentCmd.Parameters.AddWithValue("@paymentDate", DateTime.Now);
             paymentCmd.Parameters.AddWithValue("@paymentType", paymentType);
-      paymentCmd.Parameters.AddWithValue("@notes", $"Additional payment - {paymentType}");
+            paymentCmd.Parameters.AddWithValue("@notes", $"Additional payment - {paymentType}");
 
             await paymentCmd.ExecuteNonQueryAsync();
 
-          // Check if booking is now fully paid
-        string checkSql = @"
+            // Check if booking is now fully paid
+            string checkSql = @"
       SELECT COALESCE(SUM(amount), 0) 
               FROM Payments 
     WHERE booking_id = @bookingId AND payment_status = 'completed'";
 
-  using var checkCmd = new SqlCommand(checkSql, con, transaction);
+            using var checkCmd = new SqlCommand(checkSql, con, transaction);
             checkCmd.Parameters.AddWithValue("@bookingId", bookingId);
 
-   var totalPaid = Convert.ToDecimal(await checkCmd.ExecuteScalarAsync());
+            var totalPaid = Convert.ToDecimal(await checkCmd.ExecuteScalarAsync());
 
             // Update booking status if fully paid
-      if (totalPaid >= totalBookingAmount)
-        {
-           string updateSql = @"UPDATE Bookings SET booking_status = 'confirmed' WHERE booking_id = @bookingId";
-       using var updateCmd = new SqlCommand(updateSql, con, transaction);
-        updateCmd.Parameters.AddWithValue("@bookingId", bookingId);
- await updateCmd.ExecuteNonQueryAsync();
+            if (totalPaid >= totalBookingAmount)
+            {
+                string updateSql = @"UPDATE Bookings SET booking_status = 'confirmed' WHERE booking_id = @bookingId";
+                using var updateCmd = new SqlCommand(updateSql, con, transaction);
+                updateCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                await updateCmd.ExecuteNonQueryAsync();
 
-  Console.WriteLine($"? Booking {bookingId} is now fully paid and confirmed");
-    }
+                Console.WriteLine($"? Booking {bookingId} is now fully paid and confirmed");
+            }
 
             await transaction.CommitAsync();
 
             return (true, totalPaid >= totalBookingAmount ? "Booking fully paid" : "Payment recorded");
-      }
+        }
         catch (Exception ex)
         {
-await transaction.RollbackAsync();
-    Console.WriteLine($"? Error adding payment: {ex.Message}");
-      return (false, ex.Message);
+            await transaction.RollbackAsync();
+            Console.WriteLine($"? Error adding payment: {ex.Message}");
+            return (false, ex.Message);
         }
     }
 
@@ -467,7 +466,7 @@ await transaction.RollbackAsync();
     /// </summary>
     public decimal GetMinimumDownpayment(decimal totalAmount)
     {
-      return totalAmount * 0.5m; // 50% minimum downpayment
+        return totalAmount * 0.5m; // 50% minimum downpayment
     }
 
     /// <summary>
@@ -475,19 +474,19 @@ await transaction.RollbackAsync();
     /// </summary>
     public (bool isValid, string message) ValidatePaymentAmount(decimal paymentAmount, decimal totalAmount, decimal alreadyPaid)
     {
-  var remaining = totalAmount - alreadyPaid;
+        var remaining = totalAmount - alreadyPaid;
         var minDownpayment = GetMinimumDownpayment(totalAmount);
 
-    if (paymentAmount <= 0)
-       return (false, "Payment amount must be greater than 0");
+        if (paymentAmount <= 0)
+            return (false, "Payment amount must be greater than 0");
 
         if (paymentAmount > remaining)
             return (false, $"Payment amount cannot exceed remaining balance of {remaining:C}");
 
- if (alreadyPaid == 0 && paymentAmount < minDownpayment)
-   return (false, $"Minimum downpayment required is {minDownpayment:C} (50% of total)");
+        if (alreadyPaid == 0 && paymentAmount < minDownpayment)
+            return (false, $"Minimum downpayment required is {minDownpayment:C} (50% of total)");
 
-  return (true, "Valid payment amount");
+        return (true, "Valid payment amount");
     }
 
     /// <summary>
@@ -495,13 +494,13 @@ await transaction.RollbackAsync();
     /// </summary>
     public async Task<List<BookingWithBalance>> GetBookingsWithBalanceAsync(int clientId)
     {
- var bookingsWithBalance = new List<BookingWithBalance>();
+        var bookingsWithBalance = new List<BookingWithBalance>();
 
         using var con = DbConnection.GetConnection();
         await con.OpenAsync();
 
-    // Get all active bookings for this client with payment info
-      string sql = @"
+        // Get all active bookings for this client with payment info
+        string sql = @"
       SELECT 
       b.booking_id,
                 b.[check-in_date] as check_in_date,
@@ -521,58 +520,58 @@ await transaction.RollbackAsync();
       AND b.[check-in_date] >= CAST(GETDATE() AS DATE)
         ORDER BY b.[check-in_date] ASC";
 
-   using var cmd = new SqlCommand(sql, con);
+        using var cmd = new SqlCommand(sql, con);
         cmd.Parameters.AddWithValue("@clientId", clientId);
 
         var bookingDict = new Dictionary<int, BookingWithBalance>();
 
-  using var reader = await cmd.ExecuteReaderAsync();
-      while (await reader.ReadAsync())
+        using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
         {
-          int bookingId = reader.GetInt32(reader.GetOrdinal("booking_id"));
+            int bookingId = reader.GetInt32(reader.GetOrdinal("booking_id"));
             decimal roomPrice = reader.GetDecimal(reader.GetOrdinal("room_price"));
-       int nights = reader.GetInt32(reader.GetOrdinal("nights"));
+            int nights = reader.GetInt32(reader.GetOrdinal("nights"));
             decimal totalPaid = reader.GetDecimal(reader.GetOrdinal("total_paid"));
 
-          if (!bookingDict.ContainsKey(bookingId))
+            if (!bookingDict.ContainsKey(bookingId))
             {
-          bookingDict[bookingId] = new BookingWithBalance
+                bookingDict[bookingId] = new BookingWithBalance
                 {
- booking_id = bookingId,
-           check_in_date = reader.GetDateTime(reader.GetOrdinal("check_in_date")),
-     check_out_date = reader.GetDateTime(reader.GetOrdinal("check_out_date")),
-        person_count = reader.GetInt32(reader.GetOrdinal("person_count")),
-  booking_status = reader.GetString(reader.GetOrdinal("booking_status")),
-              room_name = reader.GetString(reader.GetOrdinal("room_name")),
-     room_number = reader.GetInt32(reader.GetOrdinal("room_number")),
-    nights = nights,
-        subtotal = roomPrice * nights,
-            total_paid = totalPaid
-        };
-      }
+                    booking_id = bookingId,
+                    check_in_date = reader.GetDateTime(reader.GetOrdinal("check_in_date")),
+                    check_out_date = reader.GetDateTime(reader.GetOrdinal("check_out_date")),
+                    person_count = reader.GetInt32(reader.GetOrdinal("person_count")),
+                    booking_status = reader.GetString(reader.GetOrdinal("booking_status")),
+                    room_name = reader.GetString(reader.GetOrdinal("room_name")),
+                    room_number = reader.GetInt32(reader.GetOrdinal("room_number")),
+                    nights = nights,
+                    subtotal = roomPrice * nights,
+                    total_paid = totalPaid
+                };
+            }
             else
             {
- // Multiple rooms - add to subtotal
-     bookingDict[bookingId].subtotal += roomPrice * nights;
-         bookingDict[bookingId].room_name += $", {reader.GetString(reader.GetOrdinal("room_name"))}";
-    }
+                // Multiple rooms - add to subtotal
+                bookingDict[bookingId].subtotal += roomPrice * nights;
+                bookingDict[bookingId].room_name += $", {reader.GetString(reader.GetOrdinal("room_name"))}";
+            }
         }
 
-        // Calculate totals with tax and filter for those with remaining balance
+        // Calculate totals (no taxes) and filter for those with remaining balance
         foreach (var booking in bookingDict.Values)
         {
-         booking.taxes_and_fees = booking.subtotal * 0.12m; // 12% tax
-  booking.total_amount = booking.subtotal + booking.taxes_and_fees;
+            booking.taxes_and_fees = 0m; // No taxes and fees
+            booking.total_amount = booking.subtotal;
             booking.remaining_balance = booking.total_amount - booking.total_paid;
 
- // Only include if there's a remaining balance
+            // Only include if there's a remaining balance
             if (booking.remaining_balance > 0)
-       {
-         bookingsWithBalance.Add(booking);
-   }
+            {
+                bookingsWithBalance.Add(booking);
+            }
         }
 
-      return bookingsWithBalance;
+        return bookingsWithBalance;
     }
 }
 
@@ -587,7 +586,7 @@ public class BookingWithBalance
     public int person_count { get; set; }
     public string booking_status { get; set; } = "";
     public string room_name { get; set; } = "";
- public int room_number { get; set; }
+    public int room_number { get; set; }
     public int nights { get; set; }
     public decimal subtotal { get; set; }
     public decimal taxes_and_fees { get; set; }

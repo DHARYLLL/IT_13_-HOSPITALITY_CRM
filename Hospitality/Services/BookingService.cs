@@ -6,7 +6,7 @@ namespace Hospitality.Services;
 
 public class BookingService
 {
-  private readonly SyncService? _syncService;
+    private readonly SyncService? _syncService;
     private readonly DualWriteService? _dualWriteService;
 
     public BookingService()
@@ -21,8 +21,8 @@ public class BookingService
 
     public BookingService(SyncService syncService, DualWriteService dualWriteService)
     {
-  _syncService = syncService;
-   _dualWriteService = dualWriteService;
+        _syncService = syncService;
+        _dualWriteService = dualWriteService;
     }
 
     public async Task<List<Booking>> GetBookingsByUserIdAsync(int userId)
@@ -120,71 +120,71 @@ public class BookingService
         // If DualWriteService is available, use it for dual-write
         if (_dualWriteService != null)
         {
- return await _dualWriteService.ExecuteWriteAsync(
-                "Booking",
+            return await _dualWriteService.ExecuteWriteAsync(
+            "Booking",
             "Bookings",
-"INSERT",
-async (con, tx) =>
-                {
-         string sql = @"INSERT INTO Bookings (client_id, [check-in_date], [check-out_date], person_count, client_request, [check-in_time], [check-out_time], booking_status, sync_status)
-              VALUES (@clientId, @checkIn, @checkOut, @personCount, @clientRequest, @checkInTime, @checkOutTime, 'pending', 'pending'); 
-     SELECT CAST(SCOPE_IDENTITY() AS int);";
+            "INSERT",
+           async (con, tx) =>
+                           {
+            string sql = @"INSERT INTO Bookings (client_id, [check-in_date], [check-out_date], person_count, client_request, [check-in_time], [check-out_time], booking_status, sync_status)
+            VALUES (@clientId, @checkIn, @checkOut, @personCount, @clientRequest, @checkInTime, @checkOutTime, 'pending', 'pending'); 
+            SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-        using var cmd = new SqlCommand(sql, con, tx);
-   cmd.Parameters.AddWithValue("@clientId", clientId);
- cmd.Parameters.AddWithValue("@checkIn", checkIn);
-      cmd.Parameters.AddWithValue("@checkOut", checkOut);
-     cmd.Parameters.AddWithValue("@personCount", personCount);
-     cmd.Parameters.AddWithValue("@clientRequest", (object?)clientRequest ?? DBNull.Value);
+                using var cmd = new SqlCommand(sql, con, tx);
+                cmd.Parameters.AddWithValue("@clientId", clientId);
+                cmd.Parameters.AddWithValue("@checkIn", checkIn);
+                cmd.Parameters.AddWithValue("@checkOut", checkOut);
+                cmd.Parameters.AddWithValue("@personCount", personCount);
+                cmd.Parameters.AddWithValue("@clientRequest", (object?)clientRequest ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@checkInTime", TimeOnly.FromTimeSpan(new TimeSpan(15, 0, 0)));
-       cmd.Parameters.AddWithValue("@checkOutTime", TimeOnly.FromTimeSpan(new TimeSpan(11, 0, 0)));
+                cmd.Parameters.AddWithValue("@checkOutTime", TimeOnly.FromTimeSpan(new TimeSpan(11, 0, 0)));
 
-          var result = await cmd.ExecuteScalarAsync();
-      return Convert.ToInt32(result);
-     });
-     }
+                var result = await cmd.ExecuteScalarAsync();
+                return Convert.ToInt32(result);
+            });
+        }
 
         // Fallback to original implementation
         using var con = DbConnection.GetConnection();
-      await con.OpenAsync();
+        await con.OpenAsync();
 
         using var tx = await con.BeginTransactionAsync();
 
         try
         {
             // Insert into Bookings table including time fields
-   string sql = @"INSERT INTO Bookings (client_id, [check-in_date], [check-out_date], person_count, client_request, [check-in_time], [check-out_time], sync_status)
-       VALUES (@clientId, @checkIn, @checkOut, @personCount, @clientRequest, @checkInTime, @checkOutTime, 'pending'); 
-   SELECT CAST(SCOPE_IDENTITY() AS int);";
+            string sql = @"INSERT INTO Bookings (client_id, [check-in_date], [check-out_date], person_count, client_request, [check-in_time], [check-out_time], sync_status)
+            VALUES (@clientId, @checkIn, @checkOut, @personCount, @clientRequest, @checkInTime, @checkOutTime, 'pending'); 
+            SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-         using var cmd = new SqlCommand(sql, con, (SqlTransaction)tx);
+            using var cmd = new SqlCommand(sql, con, (SqlTransaction)tx);
             cmd.Parameters.AddWithValue("@clientId", clientId);
             cmd.Parameters.AddWithValue("@checkIn", checkIn);
             cmd.Parameters.AddWithValue("@checkOut", checkOut);
-        cmd.Parameters.AddWithValue("@personCount", personCount);
-  cmd.Parameters.AddWithValue("@clientRequest", (object?)clientRequest ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@personCount", personCount);
+            cmd.Parameters.AddWithValue("@clientRequest", (object?)clientRequest ?? DBNull.Value);
 
-        // Add default check-in time (3:00 PM) and check-out time (11:00 AM)
-      cmd.Parameters.AddWithValue("@checkInTime", TimeOnly.FromTimeSpan(new TimeSpan(15, 0, 0))); // 3:00 PM
-       cmd.Parameters.AddWithValue("@checkOutTime", TimeOnly.FromTimeSpan(new TimeSpan(11, 0, 0))); // 11:00 AM
+            // Add default check-in time (3:00 PM) and check-out time (11:00 AM)
+            cmd.Parameters.AddWithValue("@checkInTime", TimeOnly.FromTimeSpan(new TimeSpan(15, 0, 0))); // 3:00 PM
+            cmd.Parameters.AddWithValue("@checkOutTime", TimeOnly.FromTimeSpan(new TimeSpan(11, 0, 0))); // 11:00 AM
 
             var result = await cmd.ExecuteScalarAsync();
             int bookingId = Convert.ToInt32(result);
 
-       await ((SqlTransaction)tx).CommitAsync();
+            await ((SqlTransaction)tx).CommitAsync();
 
-        // Queue for sync to online database
-     if (_syncService != null)
-       {
-   await _syncService.MarkForSyncAsync("Bookings", bookingId, "INSERT");
-            Console.WriteLine($"?? Booking {bookingId} marked for sync");
-  }
+            // Queue for sync to online database
+            if (_syncService != null)
+            {
+                await _syncService.MarkForSyncAsync("Bookings", bookingId, "INSERT");
+                Console.WriteLine($"?? Booking {bookingId} marked for sync");
+            }
 
-          return bookingId;
-   }
-   catch
+            return bookingId;
+        }
+        catch
         {
-      await ((SqlTransaction)tx).RollbackAsync();
+            await ((SqlTransaction)tx).RollbackAsync();
             throw;
         }
     }
@@ -200,86 +200,86 @@ async (con, tx) =>
       "INSERT",
           async (con, tx) =>
            {
-    // Insert into Booking_rooms table
-          string insertSql = @"INSERT INTO Booking_rooms (booking_id, room_id)
+               // Insert into Booking_rooms table
+               string insertSql = @"INSERT INTO Booking_rooms (booking_id, room_id)
          VALUES (@bookingId, @roomId); 
          SELECT CAST(SCOPE_IDENTITY() AS int);";
 
-   using var insertCmd = new SqlCommand(insertSql, con, tx);
-           insertCmd.Parameters.AddWithValue("@bookingId", bookingId);
-          insertCmd.Parameters.AddWithValue("@roomId", roomId);
+               using var insertCmd = new SqlCommand(insertSql, con, tx);
+               insertCmd.Parameters.AddWithValue("@bookingId", bookingId);
+               insertCmd.Parameters.AddWithValue("@roomId", roomId);
 
-     var result = await insertCmd.ExecuteScalarAsync();
-        int bookingRoomId = Convert.ToInt32(result);
+               var result = await insertCmd.ExecuteScalarAsync();
+               int bookingRoomId = Convert.ToInt32(result);
 
-            // Update room status to Reserved
-      string updateStatusSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
-     using var updateCmd = new SqlCommand(updateStatusSql, con, tx);
-                updateCmd.Parameters.AddWithValue("@roomId", roomId);
-   await updateCmd.ExecuteNonQueryAsync();
+               // Update room status to Reserved
+               string updateStatusSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
+               using var updateCmd = new SqlCommand(updateStatusSql, con, tx);
+               updateCmd.Parameters.AddWithValue("@roomId", roomId);
+               await updateCmd.ExecuteNonQueryAsync();
 
-             Console.WriteLine($"? Room {roomId} added to booking {bookingId} and marked as Reserved");
-           return bookingRoomId;
-        },
+               Console.WriteLine($"? Room {roomId} added to booking {bookingId} and marked as Reserved");
+               return bookingRoomId;
+           },
        async (onlineCon, onlineTx, bookingRoomId) =>
        {
-       // Sync booking_rooms to online
-    string insertSql = @"
+           // Sync booking_rooms to online
+           string insertSql = @"
              IF NOT EXISTS (SELECT 1 FROM Booking_rooms WHERE booking_id = @bookingId AND room_id = @roomId)
 INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
 
-          using var insertCmd = new SqlCommand(insertSql, onlineCon, onlineTx);
-         insertCmd.Parameters.AddWithValue("@bookingId", bookingId);
-       insertCmd.Parameters.AddWithValue("@roomId", roomId);
-                await insertCmd.ExecuteNonQueryAsync();
+           using var insertCmd = new SqlCommand(insertSql, onlineCon, onlineTx);
+           insertCmd.Parameters.AddWithValue("@bookingId", bookingId);
+           insertCmd.Parameters.AddWithValue("@roomId", roomId);
+           await insertCmd.ExecuteNonQueryAsync();
 
- // Update room status online
-  string updateSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
-     using var updateCmd = new SqlCommand(updateSql, onlineCon, onlineTx);
-         updateCmd.Parameters.AddWithValue("@roomId", roomId);
-          await updateCmd.ExecuteNonQueryAsync();
+           // Update room status online
+           string updateSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
+           using var updateCmd = new SqlCommand(updateSql, onlineCon, onlineTx);
+           updateCmd.Parameters.AddWithValue("@roomId", roomId);
+           await updateCmd.ExecuteNonQueryAsync();
 
-        return true;
-      });
+           return true;
+       });
         }
 
-// Fallback to original implementation
-  using var con = DbConnection.GetConnection();
-   await con.OpenAsync();
+        // Fallback to original implementation
+        using var con = DbConnection.GetConnection();
+        await con.OpenAsync();
 
         using var tx = await con.BeginTransactionAsync();
 
         try
-   {
-    // Insert into Booking_rooms table
-        string insertSql = @"INSERT INTO Booking_rooms (booking_id, room_id)
+        {
+            // Insert into Booking_rooms table
+            string insertSql = @"INSERT INTO Booking_rooms (booking_id, room_id)
             VALUES (@bookingId, @roomId); 
      SELECT CAST(SCOPE_IDENTITY() AS int);";
 
             using var insertCmd = new SqlCommand(insertSql, con, (SqlTransaction)tx);
-   insertCmd.Parameters.AddWithValue("@bookingId", bookingId);
-insertCmd.Parameters.AddWithValue("@roomId", roomId);
+            insertCmd.Parameters.AddWithValue("@bookingId", bookingId);
+            insertCmd.Parameters.AddWithValue("@roomId", roomId);
 
-      var result = await insertCmd.ExecuteScalarAsync();
+            var result = await insertCmd.ExecuteScalarAsync();
             int bookingRoomId = Convert.ToInt32(result);
 
-        // Update room status to Reserved
+            // Update room status to Reserved
             string updateStatusSql = @"UPDATE rooms SET room_status = 'Reserved' WHERE room_id = @roomId";
-       using var updateCmd = new SqlCommand(updateStatusSql, con, (SqlTransaction)tx);
-     updateCmd.Parameters.AddWithValue("@roomId", roomId);
-      await updateCmd.ExecuteNonQueryAsync();
+            using var updateCmd = new SqlCommand(updateStatusSql, con, (SqlTransaction)tx);
+            updateCmd.Parameters.AddWithValue("@roomId", roomId);
+            await updateCmd.ExecuteNonQueryAsync();
 
-await ((SqlTransaction)tx).CommitAsync();
+            await ((SqlTransaction)tx).CommitAsync();
 
             Console.WriteLine($"? Room {roomId} added to booking {bookingId} and marked as Reserved");
-  return bookingRoomId;
+            return bookingRoomId;
         }
         catch
-    {
+        {
             await ((SqlTransaction)tx).RollbackAsync();
-     throw;
+            throw;
         }
-  }
+    }
 
     public async Task<List<Room>> GetAvailableRoomsAsync(DateTime checkIn, DateTime checkOut, int personCount)
     {
@@ -625,18 +625,18 @@ await ((SqlTransaction)tx).CommitAsync();
     /// </summary>
     public async Task<bool> CancelBookingAsync(int bookingId, string? cancellationReason = null)
     {
-   // If DualWriteService is available, use it for dual-write
-      if (_dualWriteService != null)
-   {
-    return await _dualWriteService.ExecuteWriteAsync(
-             "Booking",
-     "Bookings",
-       "UPDATE",
-                bookingId,
-             async (con, tx) =>
-     {
- // Get booking and client info for the confirmation message
-          string getBookingInfoSql = @"
+        // If DualWriteService is available, use it for dual-write
+        if (_dualWriteService != null)
+        {
+            return await _dualWriteService.ExecuteWriteAsync(
+                     "Booking",
+             "Bookings",
+               "UPDATE",
+                        bookingId,
+                     async (con, tx) =>
+             {
+                 // Get booking and client info for the confirmation message
+                 string getBookingInfoSql = @"
              SELECT b.client_id, b.[check-in_date], b.[check-out_date], r.room_name,
               SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as total_amount
   FROM Bookings b
@@ -645,62 +645,62 @@ await ((SqlTransaction)tx).CommitAsync();
   WHERE b.booking_id = @bookingId
  GROUP BY b.client_id, b.[check-in_date], b.[check-out_date], r.room_name";
 
-        using var getInfoCmd = new SqlCommand(getBookingInfoSql, con, tx);
-       getInfoCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                 using var getInfoCmd = new SqlCommand(getBookingInfoSql, con, tx);
+                 getInfoCmd.Parameters.AddWithValue("@bookingId", bookingId);
 
-   int clientId = 0;
-    DateTime checkInDate = DateTime.Today;
-        DateTime checkOutDate = DateTime.Today;
-  string roomName = "Room";
-   decimal totalAmount = 0;
+                 int clientId = 0;
+                 DateTime checkInDate = DateTime.Today;
+                 DateTime checkOutDate = DateTime.Today;
+                 string roomName = "Room";
+                 decimal totalAmount = 0;
 
-              using var infoReader = await getInfoCmd.ExecuteReaderAsync();
-  if (await infoReader.ReadAsync())
-      {
-             clientId = infoReader.GetInt32(0);
-       checkInDate = infoReader.GetDateTime(1);
-             checkOutDate = infoReader.GetDateTime(2);
-                 roomName = infoReader.IsDBNull(3) ? "Room" : infoReader.GetString(3);
-         totalAmount = infoReader.IsDBNull(4) ? 0 : infoReader.GetDecimal(4);
-          }
-         await infoReader.CloseAsync();
+                 using var infoReader = await getInfoCmd.ExecuteReaderAsync();
+                 if (await infoReader.ReadAsync())
+                 {
+                     clientId = infoReader.GetInt32(0);
+                     checkInDate = infoReader.GetDateTime(1);
+                     checkOutDate = infoReader.GetDateTime(2);
+                     roomName = infoReader.IsDBNull(3) ? "Room" : infoReader.GetString(3);
+                     totalAmount = infoReader.IsDBNull(4) ? 0 : infoReader.GetDecimal(4);
+                 }
+                 await infoReader.CloseAsync();
 
-         // Get room IDs for this booking
-  string getRoomsSql = @"SELECT br.room_id FROM Booking_rooms br WHERE br.booking_id = @bookingId";
-              using var getRoomsCmd = new SqlCommand(getRoomsSql, con, tx);
-   getRoomsCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                 // Get room IDs for this booking
+                 string getRoomsSql = @"SELECT br.room_id FROM Booking_rooms br WHERE br.booking_id = @bookingId";
+                 using var getRoomsCmd = new SqlCommand(getRoomsSql, con, tx);
+                 getRoomsCmd.Parameters.AddWithValue("@bookingId", bookingId);
 
-              var roomIds = new List<int>();
-        using var reader = await getRoomsCmd.ExecuteReaderAsync();
-       while (await reader.ReadAsync())
-         {
-              roomIds.Add(reader.GetInt32(0));
-          }
-          await reader.CloseAsync();
+                 var roomIds = new List<int>();
+                 using var reader = await getRoomsCmd.ExecuteReaderAsync();
+                 while (await reader.ReadAsync())
+                 {
+                     roomIds.Add(reader.GetInt32(0));
+                 }
+                 await reader.CloseAsync();
 
-     // Update all rooms back to Available status
-    foreach (var roomId in roomIds)
-    {
-   string updateRoomSql = @"UPDATE rooms SET room_status = 'Available' WHERE room_id = @roomId";
-         using var updateRoomCmd = new SqlCommand(updateRoomSql, con, tx);
-         updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
-    await updateRoomCmd.ExecuteNonQueryAsync();
-            }
+                 // Update all rooms back to Available status
+                 foreach (var roomId in roomIds)
+                 {
+                     string updateRoomSql = @"UPDATE rooms SET room_status = 'Available' WHERE room_id = @roomId";
+                     using var updateRoomCmd = new SqlCommand(updateRoomSql, con, tx);
+                     updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
+                     await updateRoomCmd.ExecuteNonQueryAsync();
+                 }
 
-                    // Update booking status to cancelled
-    string updateBookingSql = @"
+                 // Update booking status to cancelled
+                 string updateBookingSql = @"
         UPDATE Bookings 
        SET booking_status = 'cancelled', sync_status = 'pending', last_modified = GETDATE()
             WHERE booking_id = @bookingId";
 
-        using var updateBookingCmd = new SqlCommand(updateBookingSql, con, tx);
-     updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
-    await updateBookingCmd.ExecuteNonQueryAsync();
+                 using var updateBookingCmd = new SqlCommand(updateBookingSql, con, tx);
+                 updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                 await updateBookingCmd.ExecuteNonQueryAsync();
 
-        // Send cancellation confirmation message to client
+                 // Send cancellation confirmation message to client
                  if (clientId > 0)
-  {
-    string messageBody = $@"Dear Guest,
+                 {
+                     string messageBody = $@"Dear Guest,
 
 Your booking has been successfully cancelled.
 
@@ -720,45 +720,45 @@ Your refund will be processed according to our cancellation policy.
 Best regards,
 InnSight Hotels Team";
 
-     string insertMessageSql = @"
+                     string insertMessageSql = @"
     INSERT INTO Messages (client_id, booking_id, message_subject, message_body, message_type, message_category, regarding_text, sent_date, is_read, sync_status)
             VALUES (@clientId, @bookingId, @subject, @body, 'service', 'Booking Cancellation', 'Booking Cancellation Confirmation', GETDATE(), 0, 'pending')";
 
-           using var msgCmd = new SqlCommand(insertMessageSql, con, tx);
-      msgCmd.Parameters.AddWithValue("@clientId", clientId);
-   msgCmd.Parameters.AddWithValue("@bookingId", bookingId);
-  msgCmd.Parameters.AddWithValue("@subject", $"Booking #{bookingId:D7} Cancellation Confirmed");
-       msgCmd.Parameters.AddWithValue("@body", messageBody);
-      await msgCmd.ExecuteNonQueryAsync();
+                     using var msgCmd = new SqlCommand(insertMessageSql, con, tx);
+                     msgCmd.Parameters.AddWithValue("@clientId", clientId);
+                     msgCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                     msgCmd.Parameters.AddWithValue("@subject", $"Booking #{bookingId:D7} Cancellation Confirmed");
+                     msgCmd.Parameters.AddWithValue("@body", messageBody);
+                     await msgCmd.ExecuteNonQueryAsync();
 
-     Console.WriteLine($"?? Cancellation confirmation message sent to client {clientId}");
- }
+                     Console.WriteLine($"?? Cancellation confirmation message sent to client {clientId}");
+                 }
 
-                await ((SqlTransaction)tx).CommitAsync();
+                 await ((SqlTransaction)tx).CommitAsync();
 
-     // Queue for sync
-     if (_syncService != null)
-     {
-      await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
-            }
+                 // Queue for sync
+                 if (_syncService != null)
+                 {
+                     await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
+                 }
 
-   Console.WriteLine($"? Booking {bookingId} cancelled successfully");
-     return true;
-     });
- }
+                 Console.WriteLine($"? Booking {bookingId} cancelled successfully");
+                 return true;
+             });
+        }
 
-   // Fallback to original implementation
-     try
+        // Fallback to original implementation
+        try
         {
-   using var con = DbConnection.GetConnection();
+            using var con = DbConnection.GetConnection();
             await con.OpenAsync();
 
-         using var tx = await con.BeginTransactionAsync();
+            using var tx = await con.BeginTransactionAsync();
 
-     try
+            try
             {
                 // Get booking and client info for the confirmation message
-string getBookingInfoSql = @"
+                string getBookingInfoSql = @"
          SELECT b.client_id, b.[check-in_date], b.[check-out_date], r.room_name,
             SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as total_amount
                 FROM Bookings b
@@ -767,68 +767,68 @@ string getBookingInfoSql = @"
     WHERE b.booking_id = @bookingId
  GROUP BY b.client_id, b.booking_id, b.[check-in_date], b.[check-out_date], br.room_id";
 
-          using var getInfoCmd = new SqlCommand(getBookingInfoSql, con, (SqlTransaction)tx);
-     getInfoCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                using var getInfoCmd = new SqlCommand(getBookingInfoSql, con, (SqlTransaction)tx);
+                getInfoCmd.Parameters.AddWithValue("@bookingId", bookingId);
 
-         int clientId = 0;
-      DateTime checkInDate = DateTime.Today;
-           DateTime checkOutDate = DateTime.Today;
-         string roomName = "Room";
-      decimal totalAmount = 0;
+                int clientId = 0;
+                DateTime checkInDate = DateTime.Today;
+                DateTime checkOutDate = DateTime.Today;
+                string roomName = "Room";
+                decimal totalAmount = 0;
 
-  using var infoReader = await getInfoCmd.ExecuteReaderAsync();
-         if (await infoReader.ReadAsync())
-       {
-          clientId = infoReader.GetInt32(0);
-     checkInDate = infoReader.GetDateTime(1);
-           checkOutDate = infoReader.GetDateTime(2);
-    roomName = infoReader.IsDBNull(3) ? "Room" : infoReader.GetString(3);
-  totalAmount = infoReader.IsDBNull(4) ? 0 : infoReader.GetDecimal(4);
+                using var infoReader = await getInfoCmd.ExecuteReaderAsync();
+                if (await infoReader.ReadAsync())
+                {
+                    clientId = infoReader.GetInt32(0);
+                    checkInDate = infoReader.GetDateTime(1);
+                    checkOutDate = infoReader.GetDateTime(2);
+                    roomName = infoReader.IsDBNull(3) ? "Room" : infoReader.GetString(3);
+                    totalAmount = infoReader.IsDBNull(4) ? 0 : infoReader.GetDecimal(4);
                 }
-       await infoReader.CloseAsync();
+                await infoReader.CloseAsync();
 
-            // Get room IDs for this booking
-     string getRoomsSql = @"
+                // Get room IDs for this booking
+                string getRoomsSql = @"
  SELECT br.room_id
                 FROM Booking_rooms br
     WHERE br.booking_id = @bookingId";
 
-  using var getRoomsCmd = new SqlCommand(getRoomsSql, con, (SqlTransaction)tx);
-           getRoomsCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                using var getRoomsCmd = new SqlCommand(getRoomsSql, con, (SqlTransaction)tx);
+                getRoomsCmd.Parameters.AddWithValue("@bookingId", bookingId);
 
-         var roomIds = new List<int>();
-  using var reader = await getRoomsCmd.ExecuteReaderAsync();
-  while (await reader.ReadAsync())
-       {
-         roomIds.Add(reader.GetInt32(0));
-     }
-          await reader.CloseAsync();
+                var roomIds = new List<int>();
+                using var reader = await getRoomsCmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    roomIds.Add(reader.GetInt32(0));
+                }
+                await reader.CloseAsync();
 
                 // Update all rooms back to Available status
-            foreach (var roomId in roomIds)
-    {
-           string updateRoomSql = @"UPDATE rooms SET room_status = 'Available' WHERE room_id = @roomId";
- using var updateRoomCmd = new SqlCommand(updateRoomSql, con, (SqlTransaction)tx);
-         updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
-     await updateRoomCmd.ExecuteNonQueryAsync();
+                foreach (var roomId in roomIds)
+                {
+                    string updateRoomSql = @"UPDATE rooms SET room_status = 'Available' WHERE room_id = @roomId";
+                    using var updateRoomCmd = new SqlCommand(updateRoomSql, con, (SqlTransaction)tx);
+                    updateRoomCmd.Parameters.AddWithValue("@roomId", roomId);
+                    await updateRoomCmd.ExecuteNonQueryAsync();
 
-     Console.WriteLine($"? Room {roomId} set back to Available (booking cancelled)");
-         }
+                    Console.WriteLine($"? Room {roomId} set back to Available (booking cancelled)");
+                }
 
-        // Update booking status to cancelled with sync tracking
-      string updateBookingSql = @"
+                // Update booking status to cancelled with sync tracking
+                string updateBookingSql = @"
       UPDATE Bookings 
  SET booking_status = 'cancelled', sync_status = 'pending', last_modified = GETDATE()
            WHERE booking_id = @bookingId";
 
- using var updateBookingCmd = new SqlCommand(updateBookingSql, con, (SqlTransaction)tx);
-         updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
-    await updateBookingCmd.ExecuteNonQueryAsync();
+                using var updateBookingCmd = new SqlCommand(updateBookingSql, con, (SqlTransaction)tx);
+                updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                await updateBookingCmd.ExecuteNonQueryAsync();
 
-    // Send cancellation confirmation message to client
-   if (clientId > 0)
-            {
-         string messageBody = $@"Dear Guest,
+                // Send cancellation confirmation message to client
+                if (clientId > 0)
+                {
+                    string messageBody = $@"Dear Guest,
 
 Your booking has been successfully cancelled.
 
@@ -852,40 +852,40 @@ We hope to welcome you at InnSight Hotels in the future!
 Best regards,
 InnSight Hotels Team";
 
-         string insertMessageSql = @"
+                    string insertMessageSql = @"
               INSERT INTO Messages (client_id, booking_id, message_subject, message_body, message_type, message_category, regarding_text, sent_date, is_read, sync_status)
      VALUES (@clientId, @bookingId, @subject, @body, 'service', 'Booking Cancellation', 'Booking Cancellation Confirmation', GETDATE(), 0, 'pending')";
 
-      using var msgCmd = new SqlCommand(insertMessageSql, con, (SqlTransaction)tx);
-       msgCmd.Parameters.AddWithValue("@clientId", clientId);
-         msgCmd.Parameters.AddWithValue("@bookingId", bookingId);
-    msgCmd.Parameters.AddWithValue("@subject", $"Booking #{bookingId:D7} Cancellation Confirmed");
-        msgCmd.Parameters.AddWithValue("@body", messageBody);
-      await msgCmd.ExecuteNonQueryAsync();
+                    using var msgCmd = new SqlCommand(insertMessageSql, con, (SqlTransaction)tx);
+                    msgCmd.Parameters.AddWithValue("@clientId", clientId);
+                    msgCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                    msgCmd.Parameters.AddWithValue("@subject", $"Booking #{bookingId:D7} Cancellation Confirmed");
+                    msgCmd.Parameters.AddWithValue("@body", messageBody);
+                    await msgCmd.ExecuteNonQueryAsync();
 
-     Console.WriteLine($"?? Cancellation confirmation message sent to client {clientId}");
- }
+                    Console.WriteLine($"?? Cancellation confirmation message sent to client {clientId}");
+                }
 
                 await ((SqlTransaction)tx).CommitAsync();
 
-     // Queue for sync
-     if (_syncService != null)
-     {
-      await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
-            }
+                // Queue for sync
+                if (_syncService != null)
+                {
+                    await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
+                }
 
-   Console.WriteLine($"? Booking {bookingId} cancelled successfully");
-     return true;
-          }
-  catch
-     {
-         await ((SqlTransaction)tx).RollbackAsync();
-  throw;
-        }
+                Console.WriteLine($"? Booking {bookingId} cancelled successfully");
+                return true;
+            }
+            catch
+            {
+                await ((SqlTransaction)tx).RollbackAsync();
+                throw;
+            }
         }
         catch (Exception ex)
         {
-   Console.WriteLine($"? Error cancelling booking: {ex.Message}");
+            Console.WriteLine($"? Error cancelling booking: {ex.Message}");
             return false;
         }
     }
@@ -895,85 +895,85 @@ InnSight Hotels Team";
     /// </summary>
     public async Task<bool> UpdateBookingStatusAsync(int bookingId, string status, string? paymentIntentId = null, string? paymentMethod = null)
     {
-// If DualWriteService is available, use it for dual-write
+        // If DualWriteService is available, use it for dual-write
         if (_dualWriteService != null)
-     {
-    return await _dualWriteService.ExecuteWriteAsync(
-           "Booking",
-  "Bookings",
-"UPDATE",
-           bookingId,
-             async (con, tx) =>
-   {
-          string sql = @"
+        {
+            return await _dualWriteService.ExecuteWriteAsync(
+                   "Booking",
+          "Bookings",
+        "UPDATE",
+                   bookingId,
+                     async (con, tx) =>
+           {
+               string sql = @"
       UPDATE Bookings 
         SET booking_status = @status, sync_status = 'pending', last_modified = GETDATE()
   WHERE booking_id = @bookingId";
 
-  using var cmd = new SqlCommand(sql, con, tx);
-            cmd.Parameters.AddWithValue("@bookingId", bookingId);
-        cmd.Parameters.AddWithValue("@status", status);
-
-          var rowsAffected = await cmd.ExecuteNonQueryAsync();
-   return rowsAffected > 0;
-        },
-    async (onlineCon, onlineTx) =>
-      {
-          string sql = @"UPDATE Bookings SET booking_status = @status WHERE booking_id = @bookingId";
-          using var cmd = new SqlCommand(sql, onlineCon, onlineTx);
-  cmd.Parameters.AddWithValue("@bookingId", bookingId);
+               using var cmd = new SqlCommand(sql, con, tx);
+               cmd.Parameters.AddWithValue("@bookingId", bookingId);
                cmd.Parameters.AddWithValue("@status", status);
-  await cmd.ExecuteNonQueryAsync();
-     return true;
-         });
+
+               var rowsAffected = await cmd.ExecuteNonQueryAsync();
+               return rowsAffected > 0;
+           },
+            async (onlineCon, onlineTx) =>
+              {
+                  string sql = @"UPDATE Bookings SET booking_status = @status WHERE booking_id = @bookingId";
+                  using var cmd = new SqlCommand(sql, onlineCon, onlineTx);
+                  cmd.Parameters.AddWithValue("@bookingId", bookingId);
+                  cmd.Parameters.AddWithValue("@status", status);
+                  await cmd.ExecuteNonQueryAsync();
+                  return true;
+              });
         }
 
         // Fallback to original implementation
         try
         {
-    using var con = DbConnection.GetConnection();
-  await con.OpenAsync();
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
 
-    string sql = @"
+            string sql = @"
           UPDATE Bookings 
         SET booking_status = @status, sync_status = 'pending', last_modified = GETDATE()
        WHERE booking_id = @bookingId";
 
-    using var cmd = new SqlCommand(sql, con);
- cmd.Parameters.AddWithValue("@bookingId", bookingId);
-    cmd.Parameters.AddWithValue("@status", status);
+            using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@bookingId", bookingId);
+            cmd.Parameters.AddWithValue("@status", status);
 
- var rowsAffected = await cmd.ExecuteNonQueryAsync();
+            var rowsAffected = await cmd.ExecuteNonQueryAsync();
 
-          if (rowsAffected > 0)
-       {
-     Console.WriteLine($"? Booking {bookingId} status updated to: {status}");
- 
-    // Queue for sync
-   if (_syncService != null)
-          {
-       await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
-   }
-       
-       if (!string.IsNullOrEmpty(paymentIntentId))
-        {
-      Console.WriteLine($"  Payment Intent ID: {paymentIntentId}");
-        }
-    
-         if (!string.IsNullOrEmpty(paymentMethod))
-    {
-  Console.WriteLine($"  Payment Method: {paymentMethod}");
-    }
-  
-       return true;
-       }
+            if (rowsAffected > 0)
+            {
+                Console.WriteLine($"? Booking {bookingId} status updated to: {status}");
 
-        return false;
+                // Queue for sync
+                if (_syncService != null)
+                {
+                    await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
+                }
+
+                if (!string.IsNullOrEmpty(paymentIntentId))
+                {
+                    Console.WriteLine($"  Payment Intent ID: {paymentIntentId}");
+                }
+
+                if (!string.IsNullOrEmpty(paymentMethod))
+                {
+                    Console.WriteLine($"  Payment Method: {paymentMethod}");
+                }
+
+                return true;
+            }
+
+            return false;
         }
         catch (Exception ex)
         {
-   Console.WriteLine($"? Error updating booking status: {ex.Message}");
-     return false;
+            Console.WriteLine($"? Error updating booking status: {ex.Message}");
+            return false;
         }
     }
 
@@ -1013,10 +1013,10 @@ InnSight Hotels Team";
     public async Task<List<Booking>> GetAllBookingsWithClientsAsync(DateTime? startDate = null, DateTime? endDate = null)
     {
         var bookings = new List<Booking>();
-   using var con = DbConnection.GetConnection();
-await con.OpenAsync();
+        using var con = DbConnection.GetConnection();
+        await con.OpenAsync();
 
-      string sql = @"
+        string sql = @"
  SELECT 
  b.booking_id, b.client_id, b.[check-in_date], b.[check-out_date], b.person_count, b.client_request,
       b.[check-in_time], b.[check-out_time], b.booking_status,
@@ -1035,42 +1035,42 @@ WHERE (@startDate IS NULL OR b.[check-in_date] >= @startDate OR b.[check-out_dat
         ORDER BY b.[check-in_date] DESC";
 
         using var cmd = new SqlCommand(sql, con);
-    cmd.Parameters.AddWithValue("@startDate", (object?)startDate ?? DBNull.Value);
- cmd.Parameters.AddWithValue("@endDate", (object?)endDate ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@startDate", (object?)startDate ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@endDate", (object?)endDate ?? DBNull.Value);
 
         using var reader = await cmd.ExecuteReaderAsync();
 
         var bookingDict = new Dictionary<int, Booking>();
 
- while (await reader.ReadAsync())
+        while (await reader.ReadAsync())
         {
-      int bookingId = reader.GetInt32(reader.GetOrdinal("booking_id"));
+            int bookingId = reader.GetInt32(reader.GetOrdinal("booking_id"));
 
-    if (!bookingDict.ContainsKey(bookingId))
- {
-    var booking = MapBooking(reader);
-      booking.client_first_name = reader.GetString(reader.GetOrdinal("first_name"));
-    booking.client_last_name = reader.GetString(reader.GetOrdinal("last_name"));
-     booking.client_email = reader.GetString(reader.GetOrdinal("email"));
+            if (!bookingDict.ContainsKey(bookingId))
+            {
+                var booking = MapBooking(reader);
+                booking.client_first_name = reader.GetString(reader.GetOrdinal("first_name"));
+                booking.client_last_name = reader.GetString(reader.GetOrdinal("last_name"));
+                booking.client_email = reader.GetString(reader.GetOrdinal("email"));
 
-      int nights = reader.GetInt32(reader.GetOrdinal("nights"));
-      if (nights <= 0) nights = 1;
- decimal roomPrice = reader.IsDBNull(reader.GetOrdinal("room_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("room_price"));
-    booking.total_amount = roomPrice * nights;
+                int nights = reader.GetInt32(reader.GetOrdinal("nights"));
+                if (nights <= 0) nights = 1;
+                decimal roomPrice = reader.IsDBNull(reader.GetOrdinal("room_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("room_price"));
+                booking.total_amount = roomPrice * nights;
 
-   bookingDict[bookingId] = booking;
+                bookingDict[bookingId] = booking;
             }
-       else
-         {
-   decimal roomPrice = reader.IsDBNull(reader.GetOrdinal("room_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("room_price"));
-     int nights = reader.GetInt32(reader.GetOrdinal("nights"));
-          if (nights <= 0) nights = 1;
-   bookingDict[bookingId].total_amount += roomPrice * nights;
+            else
+            {
+                decimal roomPrice = reader.IsDBNull(reader.GetOrdinal("room_price")) ? 0 : reader.GetDecimal(reader.GetOrdinal("room_price"));
+                int nights = reader.GetInt32(reader.GetOrdinal("nights"));
+                if (nights <= 0) nights = 1;
+                bookingDict[bookingId].total_amount += roomPrice * nights;
             }
-   }
+        }
 
-   Console.WriteLine($"GetAllBookingsWithClientsAsync returned {bookingDict.Count} bookings");
-      return bookingDict.Values.ToList();
+        Console.WriteLine($"GetAllBookingsWithClientsAsync returned {bookingDict.Count} bookings");
+        return bookingDict.Values.ToList();
     }
 
     /// <summary>
@@ -1080,10 +1080,10 @@ WHERE (@startDate IS NULL OR b.[check-in_date] >= @startDate OR b.[check-out_dat
     {
         var metrics = new BookingMetrics();
         using var con = DbConnection.GetConnection();
-   await con.OpenAsync();
+        await con.OpenAsync();
 
         DateTime startDate = DateTime.Today.AddDays(-dateRangeDays);
-      DateTime endDate = DateTime.Today.AddDays(dateRangeDays);
+        DateTime endDate = DateTime.Today.AddDays(dateRangeDays);
 
         string sql = @"
    SELECT 
@@ -1101,21 +1101,21 @@ COUNT(DISTINCT b.booking_id) as total_bookings,
         cmd.Parameters.AddWithValue("@startDate", startDate);
         cmd.Parameters.AddWithValue("@endDate", endDate);
 
-using var reader = await cmd.ExecuteReaderAsync();
+        using var reader = await cmd.ExecuteReaderAsync();
 
         if (await reader.ReadAsync())
         {
-metrics.TotalBookings = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
- metrics.TotalRevenue = reader.IsDBNull(1) ? 0 : reader.GetDecimal(1);
+            metrics.TotalBookings = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
+            metrics.TotalRevenue = reader.IsDBNull(1) ? 0 : reader.GetDecimal(1);
             metrics.TotalGuests = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
             metrics.AvgStayDuration = reader.IsDBNull(3) ? 0 : reader.GetDecimal(3);
             metrics.AverageDailyRate = reader.IsDBNull(4) ? 0 : reader.GetDecimal(4);
         }
 
-      return metrics;
+        return metrics;
     }
 
-  /// <summary>
+    /// <summary>
     /// Gets daily revenue breakdown for charts
     /// </summary>
     public async Task<List<DailyRevenue>> GetDailyRevenueAsync(int dateRangeDays)
@@ -1126,7 +1126,7 @@ metrics.TotalBookings = reader.IsDBNull(0) ? 0 : reader.GetInt32(0);
 
         DateTime startDate = DateTime.Today.AddDays(-dateRangeDays);
 
-string sql = @"
+        string sql = @"
         SELECT 
   b.[check-in_date] as date,
             SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as revenue
@@ -1137,19 +1137,19 @@ string sql = @"
         GROUP BY b.[check-in_date]
      ORDER BY b.[check-in_date]";
 
-      using var cmd = new SqlCommand(sql, con);
-     cmd.Parameters.AddWithValue("@startDate", startDate);
+        using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.AddWithValue("@startDate", startDate);
 
         using var reader = await cmd.ExecuteReaderAsync();
 
         while (await reader.ReadAsync())
         {
-       dailyRevenue.Add(new DailyRevenue
-   {
-            Date = reader.GetDateTime(0),
-      Revenue = reader.GetDecimal(1)
-    });
-    }
+            dailyRevenue.Add(new DailyRevenue
+            {
+                Date = reader.GetDateTime(0),
+                Revenue = reader.GetDecimal(1)
+            });
+        }
 
         return dailyRevenue;
     }
@@ -1159,21 +1159,21 @@ string sql = @"
     /// </summary>
     public async Task UpdateRoomStatusesBasedOnDatesAsync()
     {
-try
+        try
         {
-      using var con = DbConnection.GetConnection();
- await con.OpenAsync();
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
 
-      var today = DateTime.Today;
+            var today = DateTime.Today;
 
-      // Fix NULL booking_status values
-       string fixNullStatusSql = @"UPDATE Bookings SET booking_status = 'confirmed' WHERE booking_status IS NULL";
-  using var fixNullCmd = new SqlCommand(fixNullStatusSql, con);
-         var fixedCount = await fixNullCmd.ExecuteNonQueryAsync();
+            // Fix NULL booking_status values
+            string fixNullStatusSql = @"UPDATE Bookings SET booking_status = 'confirmed' WHERE booking_status IS NULL";
+            using var fixNullCmd = new SqlCommand(fixNullStatusSql, con);
+            var fixedCount = await fixNullCmd.ExecuteNonQueryAsync();
             if (fixedCount > 0) Console.WriteLine($"Fixed {fixedCount} bookings with NULL status");
 
-        // Set rooms to Reserved for future bookings
-   string reservedSql = @"
+            // Set rooms to Reserved for future bookings
+            string reservedSql = @"
    UPDATE r SET r.room_status = 'Reserved'
           FROM rooms r
    INNER JOIN Booking_rooms br ON r.room_id = br.room_id
@@ -1182,12 +1182,12 @@ INNER JOIN Bookings b ON br.booking_id = b.booking_id
            AND b.booking_status NOT IN ('cancelled', 'completed')
             AND r.room_status = 'Available'";
 
-   using var reservedCmd = new SqlCommand(reservedSql, con);
-        reservedCmd.Parameters.AddWithValue("@today", today);
-          await reservedCmd.ExecuteNonQueryAsync();
+            using var reservedCmd = new SqlCommand(reservedSql, con);
+            reservedCmd.Parameters.AddWithValue("@today", today);
+            await reservedCmd.ExecuteNonQueryAsync();
 
-         // Set rooms to Occupied for active bookings
-     string occupiedSql = @"
+            // Set rooms to Occupied for active bookings
+            string occupiedSql = @"
           UPDATE r SET r.room_status = 'Occupied'
       FROM rooms r
    INNER JOIN Booking_rooms br ON r.room_id = br.room_id
@@ -1197,22 +1197,22 @@ INNER JOIN Bookings b ON br.booking_id = b.booking_id
      AND b.booking_status NOT IN ('cancelled', 'completed')
   AND r.room_status != 'Occupied'";
 
-     using var occupiedCmd = new SqlCommand(occupiedSql, con);
+            using var occupiedCmd = new SqlCommand(occupiedSql, con);
             occupiedCmd.Parameters.AddWithValue("@today", today);
             await occupiedCmd.ExecuteNonQueryAsync();
 
-      // Auto-complete past bookings
-     string completeBookingsSql = @"
+            // Auto-complete past bookings
+            string completeBookingsSql = @"
          UPDATE Bookings SET booking_status = 'completed'
             WHERE [check-out_date] < @today AND booking_status NOT IN ('cancelled', 'completed')";
 
-      using var completeCmd = new SqlCommand(completeBookingsSql, con);
-    completeCmd.Parameters.AddWithValue("@today", today);
-        await completeCmd.ExecuteNonQueryAsync();
+            using var completeCmd = new SqlCommand(completeBookingsSql, con);
+            completeCmd.Parameters.AddWithValue("@today", today);
+            await completeCmd.ExecuteNonQueryAsync();
         }
-  catch (Exception ex)
-     {
-    Console.WriteLine($"Error updating room statuses: {ex.Message}");
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating room statuses: {ex.Message}");
         }
     }
 }
@@ -1221,7 +1221,7 @@ public class BookingMetrics
 {
     public int TotalBookings { get; set; }
     public decimal TotalRevenue { get; set; }
-public int TotalGuests { get; set; }
+    public int TotalGuests { get; set; }
     public decimal AvgStayDuration { get; set; }
     public decimal AverageDailyRate { get; set; }
 }

@@ -47,6 +47,7 @@ namespace Hospitality.Services
         /// Creates a PayMongo Checkout Session - This redirects to PayMongo's hosted payment page
         /// which handles all payment methods (Card, GCash, GrabPay, etc.)
         /// </summary>
+        /// 
         public async Task<CheckoutSessionResult> CreateCheckoutSessionAsync(CreateCheckoutSessionRequest request)
         {
             try

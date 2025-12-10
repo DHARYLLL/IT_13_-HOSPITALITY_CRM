@@ -16,33 +16,27 @@ namespace Hospitality.Database
         // Default points to local for offline-first approach
         public const string Default = Local;
 
-        /// <summary>
+
         /// Gets a connection to the local database (always available)
-        /// </summary>
         internal static SqlConnection GetConnection()
         {
             return new SqlConnection(Local);
         }
 
-        /// <summary>
         /// Gets a connection to the local database
-        /// </summary>
         public static SqlConnection GetLocalConnection()
         {
             return new SqlConnection(Local);
         }
 
-        /// <summary>
         /// Gets a connection to the online database
-        /// </summary>
         public static SqlConnection GetOnlineConnection()
         {
             return new SqlConnection(Online);
         }
 
-        /// <summary>
+
         /// Tests if online database is reachable
-        /// </summary>
         public static async Task<bool> CanConnectToOnlineAsync()
         {
             try

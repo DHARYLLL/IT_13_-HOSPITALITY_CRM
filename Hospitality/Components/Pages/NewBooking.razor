@@ -368,7 +368,7 @@
 	decimal EstimatedNightlyRate => 248m;
 	decimal EstimatedSubtotal => EstimatedNightlyRate * NightsCount;
 	decimal EstimatedDiscount => EstimatedSubtotal * (discountPercentage / 100m);
-	decimal EstimatedTotal => (EstimatedSubtotal - EstimatedDiscount) * 1.12m; // Add 12% tax
+	decimal EstimatedTotal => EstimatedSubtotal - EstimatedDiscount; // No taxes and fees
 	int EstimatedPoints => (int)(EstimatedTotal * GetPointsMultiplier());
 
 	decimal GetPointsMultiplier()

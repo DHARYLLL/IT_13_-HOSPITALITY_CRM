@@ -250,10 +250,6 @@
 									<span class="price-amount">-₱@DiscountAmount.ToString("N2")</span>
 								</div>
 							}
-							<div class="pricing-row">
-								<span>Estimated taxes & fees (12%)</span>
-								<span class="price-amount">₱@EstimatedTaxes.ToString("N2")</span>
-							</div>
 							<div class="pricing-row total">
 								<span>Total for @NightsCount night@(NightsCount != 1 ? "s" : "")</span>
 								<span class="price-amount">₱@TotalPrice.ToString("N2")</span>
@@ -311,8 +307,8 @@
 	int NightsCount => (checkOutDate - checkInDate).Days;
 	decimal Subtotal => selectedRooms.Sum(r => r.room_price * NightsCount);
 	decimal DiscountAmount => Subtotal * (discountPercentage / 100m);
-	decimal EstimatedTaxes => (Subtotal - DiscountAmount) * 0.12m; // 12% tax
-	decimal TotalPrice => Subtotal - DiscountAmount + EstimatedTaxes;
+	decimal EstimatedTaxes => 0m; // No taxes and fees
+	decimal TotalPrice => Subtotal - DiscountAmount;
 	decimal MinimumDownpayment => TotalPrice * 0.5m;
 	int PointsEarned => (int)(TotalPrice * GetPointsMultiplier());
 

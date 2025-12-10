@@ -37,7 +37,7 @@ public class DualWriteService
         string changeType,
         Func<SqlConnection, SqlTransaction?, Task<int>> localAction,
         Func<SqlConnection, SqlTransaction?, int, Task<bool>>? onlineAction = null)
-    {
+      {
         int entityId = 0;
         bool isOnline = await _connectivity.CheckOnlineDatabaseAsync();
 
@@ -45,26 +45,26 @@ public class DualWriteService
 
         // Step 1: Always write to local database first
         using var localCon = DbConnection.GetLocalConnection();
- await localCon.OpenAsync();
+        await localCon.OpenAsync();
 
-     using var localTx = (SqlTransaction)(await localCon.BeginTransactionAsync());
+        using var localTx = (SqlTransaction)(await localCon.BeginTransactionAsync());
 
-   try
+        try
+          {
+          entityId = await localAction(localCon, localTx);
+
+          // Mark as pending sync initially
+          await UpdateSyncStatusAsync(localCon, localTx, tableName, entityId, "pending");
+
+          await localTx.CommitAsync();
+          Console.WriteLine($"? Local write successful: {entityType} #{entityId}");
+        }
+        catch (Exception ex)
         {
-       entityId = await localAction(localCon, localTx);
-
-    // Mark as pending sync initially
-            await UpdateSyncStatusAsync(localCon, localTx, tableName, entityId, "pending");
-
-   await localTx.CommitAsync();
-      Console.WriteLine($"? Local write successful: {entityType} #{entityId}");
-     }
-    catch (Exception ex)
-        {
-            await localTx.RollbackAsync();
-            Console.WriteLine($"? Local write failed: {ex.Message}");
-            throw;
-     }
+          await localTx.RollbackAsync();
+          Console.WriteLine($"? Local write failed: {ex.Message}");
+          throw;
+        }
 
         // Step 2: If online, write to online database immediately
         if (isOnline && entityId > 0)

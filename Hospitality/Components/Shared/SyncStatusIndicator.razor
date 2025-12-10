@@ -7,28 +7,28 @@
     <span class="sync-status-text">
 @if (isSyncing)
      {
-          <span>?? Syncing...</span>
+          <span>🔄 Syncing...</span>
         }
         else if (isOnline)
         {
             @if (pendingChanges > 0)
  {
-                <span>?? @pendingChanges pending</span>
+                <span>⏳ @pendingChanges pending</span>
             }
      else
     {
-         <span>?? Online</span>
+         <span>🟢 Online</span>
             }
         }
    else
    {
             @if (pendingChanges > 0)
 {
-           <span>?? Offline (@pendingChanges pending)</span>
+           <span>🔴 Offline (@pendingChanges pending)</span>
           }
             else
             {
-           <span>?? Offline</span>
+           <span>🔴 Offline</span>
   }
         }
     </span>
