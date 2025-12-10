@@ -20,24 +20,27 @@
 			<div class="login-form signup-form-compact">
 				<h2 class="login-title">Create Account</h2>
 
-				@if (!string.IsNullOrEmpty(errorMessage))
-				{
-					<div class="error-message"><span>⚠️</span> @errorMessage</div>
-				}
-
 				<div class="form-section-compact">
 					<div class="form-row">
 						<div class="form-group form-group-half">
-							<div class="input-wrapper">
+							<div class="input-wrapper @(firstNameError ? "input-error" : "")">
 								<span class="input-icon">👤</span>
-								<input type="text" class="form-input" placeholder="First Name *" @bind="firstName" />
+								<input type="text" class="form-input" placeholder="First Name *" @bind="firstName" @oninput="ClearErrors" />
 							</div>
+							@if (firstNameError)
+							{
+								<span class="field-error">First name is required</span>
+							}
 						</div>
 						<div class="form-group form-group-half">
-							<div class="input-wrapper">
+							<div class="input-wrapper @(lastNameError ? "input-error" : "")">
 								<span class="input-icon">👤</span>
-								<input type="text" class="form-input" placeholder="Last Name *" @bind="lastName" />
+								<input type="text" class="form-input" placeholder="Last Name *" @bind="lastName" @oninput="ClearErrors" />
 							</div>
+							@if (lastNameError)
+							{
+								<span class="field-error">Last name is required</span>
+							}
 						</div>
 					</div>
 					<div class="form-group">
@@ -48,10 +51,14 @@
 					</div>
 					<div class="form-row">
 						<div class="form-group form-group-half">
-							<div class="input-wrapper">
+							<div class="input-wrapper @(birthDateError ? "input-error" : "")">
 								<span class="input-icon">📅</span>
-								<input type="date" class="form-input" @bind="birthDate" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+								<input type="date" class="form-input" @bind="birthDate" max="@MaxBirthDate" @oninput="ClearErrors" />
 							</div>
+							@if (birthDateError)
+							{
+								<span class="field-error">@birthDateErrorMessage</span>
+							}
 						</div>
 						<div class="form-group form-group-half">
 							<div class="input-wrapper">
@@ -61,32 +68,46 @@
 						</div>
 					</div>
 					<div class="form-group">
-						<div class="input-wrapper">
+						<div class="input-wrapper @(emailError ? "input-error" : "")">
 							<span class="input-icon">📧</span>
-							<input type="email" class="form-input" placeholder="Email *" @bind="email" />
+							<input type="email" class="form-input" placeholder="Email *" @bind="email" @oninput="ClearErrors" />
 						</div>
+						@if (emailError)
+						{
+							<span class="field-error">@emailErrorMessage</span>
+						}
 					</div>
 					<div class="form-group">
-						<div class="input-wrapper @(passwordsMatch ? "input-valid" : confirmPassword.Length >0 ? "input-invalid" : "")">
+						<div class="input-wrapper @(passwordError ? "input-error" : passwordsMatch && password.Length > 0 ? "input-valid" : "")">
 							<span class="input-icon">🔒</span>
-							<input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Password *" @bind="password" />
+							<input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Password *" @bind="password" @oninput="ClearErrors" />
 							<button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">@(showPassword ? "👁️" : "👁️‍🗨️")</button>
 						</div>
+						@if (passwordError)
+						{
+							<span class="field-error">@passwordErrorMessage</span>
+						}
 					</div>
 					<div class="form-group">
-						<div class="input-wrapper @(passwordsMatch ? "input-valid" : confirmPassword.Length >0 ? "input-invalid" : "")">
+						<div class="input-wrapper @(confirmPasswordError ? "input-error" : passwordsMatch && confirmPassword.Length > 0 ? "input-valid" : "")">
 							<span class="input-icon">🔒</span>
-							<input type="@(showConfirmPassword ? "text" : "password")" class="form-input" placeholder="Confirm Password *" @bind="confirmPassword" />
+							<input type="@(showConfirmPassword ? "text" : "password")" class="form-input" placeholder="Confirm Password *" @bind="confirmPassword" @oninput="ClearErrors" />
 							<button type="button" class="toggle-password" @onclick="ToggleConfirmPasswordVisibility">@(showConfirmPassword ? "👁️" : "👁️‍🗨️")</button>
 						</div>
+						@if (confirmPasswordError)
+						{
+							<span class="field-error">Passwords do not match</span>
+						}
 						@if (confirmPassword.Length >0 && passwordsMatch)
 						{
-							<span class="validation-message success">Match</span>
+							<span class="validation-message success">✓ Passwords match</span>
 						}
 					</div>
 				</div>
 
-				<button class="btn-login btn-signup-primary" @onclick="HandleSignup" disabled="@(!IsFormValid())">Create Account</button>
+				<button class="btn-login btn-signup-primary" @onclick="HandleSignup" disabled="@isLoading">
+					@(isLoading ? "Creating Account..." : "Create Account")
+				</button>
 				<div class="divider"><span>Already have an account?</span></div>
 				<button class="btn-signup" @onclick="HandleLogin">Sign in</button>
 			</div>
@@ -106,28 +127,134 @@
 	bool showPassword = false;
 	bool showConfirmPassword = false;
 	string errorMessage = "";
+	bool isLoading = false;
+	
+	// Field-level error states
+	bool firstNameError = false;
+	bool lastNameError = false;
+	bool birthDateError = false;
+	string birthDateErrorMessage = "You must be at least 18 years old";
+	bool emailError = false;
+	string emailErrorMessage = "Please enter a valid email address";
+	bool passwordError = false;
+	string passwordErrorMessage = "Password is required";
+	bool confirmPasswordError = false;
+
+	// Max birth date is 18 years ago from today
+	string MaxBirthDate => DateTime.Today.AddYears(-18).ToString("yyyy-MM-dd");
 
 	bool passwordsMatch => !string.IsNullOrEmpty(password) && password == confirmPassword;
 
 	void TogglePasswordVisibility() => showPassword = !showPassword;
 	void ToggleConfirmPasswordVisibility() => showConfirmPassword = !showConfirmPassword;
+	
+	void ClearErrors()
+	{
+		errorMessage = "";
+		firstNameError = false;
+		lastNameError = false;
+		birthDateError = false;
+		emailError = false;
+		passwordError = false;
+		confirmPasswordError = false;
+	}
 
-	bool IsFormValid() => !string.IsNullOrWhiteSpace(firstName)
-		&& !string.IsNullOrWhiteSpace(lastName)
-		&& !string.IsNullOrWhiteSpace(email)
-		&& !string.IsNullOrWhiteSpace(password)
-		&& passwordsMatch;
+	int CalculateAge(DateTime birthDate)
+	{
+		var today = DateTime.Today;
+		var age = today.Year - birthDate.Year;
+		if (birthDate.Date > today.AddYears(-age)) age--;
+		return age;
+	}
+
+	bool ValidateForm()
+	{
+		bool isValid = true;
+		
+		if (string.IsNullOrWhiteSpace(firstName))
+		{
+			firstNameError = true;
+			isValid = false;
+		}
+		
+		if (string.IsNullOrWhiteSpace(lastName))
+		{
+			lastNameError = true;
+			isValid = false;
+		}
+		
+		// Validate birth date - must be at least 18 years old
+		if (!birthDate.HasValue)
+		{
+			birthDateError = true;
+			birthDateErrorMessage = "Birth date is required";
+			isValid = false;
+		}
+		else if (CalculateAge(birthDate.Value) < 18)
+		{
+			birthDateError = true;
+			birthDateErrorMessage = "You must be at least 18 years old to register";
+			isValid = false;
+		}
+		
+		if (string.IsNullOrWhiteSpace(email))
+		{
+			emailError = true;
+			emailErrorMessage = "Email is required";
+			isValid = false;
+		}
+		else if (!email.Contains("@") || !email.Contains("."))
+		{
+			emailError = true;
+			emailErrorMessage = "Please enter a valid email address";
+			isValid = false;
+		}
+		
+		if (string.IsNullOrWhiteSpace(password))
+		{
+			passwordError = true;
+			passwordErrorMessage = "Password is required";
+			isValid = false;
+		}
+		else if (password.Length < 6)
+		{
+			passwordError = true;
+			passwordErrorMessage = "Password must be at least 6 characters";
+			isValid = false;
+		}
+		
+		if (!passwordsMatch)
+		{
+			confirmPasswordError = true;
+			isValid = false;
+		}
+		
+		return isValid;
+	}
 
 	async Task HandleSignup()
 	{
 		errorMessage = "";
-		if (!IsFormValid()) { errorMessage = "Please fill required fields."; return; }
+		ClearErrors();
 		
+		if (!ValidateForm())
+		{
+			errorMessage = "Please correct the errors below.";
+			return;
+		}
+		
+		isLoading = true;
 		try
 		{
-			if (await UserService.EmailExistsAsync(email)) { errorMessage = "Email already registered."; return; }
+			if (await UserService.EmailExistsAsync(email))
+			{
+				emailError = true;
+				emailErrorMessage = "This email is already registered";
+				errorMessage = "An account with this email already exists.";
+				return;
+			}
 			
-			var roleId = await UserService.GetRoleIdByNameAsync("client") ?? 0; // auto client role
+			var roleId = await UserService.GetRoleIdByNameAsync("client") ?? 0;
 			
 			var user = new Hospitality.Models.User
 			{
@@ -147,16 +274,20 @@
 			
 			Console.WriteLine($"User registered successfully with ID: {id}");
 			
-			// Verify client record was created
-			await Task.Delay(100); // Small delay to ensure database consistency
+			// Small delay to ensure database consistency
+			await Task.Delay(100);
 			
-			// redirect to profile
+			// Redirect to profile
 			Navigation.NavigateTo($"/client/profile/{id}");
 		}
 		catch (Exception ex)
 		{
 			Console.WriteLine($"Signup error: {ex.Message}");
-			errorMessage = $"Registration failed: {ex.Message}";
+			errorMessage = "An error occurred during registration. Please try again.";
+		}
+		finally
+		{
+			isLoading = false;
 		}
 	}
 

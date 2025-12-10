@@ -8,8 +8,8 @@ public class Room
  public int room_number { get; set; }
  public int room_floor { get; set; }
  public decimal room_price { get; set; }
- //public string room_available { get; set; } = "Yes"; // e.g., Yes / No
  public string room_status { get; set; } = "Available";
+ public int room_occupancy { get; set; } = 2; // Max guests the room can accommodate
 
  // Optional fields
  public byte[]? room_picture { get; set; } // varbinary(max)
@@ -21,6 +21,6 @@ public class Room
  public int Number => room_number;
  public int Floor => room_floor;
  public decimal Price => room_price;
- //public string Available => room_available;
  public string Status => room_status;
+ public int Occupancy => room_occupancy;
 }

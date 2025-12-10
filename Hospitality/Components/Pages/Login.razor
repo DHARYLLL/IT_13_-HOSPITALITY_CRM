@@ -16,15 +16,26 @@
 		<div class="login-right">
 			<div class="login-form">
 				<h2 class="login-title">Log in</h2>
-				@if (!string.IsNullOrEmpty(errorMessage))
-				{
-					<div class="error-banner"><span>⚠️</span> @errorMessage</div>
-				}
 				<div class="form-group">
-					<div class="input-wrapper"><span class="input-icon">✉️</span><input type="email" class="form-input" placeholder="Email" @bind="email" /></div>
+					<div class="input-wrapper @(emailError ? "input-error" : "")">
+						<span class="input-icon">✉️</span>
+						<input type="email" class="form-input" placeholder="Email" @bind="email" @oninput="ClearErrors" />
+					</div>
+					@if (emailError)
+					{
+						<span class="field-error">Please enter a valid email address</span>
+					}
 				</div>
 				<div class="form-group">
-					<div class="input-wrapper"><span class="input-icon">🔒</span><input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Password" @bind="password" /><button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">@(showPassword ? "👁️" : "👁️‍🗨️")</button></div>
+					<div class="input-wrapper @(passwordError ? "input-error" : "")">
+						<span class="input-icon">🔒</span>
+						<input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Password" @bind="password" @oninput="ClearErrors" />
+						<button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">@(showPassword ? "👁️" : "👁️‍🗨️")</button>
+					</div>
+					@if (passwordError)
+					{
+						<span class="field-error">Please enter your password</span>
+					}
 				</div>
 				<button class="btn-login" @onclick="HandleLogin" disabled="@isLoading">@(isLoading?"Authenticating...":"Log in")</button>
 				<div class="divider"><span>Or</span></div>
@@ -35,12 +46,52 @@
 </div>
 
 @code {
-	string email=""; string password=""; bool showPassword=false; bool isLoading=false; string errorMessage="";
+	string email=""; 
+	string password=""; 
+	bool showPassword=false; 
+	bool isLoading=false; 
+	string errorMessage="";
+	bool emailError = false;
+	bool passwordError = false;
+	
 	void TogglePasswordVisibility()=> showPassword=!showPassword;
+	
+	void ClearErrors()
+	{
+		errorMessage = "";
+		emailError = false;
+		passwordError = false;
+	}
+	
 	async Task HandleLogin()
 	{
 		errorMessage="";
-		if(string.IsNullOrWhiteSpace(email)|| string.IsNullOrWhiteSpace(password)) { errorMessage="Email and password required."; return; }
+		emailError = false;
+		passwordError = false;
+		
+		// Validate inputs
+		if(string.IsNullOrWhiteSpace(email))
+		{
+			emailError = true;
+		}
+		if(string.IsNullOrWhiteSpace(password))
+		{
+			passwordError = true;
+		}
+		
+		if(emailError || passwordError)
+		{
+			errorMessage = "Please fill in all required fields.";
+			return;
+		}
+		
+		// Basic email validation
+		if(!email.Contains("@") || !email.Contains("."))
+		{
+			emailError = true;
+			errorMessage = "Please enter a valid email address.";
+			return;
+		}
 		
 		isLoading=true;
 		try 
@@ -51,7 +102,7 @@
 			if(user==null) 
 			{ 
 				Console.WriteLine("Login failed: Invalid credentials");
-				errorMessage="Invalid credentials."; 
+				errorMessage="Invalid email or password. Please try again."; 
 				return; 
 			}
 			
@@ -73,19 +124,17 @@
 				var profileUrl = $"/client/profile/{user.UserId}";
 				Console.WriteLine($"Navigating to client profile: {profileUrl}");
 				Navigation.NavigateTo(profileUrl);
-				
-				// Fallback option - if profile doesn't load, user can navigate to /client/simple/{id}
 			}
 			else 
 			{
 				Console.WriteLine($"Unknown role: {role}");
-				errorMessage="Unknown role.";
+				errorMessage="Unknown user role. Please contact support.";
 			}
 		}
 		catch (Exception ex)
 		{
 			Console.WriteLine($"Login error: {ex.Message}");
-			errorMessage = $"Login failed: {ex.Message}";
+			errorMessage = "An error occurred while logging in. Please try again.";
 		}
 		finally
 		{

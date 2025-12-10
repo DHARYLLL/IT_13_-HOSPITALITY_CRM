@@ -35,13 +35,32 @@ namespace Hospitality
             // Register HTTP client
             builder.Services.AddSingleton<HttpClient>();
 
-            // Register application services
+            // Register connectivity and sync services (must be registered first)
+            builder.Services.AddSingleton<ConnectivityService>();
+            builder.Services.AddSingleton<SyncService>();
+            
+            // Register DualWriteService for online/offline dual-write support
+            builder.Services.AddSingleton<DualWriteService>();
+
+            // Register application services with dual-write support
             builder.Services.AddSingleton<UserService>();
-            builder.Services.AddSingleton<RoomService>();
-            builder.Services.AddSingleton<BookingService>();
+            builder.Services.AddSingleton<RoomService>(sp => 
+        new RoomService(
+              sp.GetRequiredService<SyncService>(),
+     sp.GetRequiredService<DualWriteService>()));
+            builder.Services.AddSingleton<BookingService>(sp => 
+  new BookingService(
+         sp.GetRequiredService<SyncService>(),
+  sp.GetRequiredService<DualWriteService>()));
             builder.Services.AddSingleton<LoyaltyService>();
-            builder.Services.AddSingleton<MessageService>();
-            builder.Services.AddSingleton<PaymentService>();
+     builder.Services.AddSingleton<MessageService>(sp =>
+      new MessageService(
+    sp.GetRequiredService<DualWriteService>(),
+              sp.GetRequiredService<SyncService>()));
+    builder.Services.AddSingleton<PaymentService>(sp =>
+             new PaymentService(
+       sp.GetRequiredService<DualWriteService>(),
+          sp.GetRequiredService<SyncService>()));
             builder.Services.AddSingleton<AnalyticsService>();
             builder.Services.AddTransient<PayMongoService>();
 

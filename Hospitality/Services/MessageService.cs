@@ -5,6 +5,20 @@ namespace Hospitality.Services
 {
     public class MessageService
     {
+        private readonly DualWriteService? _dualWriteService;
+      private readonly SyncService? _syncService;
+
+        public MessageService()
+     {
+            // Default constructor for backward compatibility
+        }
+
+        public MessageService(DualWriteService dualWriteService, SyncService syncService)
+        {
+        _dualWriteService = dualWriteService;
+          _syncService = syncService;
+        }
+
         // Get all messages for a client
         public async Task<List<Models.Message>> GetClientMessagesAsync(int clientId, Models.MessageFilter? filter = null)
         {
@@ -80,101 +94,249 @@ namespace Hospitality.Services
         // Mark message as read
         public async Task MarkAsReadAsync(int messageId)
         {
-      using var con = Database.DbConnection.GetConnection();
-   await con.OpenAsync();
-      
-         var sql = "UPDATE Messages SET is_read = 1 WHERE message_id = @messageId";
-     using var cmd = new SqlCommand(sql, con);
-       cmd.Parameters.AddWithValue("@messageId", messageId);
-   
-     await cmd.ExecuteNonQueryAsync();
-      }
-        
-    // Mark all messages as read for a client
-        public async Task MarkAllAsReadAsync(int clientId)
-        {
-            using var con = Database.DbConnection.GetConnection();
-         await con.OpenAsync();
-      
-            var sql = "UPDATE Messages SET is_read = 1 WHERE client_id = @clientId";
-         using var cmd = new SqlCommand(sql, con);
-     cmd.Parameters.AddWithValue("@clientId", clientId);
-            
-            await cmd.ExecuteNonQueryAsync();
-        }
-        
-        // Send email to hotel team (save as outgoing message)
-   public async Task<int> SendEmailToHotelAsync(Models.EmailRequest request)
-        {
-       using var con = Database.DbConnection.GetConnection();
-  await con.OpenAsync();
-            
-            var sql = @"
-    INSERT INTO Messages (
-           client_id, message_subject, message_body, message_type, 
-      is_read, sent_date, regarding_text
-         )
-      VALUES (
-   @clientId, @subject, @body, 'outgoing', 
-        1, GETDATE(), @regarding
-         );
-      SELECT CAST(SCOPE_IDENTITY() AS INT);";
-     
-       using var cmd = new SqlCommand(sql, con);
-        cmd.Parameters.AddWithValue("@clientId", request.client_id);
-            cmd.Parameters.AddWithValue("@subject", request.subject ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("@body", request.message_body ?? (object)DBNull.Value);
-         cmd.Parameters.AddWithValue("@regarding", request.regarding ?? (object)DBNull.Value);
-      
-          return (int)await cmd.ExecuteScalarAsync();
- }
-        
-  // Create a new notification/message
-     public async Task<int> CreateMessageAsync(Models.Message message)
-        {
+         // If DualWriteService is available, use it for dual-write
+            if (_dualWriteService != null)
+            {
+      await _dualWriteService.ExecuteWriteAsync(
+      "Message",
+               "Messages",
+      "UPDATE",
+            messageId,
+                  async (con, tx) =>
+           {
+           var sql = "UPDATE Messages SET is_read = 1, sync_status = 'pending', last_modified = GETDATE() WHERE message_id = @messageId";
+  using var cmd = new SqlCommand(sql, con, tx);
+     cmd.Parameters.AddWithValue("@messageId", messageId);
+       await cmd.ExecuteNonQueryAsync();
+         return true;
+          },
+          async (onlineCon, onlineTx) =>
+ {
+          var sql = "UPDATE Messages SET is_read = 1 WHERE message_id = @messageId";
+   using var cmd = new SqlCommand(sql, onlineCon, onlineTx);
+  cmd.Parameters.AddWithValue("@messageId", messageId);
+    await cmd.ExecuteNonQueryAsync();
+            return true;
+        });
+        return;
+   }
+
+// Fallback to original implementation
             using var con = Database.DbConnection.GetConnection();
             await con.OpenAsync();
-          
-    var sql = @"
-    INSERT INTO Messages (
-           client_id, message_subject, message_body, message_type, 
-   is_read, sent_date, booking_id, 
-      action_label, action_url, regarding_text
-           )
-                VALUES (
-      @clientId, @subject, @body, @type, 
-    0, GETDATE(), @bookingId,
-          @actionLabel, @actionUrl, @regarding
-     );
-        SELECT CAST(SCOPE_IDENTITY() AS INT);";
-            
-            using var cmd = new SqlCommand(sql, con);
-      cmd.Parameters.AddWithValue("@clientId", message.client_id);
-    cmd.Parameters.AddWithValue("@subject", message.message_subject ?? (object)DBNull.Value);
-    cmd.Parameters.AddWithValue("@body", message.message_body ?? (object)DBNull.Value);
-     cmd.Parameters.AddWithValue("@type", message.message_type ?? (object)DBNull.Value);
- cmd.Parameters.AddWithValue("@bookingId", message.booking_id ?? (object)DBNull.Value);
-      cmd.Parameters.AddWithValue("@actionLabel", message.action_label ?? (object)DBNull.Value);
-          cmd.Parameters.AddWithValue("@actionUrl", message.action_url ?? (object)DBNull.Value);
- cmd.Parameters.AddWithValue("@regarding", message.regarding_text ?? (object)DBNull.Value);
-     
-     return (int)await cmd.ExecuteScalarAsync();
+
+         var sql = "UPDATE Messages SET is_read = 1 WHERE message_id = @messageId";
+ using var cmd = new SqlCommand(sql, con);
+        cmd.Parameters.AddWithValue("@messageId", messageId);
+
+            await cmd.ExecuteNonQueryAsync();
         }
-        
-        // Delete a message
-    public async Task DeleteMessageAsync(int messageId)
+
+ // Mark all messages as read for a client
+        public async Task MarkAllAsReadAsync(int clientId)
         {
-using var con = Database.DbConnection.GetConnection();
- await con.OpenAsync();
-            
-        var sql = "DELETE FROM Messages WHERE message_id = @messageId";
-            using var cmd = new SqlCommand(sql, con);
-            cmd.Parameters.AddWithValue("@messageId", messageId);
-    
-await cmd.ExecuteNonQueryAsync();
+       using var con = Database.DbConnection.GetConnection();
+         await con.OpenAsync();
+
+   var sql = "UPDATE Messages SET is_read = 1 WHERE client_id = @clientId";
+         using var cmd = new SqlCommand(sql, con);
+ cmd.Parameters.AddWithValue("@clientId", clientId);
+
+   await cmd.ExecuteNonQueryAsync();
+
+        // Queue for sync if offline
+            if (_syncService != null)
+            {
+         // Note: This is a bulk update, so we'd need to track individual message IDs
+       // For simplicity, we'll rely on the next full sync to catch these
+                Console.WriteLine("?? Mark all as read - will sync on next connection");
+       }
         }
-     
-        // Get message by ID
+
+  // Send email to hotel team (save as outgoing message)
+        public async Task<int> SendEmailToHotelAsync(Models.EmailRequest request)
+        {
+     // If DualWriteService is available, use it for dual-write
+            if (_dualWriteService != null)
+            {
+                return await _dualWriteService.ExecuteWriteAsync(
+     "Message",
+       "Messages",
+          "INSERT",
+     async (con, tx) =>
+    {
+             var sql = @"
+          INSERT INTO Messages (
+        client_id, message_subject, message_body, message_type, 
+      is_read, sent_date, regarding_text, sync_status
+      )
+          VALUES (
+         @clientId, @subject, @body, 'outgoing', 
+1, GETDATE(), @regarding, 'pending'
+              );
+  SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+    using var cmd = new SqlCommand(sql, con, tx);
+   cmd.Parameters.AddWithValue("@clientId", request.client_id);
+                cmd.Parameters.AddWithValue("@subject", request.subject ?? (object)DBNull.Value);
+    cmd.Parameters.AddWithValue("@body", request.message_body ?? (object)DBNull.Value);
+     cmd.Parameters.AddWithValue("@regarding", request.regarding ?? (object)DBNull.Value);
+
+    return (int)await cmd.ExecuteScalarAsync();
+           });
+            }
+
+            // Fallback to original implementation
+   using var con = Database.DbConnection.GetConnection();
+   await con.OpenAsync();
+
+     var sql = @"
+         INSERT INTO Messages (
+     client_id, message_subject, message_body, message_type, 
+         is_read, sent_date, regarding_text
+   )
+   VALUES (
+     @clientId, @subject, @body, 'outgoing', 
+           1, GETDATE(), @regarding
+     );
+          SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+       using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@clientId", request.client_id);
+     cmd.Parameters.AddWithValue("@subject", request.subject ?? (object)DBNull.Value);
+       cmd.Parameters.AddWithValue("@body", request.message_body ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@regarding", request.regarding ?? (object)DBNull.Value);
+
+   int messageId = (int)await cmd.ExecuteScalarAsync();
+
+            // Queue for sync
+        if (_syncService != null)
+         {
+         await _syncService.QueueChangeAsync("Message", messageId, "INSERT", "Messages");
+  }
+
+            return messageId;
+        }
+
+      // Create a new notification/message
+      public async Task<int> CreateMessageAsync(Models.Message message)
+    {
+        // If DualWriteService is available, use it for dual-write
+  if (_dualWriteService != null)
+    {
+ return await _dualWriteService.ExecuteWriteAsync(
+       "Message",
+      "Messages",
+       "INSERT",
+      async (con, tx) =>
+       {
+     var sql = @"
+            INSERT INTO Messages (
+  client_id, message_subject, message_body, message_type, 
+     is_read, sent_date, booking_id, 
+      action_label, action_url, regarding_text, sync_status
+           )
+   VALUES (
+          @clientId, @subject, @body, @type, 
+      0, GETDATE(), @bookingId,
+         @actionLabel, @actionUrl, @regarding, 'pending'
+          );
+    SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+  using var cmd = new SqlCommand(sql, con, tx);
+    cmd.Parameters.AddWithValue("@clientId", message.client_id);
+  cmd.Parameters.AddWithValue("@subject", message.message_subject ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@body", message.message_body ?? (object)DBNull.Value);
+ cmd.Parameters.AddWithValue("@type", message.message_type ?? (object)DBNull.Value);
+           cmd.Parameters.AddWithValue("@bookingId", message.booking_id ?? (object)DBNull.Value);
+ cmd.Parameters.AddWithValue("@actionLabel", message.action_label ?? (object)DBNull.Value);
+       cmd.Parameters.AddWithValue("@actionUrl", message.action_url ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@regarding", message.regarding_text ?? (object)DBNull.Value);
+
+       return (int)await cmd.ExecuteScalarAsync();
+         });
+         }
+
+    // Fallback to original implementation
+            using var con = Database.DbConnection.GetConnection();
+         await con.OpenAsync();
+
+       var sql = @"
+      INSERT INTO Messages (
+          client_id, message_subject, message_body, message_type, 
+           is_read, sent_date, booking_id, 
+    action_label, action_url, regarding_text
+                )
+         VALUES (
+            @clientId, @subject, @body, @type, 
+      0, GETDATE(), @bookingId,
+               @actionLabel, @actionUrl, @regarding
+   );
+          SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+   using var cmd = new SqlCommand(sql, con);
+      cmd.Parameters.AddWithValue("@clientId", message.client_id);
+            cmd.Parameters.AddWithValue("@subject", message.message_subject ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@body", message.message_body ?? (object)DBNull.Value);
+      cmd.Parameters.AddWithValue("@type", message.message_type ?? (object)DBNull.Value);
+cmd.Parameters.AddWithValue("@bookingId", message.booking_id ?? (object)DBNull.Value);
+    cmd.Parameters.AddWithValue("@actionLabel", message.action_label ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@actionUrl", message.action_url ?? (object)DBNull.Value);
+    cmd.Parameters.AddWithValue("@regarding", message.regarding_text ?? (object)DBNull.Value);
+
+  int messageId = (int)await cmd.ExecuteScalarAsync();
+
+    // Queue for sync
+            if (_syncService != null)
+        {
+ await _syncService.QueueChangeAsync("Message", messageId, "INSERT", "Messages");
+       }
+
+            return messageId;
+        }
+
+      // Delete a message
+        public async Task DeleteMessageAsync(int messageId)
+        {
+    // If DualWriteService is available, use it for dual-write
+            if (_dualWriteService != null)
+            {
+  await _dualWriteService.ExecuteWriteAsync(
+          "Message",
+ "Messages",
+         "DELETE",
+     messageId,
+      async (con, tx) =>
+            {
+         var sql = "DELETE FROM Messages WHERE message_id = @messageId";
+   using var cmd = new SqlCommand(sql, con, tx);
+              cmd.Parameters.AddWithValue("@messageId", messageId);
+           await cmd.ExecuteNonQueryAsync();
+          return true;
+ },
+         async (onlineCon, onlineTx) =>
+            {
+        var sql = "DELETE FROM Messages WHERE message_id = @messageId";
+     using var cmd = new SqlCommand(sql, onlineCon, onlineTx);
+       cmd.Parameters.AddWithValue("@messageId", messageId);
+     await cmd.ExecuteNonQueryAsync();
+      return true;
+        });
+                return;
+            }
+
+    // Fallback to original implementation
+            using var con = Database.DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            var sql = "DELETE FROM Messages WHERE message_id = @messageId";
+            using var cmd = new SqlCommand(sql, con);
+    cmd.Parameters.AddWithValue("@messageId", messageId);
+
+            await cmd.ExecuteNonQueryAsync();
+   }
+
+     // Get message by ID
         public async Task<Models.Message?> GetMessageByIdAsync(int messageId)
         {
             using var con = Database.DbConnection.GetConnection();
@@ -297,37 +459,82 @@ while (await reader.ReadAsync())
       /// Admin replies to a client message
    /// </summary>
         public async Task<int> ReplyToClientAsync(Models.Message reply)
-        {
-         using var con = Database.DbConnection.GetConnection();
-   await con.OpenAsync();
-     
-      var sql = @"
-   INSERT INTO Messages (
-        client_id, message_subject, message_body, message_type, 
-  is_read, sent_date, booking_id, 
-      action_label, action_url, regarding_text
-  )
-                VALUES (
-            @clientId, @subject, @body, @type, 
-         0, GETDATE(), @bookingId,
-   @actionLabel, @actionUrl, @regarding
-    );
-                SELECT CAST(SCOPE_IDENTITY() AS INT);";
-      
-       using var cmd = new SqlCommand(sql, con);
-        cmd.Parameters.AddWithValue("@clientId", reply.client_id);
-   cmd.Parameters.AddWithValue("@subject", reply.message_subject ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("@body", reply.message_body ?? (object)DBNull.Value);
-    cmd.Parameters.AddWithValue("@type", reply.message_type ?? (object)DBNull.Value);
-    cmd.Parameters.AddWithValue("@bookingId", reply.booking_id ?? (object)DBNull.Value);
-  cmd.Parameters.AddWithValue("@actionLabel", reply.action_label ?? (object)DBNull.Value);
-   cmd.Parameters.AddWithValue("@actionUrl", reply.action_url ?? (object)DBNull.Value);
-cmd.Parameters.AddWithValue("@regarding", reply.regarding_text ?? (object)DBNull.Value);
-            
-            return (int)await cmd.ExecuteScalarAsync();
-        }
+     {
+// If DualWriteService is available, use it for dual-write
+      if (_dualWriteService != null)
+   {
+       return await _dualWriteService.ExecuteWriteAsync(
+        "Message",
+       "Messages",
+            "INSERT",
+          async (con, tx) =>
+            {
+           var sql = @"
+    INSERT INTO Messages (
+     client_id, message_subject, message_body, message_type, 
+      is_read, sent_date, booking_id, 
+     action_label, action_url, regarding_text, sync_status
+          )
+     VALUES (
+          @clientId, @subject, @body, @type, 
+          0, GETDATE(), @bookingId,
+        @actionLabel, @actionUrl, @regarding, 'pending'
+            );
+      SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
-        /// <summary>
+    using var cmd = new SqlCommand(sql, con, tx);
+   cmd.Parameters.AddWithValue("@clientId", reply.client_id);
+                cmd.Parameters.AddWithValue("@subject", reply.message_subject ?? (object)DBNull.Value);
+     cmd.Parameters.AddWithValue("@body", reply.message_body ?? (object)DBNull.Value);
+   cmd.Parameters.AddWithValue("@type", reply.message_type ?? (object)DBNull.Value);
+           cmd.Parameters.AddWithValue("@bookingId", reply.booking_id ?? (object)DBNull.Value);
+     cmd.Parameters.AddWithValue("@actionLabel", reply.action_label ?? (object)DBNull.Value);
+             cmd.Parameters.AddWithValue("@actionUrl", reply.action_url ?? (object)DBNull.Value);
+ cmd.Parameters.AddWithValue("@regarding", reply.regarding_text ?? (object)DBNull.Value);
+
+             return (int)await cmd.ExecuteScalarAsync();
+               });
+ }
+
+      // Fallback to original implementation
+     using var con = Database.DbConnection.GetConnection();
+            await con.OpenAsync();
+
+     var sql = @"
+       INSERT INTO Messages (
+          client_id, message_subject, message_body, message_type, 
+        is_read, sent_date, booking_id, 
+        action_label, action_url, regarding_text
+         )
+                VALUES (
+   @clientId, @subject, @body, @type, 
+         0, GETDATE(), @bookingId,
+      @actionLabel, @actionUrl, @regarding
+     );
+     SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@clientId", reply.client_id);
+            cmd.Parameters.AddWithValue("@subject", reply.message_subject ?? (object)DBNull.Value);
+ cmd.Parameters.AddWithValue("@body", reply.message_body ?? (object)DBNull.Value);
+      cmd.Parameters.AddWithValue("@type", reply.message_type ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@bookingId", reply.booking_id ?? (object)DBNull.Value);
+   cmd.Parameters.AddWithValue("@actionLabel", reply.action_label ?? (object)DBNull.Value);
+    cmd.Parameters.AddWithValue("@actionUrl", reply.action_url ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@regarding", reply.regarding_text ?? (object)DBNull.Value);
+
+       int messageId = (int)await cmd.ExecuteScalarAsync();
+
+       // Queue for sync
+            if (_syncService != null)
+      {
+                await _syncService.QueueChangeAsync("Message", messageId, "INSERT", "Messages");
+   }
+
+            return messageId;
+   }
+
+    /// <summary>
       /// Mark a conversation as resolved (mark all messages as read)
         /// </summary>
      public async Task MarkConversationResolvedAsync(int clientId)

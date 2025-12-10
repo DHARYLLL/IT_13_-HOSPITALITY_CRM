@@ -3,25 +3,34 @@
 @inject Hospitality.Services.UserService UserService
 
 <link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-employees-modern.css" />
 
 <div class="admin-page">
 	<!-- Sidebar -->
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
 			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				<span>Admin console</span>
+			</div>
 		</div>
 		<nav class="sidebar-nav">
-			<a href="/admin" class="nav-item active">
-				<span class="nav-icon"><i class="icon icon-users"></i></span>
-				<span>EMPLOYEES</span>
-			</a>
 			<a href="/admin/dashboard" class="nav-item">
 				<span class="nav-icon"><i class="icon icon-dashboard"></i></span>
 				<span>DASHBOARD</span>
 			</a>
+			<a href="/admin" class="nav-item active">
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
+				<span>EMPLOYEES</span>
+			</a>
 			<a href="/admin/rooms" class="nav-item">
 				<span class="nav-icon"><i class="icon icon-rooms"></i></span>
 				<span>ROOMS</span>
+			</a>
+			<a href="/admin/walkin" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-bookings-detail"></i></span>
+				<span>WALK-IN</span>
 			</a>
 			<a href="/admin/rewards" class="nav-item">
 				<span class="nav-icon"><i class="icon icon-gift"></i></span>
@@ -46,66 +55,177 @@
 	<main class="admin-main">
 		<header class="admin-header">
 			<div class="header-left">
-				<h1 class="page-title">Employees</h1>
-				<p class="page-subtitle">Manage your team members</p>
+				<h1 class="page-title">Team Management</h1>
+				<p class="page-subtitle">Manage your team members and staff</p>
 			</div>
 			<div class="header-actions">
 				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span><i class="icon icon-notification"></i></button>
-				<button class="icon-btn" title="Profile"><i class="icon icon-profile"></i></button>
 				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
+		<!-- Stats Bar -->
+		<div class="stats-bar">
+			<div class="stat-card">
+				<div class="stat-icon purple">
+					<i class="icon icon-users"></i>
+				</div>
+				<div class="stat-content">
+					<div class="stat-number">@totalCount</div>
+					<div class="stat-text">Total Employees</div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon blue">
+					<i class="icon icon-shield"></i>
+				</div>
+				<div class="stat-content">
+					<div class="stat-number">@employees.Count(e => e.roleName == "admin")</div>
+					<div class="stat-text">Administrators</div>
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-icon green">
+					<i class="icon icon-users"></i>
+				</div>
+				<div class="stat-content">
+					<div class="stat-number">@employees.Count(e => e.roleName == "staff")</div>
+					<div class="stat-text">Staff Members</div>
+				</div>
+			</div>
+		</div>
+
 		<div class="toolbar">
 			<div class="search-box">
 				<span><i class="icon icon-search"></i></span>
-				<input type="text" placeholder="Search employees..." @bind="searchQuery" @bind:event="oninput" />
+				<input type="text" placeholder="Search by name or email..." @bind="searchQuery" @bind:event="oninput" />
 			</div>
-			<button class="btn-sort" @onclick="ToggleRoleFilter">Role: @(string.IsNullOrEmpty(roleFilter)?"All":roleFilter)</button>
-			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Employee</button>
+			<div class="filter-pills">
+				<button class="filter-pill @(string.IsNullOrEmpty(roleFilter) ? "active" : "")" @onclick='() => SetRoleFilter("")'>
+					All <span class="count">@totalCount</span>
+				</button>
+				<button class="filter-pill @(roleFilter == "admin" ? "active" : "")" @onclick='() => SetRoleFilter("admin")'>
+					Admin <span class="count">@employees.Count(e => e.roleName == "admin")</span>
+				</button>
+				<button class="filter-pill @(roleFilter == "staff" ? "active" : "")" @onclick='() => SetRoleFilter("staff")'>
+					Staff <span class="count">@employees.Count(e => e.roleName == "staff")</span>
+				</button>
+			</div>
+			<button class="btn-add-new" @onclick="ShowAddModal">
+				<span>+</span> Add New Employee
+			</button>
 		</div>
 
 		@if (loading)
 		{
-			<p>Loading...</p>
+			<div class="loading-container">
+				<div class="spinner"></div>
+				<p>Loading employees...</p>
+			</div>
 		}
 		else if (loadError)
 		{
-			<p class="error-banner">Failed to load employees.</p>
+			<div class="error-banner">
+				<span><i class="icon icon-error"></i></span>
+				<span>Failed to load employees. Please try again.</span>
+				<button class="btn-add-new" style="margin-left: auto;" @onclick="LoadPageAsync">Retry</button>
+			</div>
+		}
+		else if (!EmployeesPage.Any())
+		{
+			<div class="empty-state-modern">
+				<div class="empty-state-icon">👥</div>
+				<h3 class="empty-state-title">No employees found</h3>
+				<p class="empty-state-text">@(string.IsNullOrWhiteSpace(searchQuery) && string.IsNullOrEmpty(roleFilter) ? "Start by adding your first employee" : "Try adjusting your search or filters")</p>
+				@if (string.IsNullOrWhiteSpace(searchQuery) && string.IsNullOrEmpty(roleFilter))
+				{
+					<button class="btn-add-new" @onclick="ShowAddModal">
+						<span>+</span> Add Your First Employee
+					</button>
+				}
+			</div>
 		}
 		else
 		{
 			<!-- Employee Cards Grid -->
-			<div class="employee-grid">
+			<div class="employees-grid">
 				@foreach (var emp in EmployeesPage)
 				{
-					<div class="employee-card">
-						<div class="card-avatar" style="background:#5e1369">@GetInitials(emp)</div>
-						<h3 class="card-name">@GetFullName(emp)</h3>
-						<p class="card-role">@emp.roleName</p>
-						<button class="btn-view-profile" @onclick="() => Edit(emp)">View profile</button>
-						<div class="card-actions">
-							<button class="card-action-btn" title="Email"><i class="icon icon-email"></i></button>
+					<div class="employee-card-modern">
+						<div class="employee-avatar-modern">@GetInitials(emp)</div>
+						<div class="role-badge @emp.roleName">
+							<i class="icon icon-@(emp.roleName == "admin" ? "shield" : "user")"></i>
+							@emp.roleName
+						</div>
+						<h3 class="employee-name-modern">@GetFullName(emp)</h3>
+						<p class="employee-email-modern">@emp.user_email</p>
+						@if (!string.IsNullOrWhiteSpace(emp.user_contact_number))
+						{
+							<div class="contact-info">
+								<div class="contact-item">
+									<i class="icon icon-phone"></i>
+									@emp.user_contact_number
+								</div>
+							</div>
+						}
+						<div class="employee-actions-modern">
+							<button class="btn-employee-action primary" @onclick="() => Edit(emp)">
+								<i class="icon icon-edit"></i> Edit
+							</button>
+							<button class="btn-employee-action secondary">
+								<i class="icon icon-email"></i>
+							</button>
 						</div>
 					</div>
 				}
 			</div>
-			<!-- Pagination -->
-			<div class="pagination">
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">« First</button>
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">‹ Prev</button>
-				@foreach (var p in PageNumbers)
-				{
-					<button class="page-btn @(p==page?"active":"")" @onclick="() => GoPage(p)">@p</button>
-				}
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ›</button>
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last »</button>
-				<span class="page-info">Page @(@page) of @totalPages • Total @totalCount</span>
-				<select class="page-size" @onchange="PageSizeChanged">
-					<option value="8" selected="@(pageSize==8)">8</option>
-					<option value="16" selected="@(pageSize==16)">16</option>
-					<option value="32" selected="@(pageSize==32)">32</option>
-				</select>
+
+			<!-- Modern Pagination -->
+			<div class="pagination-modern">
+				<div class="pagination-controls">
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="FirstPage">
+						<i class="icon icon-chevron-double-left"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="PrevPage">
+						<i class="icon icon-chevron-left"></i>
+					</button>
+					
+					@foreach (var p in GetVisiblePageNumbers())
+					{
+						@if (p == -1)
+						{
+							<span class="page-dots">...</span>
+						}
+						else
+						{
+							<button class="page-btn-modern @(p == page ? "active" : "")" @onclick="() => GoPage(p)">
+								@p
+							</button>
+						}
+					}
+
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="NextPage">
+						<i class="icon icon-chevron-right"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="LastPage">
+						<i class="icon icon-chevron-double-right"></i>
+					</button>
+				</div>
+
+				<div class="pagination-info">
+					<span class="page-info-text">
+						Showing <strong>@((page - 1) * pageSize + 1)</strong> to <strong>@Math.Min(page * pageSize, totalCount)</strong> of <strong>@totalCount</strong> employees
+					</span>
+					<div class="page-size-selector">
+						<label>Show:</label>
+						<select class="page-size-select" @onchange="PageSizeChanged">
+							<option value="8" selected="@(pageSize==8)">8 per page</option>
+							<option value="16" selected="@(pageSize==16)">16 per page</option>
+							<option value="24" selected="@(pageSize==24)">24 per page</option>
+							<option value="32" selected="@(pageSize==32)">32 per page</option>
+						</select>
+					</div>
+				</div>
 			</div>
 		}
 	</main>
@@ -120,10 +240,21 @@
 				<button class="modal-close-btn" @onclick="CloseModal"><i class="icon icon-close"></i></button>
 			</div>
 			<div class="modal-body">
+				@if (!string.IsNullOrEmpty(modalErrorMessage))
+				{
+					<div class="error-banner" style="margin-bottom: 1rem;">
+						<span><i class="icon icon-error"></i></span>
+						<span>@modalErrorMessage</span>
+					</div>
+				}
 				<div class="form-grid">
-					<div class="form-field">
+					<div class="form-field @(firstNameError ? "has-error" : "")">
 						<label>First Name *</label>
 						<input type="text" @bind="formFirstName" />
+						@if (firstNameError)
+						{
+							<span class="error-text">First name is required</span>
+						}
 					</div>
 					<div class="form-field">
 						<label>Middle Name</label>
@@ -131,9 +262,13 @@
 					</div>
 				</div>
 				<div class="form-grid">
-					<div class="form-field">
+					<div class="form-field @(lastNameError ? "has-error" : "")">
 						<label>Last Name *</label>
 						<input type="text" @bind="formLastName" />
+						@if (lastNameError)
+						{
+							<span class="error-text">Last name is required</span>
+						}
 					</div>
 					<div class="form-field">
 						<label>Birth Date</label>
@@ -141,9 +276,13 @@
 					</div>
 				</div>
 				<div class="form-grid">
-					<div class="form-field">
+					<div class="form-field @(emailError ? "has-error" : "")">
 						<label>Email *</label>
 						<input type="email" @bind="formEmail" />
+						@if (emailError)
+						{
+							<span class="error-text">Valid email is required</span>
+						}
 					</div>
 					<div class="form-field">
 						<label>Contact Number</label>
@@ -158,9 +297,13 @@
 							<option value="staff">Staff</option>
 						</select>
 					</div>
-					<div class="form-field">
+					<div class="form-field @(passwordError ? "has-error" : "")">
 						<label>Password *</label>
 						<input type="password" @bind="formPassword" />
+						@if (passwordError)
+						{
+							<span class="error-text">Password is required</span>
+						}
 					</div>
 				</div>
 			</div>
@@ -180,6 +323,8 @@
 	bool isEdit = false;
 	string searchQuery = string.Empty;
 	string roleFilter = string.Empty;
+	string errorMessage = string.Empty;
+	string modalErrorMessage = string.Empty;
 	int page =1;
 	int pageSize =8;
 	int totalCount =0;
@@ -197,40 +342,151 @@
 	string formContact = "";
 	string formRole = "staff";
 	string formPassword = "";
+	
+	bool firstNameError = false;
+	bool lastNameError = false;
+	bool emailError = false;
+	bool passwordError = false;
+
+	// New method for smart pagination
+	List<int> GetVisiblePageNumbers()
+	{
+		var pages = new List<int>();
+		int maxVisible = 7;
+		
+		if (totalPages <= maxVisible)
+		{
+			return Enumerable.Range(1, totalPages).ToList();
+		}
+		
+		pages.Add(1);
+		
+		int start = Math.Max(2, page - 2);
+		int end = Math.Min(totalPages - 1, page + 2);
+		
+		if (start > 2) pages.Add(-1); // ellipsis
+		
+		for (int i = start; i <= end; i++)
+		{
+			pages.Add(i);
+		}
+		
+		if (end < totalPages - 1) pages.Add(-1); // ellipsis
+		
+		pages.Add(totalPages);
+		
+		return pages;
+	}
+
+	void SetRoleFilter(string filter)
+	{
+		roleFilter = filter;
+		page = 1;
+		_ = LoadPageAsync();
+	}
 
 	protected override async Task OnInitializedAsync() => await LoadPageAsync();
 
 	async Task LoadPageAsync()
 	{
-		loading = true; loadError = false;
+		loading = true; 
+		loadError = false;
+		errorMessage = string.Empty;
 		try
 		{
 			employees = await UserService.GetEmployeesAsync(page, pageSize, searchQuery, roleFilter);
 			totalCount = await UserService.GetEmployeesCountAsync(searchQuery, roleFilter);
 		}
-		catch { loadError = true; }
+		catch (Exception ex)
+		{
+			loadError = true;
+			errorMessage = $"Failed to load employees: {ex.Message}";
+			Console.WriteLine($"❌ Error loading employees: {ex.Message}");
+		}
 		finally { loading = false; }
 	}
 
 	void ToggleRoleFilter()
 	{
-		if (string.IsNullOrEmpty(roleFilter)) roleFilter = "staff"; else if (roleFilter == "staff") roleFilter = "admin"; else if (roleFilter == "admin") roleFilter = "client"; else roleFilter = string.Empty;
+		if (string.IsNullOrEmpty(roleFilter)) roleFilter = "staff"; 
+		else if (roleFilter == "staff") roleFilter = "admin"; 
+		else if (roleFilter == "admin") roleFilter = "client"; 
+		else roleFilter = string.Empty;
 		page =1;
 		_ = LoadPageAsync();
 	}
 
-	void ShowAddModal() { isEdit = false; ResetForm(); showModal = true; }
-	void Edit(Hospitality.Models.User u) { isEdit = true; formFirstName = u.user_fname ?? ""; formEmail = u.user_email ?? ""; formRole = u.roleName ?? "staff"; showModal = true; }
-	void ResetForm() { formFirstName = formMiddleName = formLastName = formBirthDateString = formEmail = formContact = formPassword = string.Empty; formRole = "staff"; }
+	void ShowAddModal() 
+	{ 
+		isEdit = false; 
+		ResetForm(); 
+		showModal = true; 
+	}
+	
+	void Edit(Hospitality.Models.User u) 
+	{ 
+		isEdit = true; 
+		formFirstName = u.user_fname ?? ""; 
+		formEmail = u.user_email ?? ""; 
+		formRole = u.roleName ?? "staff"; 
+		showModal = true; 
+	}
+	
+	void ResetForm() 
+	{ 
+		formFirstName = formMiddleName = formLastName = formBirthDateString = formEmail = formContact = formPassword = string.Empty; 
+		formRole = "staff";
+		firstNameError = lastNameError = emailError = passwordError = false;
+		modalErrorMessage = string.Empty;
+	}
+	
+	bool ValidateForm()
+	{
+		bool isValid = true;
+		modalErrorMessage = string.Empty;
+		firstNameError = lastNameError = emailError = passwordError = false;
+		
+		if (string.IsNullOrWhiteSpace(formFirstName))
+		{
+			firstNameError = true;
+			isValid = false;
+		}
+		
+		if (string.IsNullOrWhiteSpace(formLastName))
+		{
+			lastNameError = true;
+			isValid = false;
+		}
+		
+		if (string.IsNullOrWhiteSpace(formEmail) || !formEmail.Contains("@"))
+		{
+			emailError = true;
+			isValid = false;
+		}
+		
+		if (!isEdit && string.IsNullOrWhiteSpace(formPassword))
+		{
+			passwordError = true;
+			isValid = false;
+		}
+		
+		if (!isValid)
+		{
+			modalErrorMessage = "Please fill in all required fields correctly.";
+		}
+		
+		return isValid;
+	}
 
 	async Task Save()
 	{
-		if (string.IsNullOrWhiteSpace(formFirstName) || string.IsNullOrWhiteSpace(formLastName) || string.IsNullOrWhiteSpace(formEmail) || string.IsNullOrWhiteSpace(formPassword)) return;
+		if (!ValidateForm()) return;
+		
 		try
 		{
 			if (!isEdit)
 			{
-				var roleId = await UserService.GetRoleIdByNameAsync(formRole) ??0;
+				var roleId = await UserService.GetRoleIdByNameAsync(formRole) ?? 0;
 				DateTime? birth = DateTime.TryParse(formBirthDateString, out var b) ? b : null;
 				var newUser = new Hospitality.Models.User
 				{
@@ -245,14 +501,21 @@
 					roleName = formRole
 				};
 				var id = await UserService.RegisterAsync(newUser);
-				newUser.userId = id; employees.Add(newUser); totalCount++;
+				newUser.userId = id; 
+				employees.Add(newUser); 
+				totalCount++;
 			}
 			CloseModal();
 		}
-		catch { loadError = true; }
+		catch (Exception ex)
+		{
+			modalErrorMessage = $"Failed to save: {ex.Message}";
+			Console.WriteLine($"❌ Error saving employee: {ex.Message}");
+		}
 	}
 
 	void CloseModal() { showModal = false; ResetForm(); }
+	
 	string GetInitials(Hospitality.Models.User u) 
 	{ 
 		var parts = new List<string>();
@@ -263,22 +526,13 @@
 
 		return string.Join("", parts).ToUpper();
 	}
+	
 	string GetFullName(Hospitality.Models.User u) 
 	{ 
 		var mn = string.IsNullOrWhiteSpace(u.user_mname) ? "" : u.user_mname;
 		var ln = string.IsNullOrWhiteSpace(u.user_lname) ? "" : u.user_lname;
 
 		return string.Join(" ", new[] { u.user_fname, mn, ln }.Where(s => !string.IsNullOrWhiteSpace(s)));
-	}
-	string SafeDecode(byte[] data) 
-	{ try 
-		{ 
-			return System.Text.Encoding.UTF8.GetString(data); 
-		} 
-		catch 
-		{
-			return string.Empty; 
-		} 
 	}
 
 	async Task PrevPage() { if (CanPrev) { page--; await LoadPageAsync(); } }
@@ -288,7 +542,6 @@
 	async Task GoPage(int p) { if (p != page) { page = p; await LoadPageAsync(); } }
 	async Task PageSizeChanged(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out var ps) && ps >0) { pageSize = ps; page =1; await LoadPageAsync(); } }
 
-	List<Hospitality.Models.User> ApplySearch(List<Hospitality.Models.User> list) => string.IsNullOrWhiteSpace(searchQuery) ? list : list.Where(u => (u.user_fname ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || (u.user_email ?? "").Contains(searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
 	void OnBirthDateChanged(ChangeEventArgs e) { formBirthDateString = e.Value?.ToString() ?? string.Empty; }
 
 	void Logout() => Navigation.NavigateTo("/");

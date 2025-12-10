@@ -1,0 +1,493 @@
+/* Modern Rooms Page Styling */
+
+/* Enhanced Toolbar */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+  background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    margin-bottom: 2rem;
+}
+
+.search-box {
+  flex: 1;
+    position: relative;
+    display: flex;
+ align-items: center;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 0 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.search-box:focus-within {
+    background: white;
+    box-shadow: 0 0 0 3px rgba(94, 19, 105, 0.1);
+}
+
+.search-box i {
+    color: #6c757d;
+    font-size: 1.125rem;
+}
+
+.search-box input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 0.875rem 0.75rem;
+    font-size: 0.9375rem;
+    color: #2c3e50;
+    outline: none;
+}
+
+.search-box input::placeholder {
+    color: #adb5bd;
+}
+
+.btn-filter-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.btn-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-filter:hover {
+    border-color: #5e1369;
+    color: #5e1369;
+    background: #f8f4f9;
+}
+
+.btn-filter.active {
+    border-color: #5e1369;
+    background: #5e1369;
+    color: white;
+}
+
+.btn-sort {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-sort:hover {
+    border-color: #5e1369;
+    color: #5e1369;
+    transform: translateY(-1px);
+}
+
+.btn-add-new {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+ padding: 0.875rem 1.5rem;
+background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(94, 19, 105, 0.2);
+}
+
+.btn-add-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(94, 19, 105, 0.3);
+}
+
+.btn-add-new span {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+/* Modern Room Cards Grid */
+.rooms-grid {
+  display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.room-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+    position: relative;
+}
+
+.room-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(94, 19, 105, 0.15);
+}
+
+.room-card-image {
+    position: relative;
+    width: 100%;
+    height: 200px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f5f3f6 0%, #e8e4ea 100%);
+}
+
+.room-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.room-card:hover .room-card-image img {
+    transform: scale(1.05);
+}
+
+.room-number-badge-new {
+    position: absolute;
+top: 1rem;
+    left: 1rem;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 14px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #5e1369;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.room-status-badge-new {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+ padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(10px);
+}
+
+.room-status-badge-new.status-available {
+    background: rgba(39, 174, 96, 0.95);
+    color: white;
+}
+
+.room-status-badge-new.status-occupied {
+    background: rgba(231, 76, 60, 0.95);
+    color: white;
+}
+
+.room-status-badge-new.status-reserved {
+    background: rgba(52, 152, 219, 0.95);
+    color: white;
+}
+
+.room-status-badge-new.status-cleaning {
+    background: rgba(243, 156, 18, 0.95);
+    color: white;
+}
+
+.room-status-badge-new.status-maintenance {
+    background: rgba(149, 165, 166, 0.95);
+    color: white;
+}
+
+.room-card-body {
+    padding: 1.5rem;
+}
+
+.room-card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.room-card-price {
+    font-size: 1.5rem;
+    font-weight: 700;
+  color: #5e1369;
+    margin-bottom: 0.75rem;
+}
+
+.room-card-price small {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.room-card-details {
+    display: flex;
+flex-wrap: wrap;
+    gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.room-detail-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+  font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.room-detail-item i {
+    font-size: 1rem;
+    color: #9937c8;
+}
+
+.room-amenities-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.amenity-tag {
+    padding: 0.375rem 0.75rem;
+    background: #f8f4f9;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #5e1369;
+    font-weight: 500;
+}
+
+.room-card-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.btn-room-action {
+    flex: 1;
+    padding: 0.75rem;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-room-action.primary {
+    background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+    color: white;
+}
+
+.btn-room-action.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(94, 19, 105, 0.3);
+}
+
+.btn-room-action.secondary {
+    background: #f8f9fa;
+    color: #495057;
+}
+
+.btn-room-action.secondary:hover {
+    background: #e9ecef;
+}
+
+.btn-room-action.danger {
+    background: #fff5f5;
+    color: #e74c3c;
+}
+
+.btn-room-action.danger:hover {
+    background: #fee;
+}
+
+/* Modern Pagination */
+.pagination-modern {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.5rem 2rem;
+    background: white;
+    border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+ flex-wrap: wrap;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-btn-modern {
+    min-width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0 0.75rem;
+}
+
+.page-btn-modern:hover:not(:disabled) {
+    border-color: #5e1369;
+    color: #5e1369;
+    background: #f8f4f9;
+    transform: translateY(-2px);
+}
+
+.page-btn-modern.active {
+    background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(94, 19, 105, 0.2);
+}
+
+.page-btn-modern:disabled {
+    opacity: 0.4;
+ cursor: not-allowed;
+}
+
+.page-dots {
+    padding: 0 0.5rem;
+    color: #adb5bd;
+    font-weight: 600;
+}
+
+.pagination-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.page-info-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.page-size-selector {
+ display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.page-size-selector label {
+    font-size: 0.875rem;
+    color: #6c757d;
+  font-weight: 500;
+}
+
+.page-size-select {
+    padding: 0.5rem 1rem;
+    border: 2px solid #e9ecef;
+    background: white;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.page-size-select:hover {
+    border-color: #5e1369;
+}
+
+.page-size-select:focus {
+    outline: none;
+    border-color: #5e1369;
+    box-shadow: 0 0 0 3px rgba(94, 19, 105, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .rooms-grid {
+ grid-template-columns: 1fr;
+    }
+
+ .pagination-modern {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .pagination-controls {
+        justify-content: center;
+        flex-wrap: wrap;
+  }
+
+    .pagination-info {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+}
+
+/* Empty State */
+.empty-state-modern {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+ border-radius: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state-title {
+    font-size: 1.5rem;
+  font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-text {
+    font-size: 1rem;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+}

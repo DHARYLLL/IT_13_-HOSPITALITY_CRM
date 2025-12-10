@@ -4,16 +4,22 @@
 @inject Hospitality.Services.BookingService BookingService
 
 <link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-rooms-modern.css" />
 
 <div class="admin-page">
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
 			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				<span>Admin console</span>
+			</div>
 		</div>
 		<nav class="sidebar-nav">
-			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
 			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
 			<a href="/admin/rooms" class="nav-item active"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
 			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
 			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
 			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
@@ -24,73 +30,163 @@
 	<main class="admin-main">
 		<header class="admin-header">
 			<div class="header-left">
-				<h1 class="page-title">Rooms</h1>
+				<h1 class="page-title">Rooms Management</h1>
 				<p class="page-subtitle">Manage hotel rooms and availability</p>
 			</div>
 			<div class="header-actions">
 				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span><i class="icon icon-notification"></i></button>
-				<button class="icon-btn" title="Profile"><i class="icon icon-profile"></i></button>
 				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
 		<div class="toolbar">
-			<div class="search-box"><span><i class="icon icon-search"></i></span><input type="text" placeholder="Search rooms..." @bind="searchQuery" @bind:event="oninput" /></div>
-			<button class="btn-sort" @onclick="SortByNumber">Sort: @(sortAsc ? "▲" : "▼")</button>
-			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Room</button>
+			<div class="search-box">
+				<span><i class="icon icon-search"></i></span>
+				<input type="text" placeholder="Search by room name or number..." @bind="searchQuery" @bind:event="oninput" />
+			</div>
+			<button class="btn-sort" @onclick="SortByNumber">
+				<i class="icon icon-sort"></i> Sort: @(sortAsc ? "Ascending" : "Descending")
+			</button>
+			<button class="btn-add-new" @onclick="ShowAddModal">
+				<span>+</span> Add New Room
+			</button>
 		</div>
 
 		@if (loading)
 		{
-			<p>Loading rooms...</p>
+			<div class="loading-container">
+				<div class="spinner"></div>
+				<p>Loading rooms...</p>
+			</div>
 		}
 		else if (loadError)
 		{
-			<p class="error-banner">Failed to load rooms.</p>
+			<div class="error-banner">
+				<span><i class="icon icon-error"></i></span>
+				<span>Failed to load rooms. Please try again.</span>
+				<button class="btn-add-new" style="margin-left: auto;" @onclick="LoadRoomsAsync">Retry</button>
+			</div>
+		}
+		else if (!FilteredRooms.Any())
+		{
+			<div class="empty-state-modern">
+				<div class="empty-state-icon">🏨</div>
+				<h3 class="empty-state-title">No rooms found</h3>
+				<p class="empty-state-text">@(string.IsNullOrWhiteSpace(searchQuery) ? "Start by adding your first room" : "Try adjusting your search criteria")</p>
+				@if (string.IsNullOrWhiteSpace(searchQuery))
+				{
+					<button class="btn-add-new" @onclick="ShowAddModal">
+						<span>+</span> Add Your First Room
+					</button>
+				}
+			</div>
 		}
 		else
 		{
-			<div class="employee-grid">
+			<div class="rooms-grid">
 				@foreach (var room in PagedRooms)
 				{
-					<div class="employee-card">
-						<div class="room-number-badge" style="background:@GetStatusColor(room.room_status)">@room.room_number</div>
-						<h3 class="card-name">@room.room_name</h3>
-						<p class="card-role">Floor @room.room_floor</p>
-						<div class="room-price">$@room.room_price.ToString("N2") / night</div>
-						<div class="room-status-badge status-@room.room_status.ToLower()">@room.room_status</div>
-						@if (room.room_picture != null)
-						{
-							<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" style="width:120px;height:120px;border-radius:8px;object-fit:cover;margin:8px auto;display:block;" />
-						}
-						@if (!string.IsNullOrWhiteSpace(room.room_amenities))
-						{
-							<p class="card-role">Amenities: @room.room_amenities</p>
-						}
-						<button class="btn-view-profile" @onclick="() => Edit(room)">Edit Room</button>
-						<div class="card-actions">
-							<button class="card-action-btn" title="Details" @onclick="() => Edit(room)"><i class="icon icon-details"></i></button>
-							<button class="card-action-btn" title="Book" @onclick="() => BookRoom(room)"><i class="icon icon-calendar"></i></button>
-							<button class="card-action-btn" title="Delete" @onclick="() => Delete(room)"><i class="icon icon-delete"></i></button>
+					<div class="room-card">
+						<div class="room-card-image">
+							@if (room.room_picture != null)
+							{
+								<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" alt="@room.room_name" />
+							}
+							<div class="room-number-badge-new">@room.room_number</div>
+							<div class="room-status-badge-new status-@room.room_status.ToLower()">@room.room_status</div>
+						</div>
+						<div class="room-card-body">
+							<div class="room-card-title">
+								<span>@room.room_name</span>
+							</div>
+							<div class="room-card-price">
+								P @room.room_price.ToString("N2") <small>/ night</small>
+							</div>
+							<div class="room-card-details">
+								<div class="room-detail-item">
+									<i class="icon icon-building"></i>
+									Floor @room.room_floor
+								</div>
+								<div class="room-detail-item">
+									<i class="icon icon-guests"></i>
+									@room.room_occupancy guests
+								</div>
+							</div>
+							@if (!string.IsNullOrWhiteSpace(room.room_amenities))
+							{
+								<div class="room-amenities-list">
+									@foreach (var amenity in room.room_amenities.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(3))
+									{
+										<span class="amenity-tag">@amenity.Trim()</span>
+									}
+									@if (room.room_amenities.Split(',').Length > 3)
+									{
+										<span class="amenity-tag">+@(room.room_amenities.Split(',').Length - 3) more</span>
+									}
+								</div>
+							}
+							<div class="room-card-actions">
+								<button class="btn-room-action primary" @onclick="() => Edit(room)">
+									<i class="icon icon-edit"></i> Edit
+								</button>
+								<button class="btn-room-action secondary" @onclick="() => BookRoom(room)">
+									<i class="icon icon-calendar"></i> Book
+								</button>
+								<button class="btn-room-action danger" @onclick="() => Delete(room)">
+									<i class="icon icon-delete"></i>
+								</button>
+							</div>
 						</div>
 					</div>
 				}
 			</div>
-			<div class="pagination">
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">« First</button>
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">‹ Prev</button>
-				@foreach (var p in PageNumbers)
-				{
-					<button class="page-btn @(p == page ? "active" : "")" @onclick="() => GoPage(p)">@p</button>
-				}
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next ›</button>
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last »</button>
-				<span class="page-info">Page @(@page) of @totalPages • Total @FilteredRooms.Count()</span>
-				<select class="page-size" @onchange="PageSizeChanged">
-					<option value="8" selected="@(pageSize == 8)">8</option>
-					<option value="16" selected="@(pageSize == 16)">16</option>
-					<option value="32" selected="@(pageSize == 32)">32</option>
-				</select>
+
+			<!-- Modern Pagination -->
+			<div class="pagination-modern">
+				<div class="pagination-controls">
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="FirstPage">
+						<i class="icon icon-chevron-double-left"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="PrevPage">
+						<i class="icon icon-chevron-left"></i>
+					</button>
+					
+					@foreach (var p in GetVisiblePageNumbers())
+					{
+						@if (p == -1)
+						{
+							<span class="page-dots">...</span>
+						}
+						else
+						{
+							<button class="page-btn-modern @(p == page ? "active" : "")" @onclick="() => GoPage(p)">
+								@p
+							</button>
+						}
+					}
+
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="NextPage">
+						<i class="icon icon-chevron-right"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="LastPage">
+						<i class="icon icon-chevron-double-right"></i>
+					</button>
+				</div>
+
+				<div class="pagination-info">
+					<span class="page-info-text">
+						Showing <strong>@((page - 1) * pageSize + 1)</strong> to <strong>@Math.Min(page * pageSize, FilteredRooms.Count())</strong> of <strong>@FilteredRooms.Count()</strong> rooms
+					</span>
+					<div class="page-size-selector">
+						<label>Show:</label>
+						<select class="page-size-select" @onchange="PageSizeChanged">
+							<option value="8" selected="@(pageSize == 8)">8 per page</option>
+							<option value="16" selected="@(pageSize == 16)">16 per page</option>
+							<option value="24" selected="@(pageSize == 24)">24 per page</option>
+							<option value="32" selected="@(pageSize == 32)">32 per page</option>
+						</select>
+					</div>
+				</div>
 			</div>
 		}
 	</main>
@@ -104,23 +200,66 @@
 				<h2 class="modal-title">@(isEdit ? "Edit Room" : "New Room")</h2><button class="modal-close-btn" @onclick="CloseModal"><i class="icon icon-close"></i></button>
 			</div>
 			<div class="modal-body">
+				@if (!string.IsNullOrEmpty(modalErrorMessage))
+				{
+					<div class="error-banner" style="margin-bottom: 1rem;">
+						<span><i class="icon icon-error"></i></span>
+						<span>@modalErrorMessage</span>
+					</div>
+				}
 				<div class="form-grid">
-					<div class="form-field"><label>Room Name *</label><input type="text" @bind="current.room_name" /></div>
-					<div class="form-field"><label>Room Number *</label><input type="number" @bind="current.room_number" min="1" /></div>
+					<div class="form-field @(roomNameError ? "has-error" : "")">
+						<label>Room Name *</label>
+						<input type="text" @bind="current.room_name" />
+						@if (roomNameError)
+						{
+							<span class="error-text">Room name is required</span>
+						}
+					</div>
+					<div class="form-field @(roomNumberError ? "has-error" : "")">
+						<label>Room Number *</label>
+						<input type="number" @bind="current.room_number" min="1" />
+						@if (roomNumberError)
+						{
+							<span class="error-text">Valid room number is required</span>
+						}
+					</div>
 				</div>
 				<div class="form-grid">
-					<div class="form-field"><label>Floor *</label><input type="number" @bind="current.room_floor" min="1" /></div>
-					<div class="form-field"><label>Price *</label><input type="number" step="0.01" @bind="current.room_price" min="0" /></div>
+					<div class="form-field">
+						<label>Floor *</label>
+						<input type="number" @bind="current.room_floor" min="1" />
+					</div>
+					<div class="form-field">
+						<label>Price *</label>
+						<input type="number" step="0.01" @bind="current.room_price" min="0" />
+					</div>
 				</div>
 				<div class="form-grid">
-					@* <div class="form-field"><label>Available *</label><input type="text" @bind="current.room_available" /></div> *@
-					<div class="form-field"><label>Status *</label><select @bind="current.room_status"><option value="Available">Available</option><option value="Occupied">Occupied</option><option value="Cleaning">Cleaning</option><option value="Maintenance">Maintenance</option><option value="Reserved">Reserved</option></select></div>
+					<div class="form-field">
+						<label>Status *</label>
+						<select @bind="current.room_status">
+							<option value="Available">Available</option>
+							<option value="Occupied">Occupied</option>
+							<option value="Cleaning">Cleaning</option>
+							<option value="Maintenance">Maintenance</option>
+							<option value="Reserved">Reserved</option>
+						</select>
+					</div>
+					<div class="form-field">
+						<label>Max Occupancy (guests)</label>
+						<input type="number" @bind="current.room_occupancy" min="1" max="10" />
+					</div>
 				</div>
 
 				<div class="form-grid">
 					<div class="form-field">
 						<label>Room Photo</label>
 						<InputFile OnChange="OnPhotoSelected" accept="image/jpeg,image/png" />
+						@if (!string.IsNullOrEmpty(uploadError))
+						{
+							<span class="error-text">@uploadError</span>
+						}
 					</div>
 					<div class="form-field">
 						<label>Amenities (comma-separated)</label>
@@ -150,11 +289,16 @@
 	bool loading = true;
 	bool loadError = false;
 	bool sortAsc = true;
+	string errorMessage = string.Empty;
+	string modalErrorMessage = string.Empty;
 
 	IBrowserFile? uploadedPhoto;
 	string? previewImage;
 	string amenitiesText = string.Empty;
 	string? uploadError;
+	
+	bool roomNameError = false;
+	bool roomNumberError = false;
 
 	int page = 1;
 	int pageSize = 8;
@@ -164,15 +308,45 @@
 	bool CanNext => page < totalPages;
 	List<Hospitality.Models.Room> PagedRooms => FilteredRooms.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
+	// New method for smart pagination
+	List<int> GetVisiblePageNumbers()
+	{
+		var pages = new List<int>();
+		int maxVisible = 7;
+		
+		if (totalPages <= maxVisible)
+		{
+			return Enumerable.Range(1, totalPages).ToList();
+		}
+		
+		pages.Add(1);
+		
+		int start = Math.Max(2, page - 2);
+		int end = Math.Min(totalPages - 1, page + 2);
+		
+		if (start > 2) pages.Add(-1); // ellipsis
+		
+		for (int i = start; i <= end; i++)
+		{
+			pages.Add(i);
+		}
+		
+		if (end < totalPages - 1) pages.Add(-1); // ellipsis
+		
+		pages.Add(totalPages);
+		
+		return pages;
+	}
+
 	protected override async Task OnInitializedAsync() { await LoadRoomsAsync(); }
 
 	async Task LoadRoomsAsync()
 	{
 		loading = true;
 		loadError = false;
+		errorMessage = string.Empty;
 		try
 		{
-			// First, update room statuses based on booking dates
 			try
 			{
 				await BookingService.UpdateRoomStatusesBasedOnDatesAsync();
@@ -183,13 +357,13 @@
 				Console.WriteLine($"⚠️ Warning: Could not update room statuses: {ex.Message}");
 			}
 
-			// Then load rooms with updated statuses
 			rooms = await RoomService.GetRoomsAsync();
 		}
 		catch (Exception ex)
 		{
 			loadError = true;
-			Console.WriteLine($"Rooms load error: {ex}");
+			errorMessage = $"Failed to load rooms: {ex.Message}";
+			Console.WriteLine($"❌ Rooms load error: {ex}");
 		}
 		finally { loading = false; }
 	}
@@ -217,14 +391,22 @@
 		current = new()
 		{
 			room_status = "Available",
-			// room_available = "Yes",
 			room_floor = 1,
-			room_price = 100.00m
+			room_price = 100.00m,
+			room_occupancy = 2
 		};
 		amenitiesText = string.Empty;
-		previewImage = null; uploadedPhoto = null; current.room_picture = null; current.room_amenities = null; uploadError = null;
+		previewImage = null; 
+		uploadedPhoto = null; 
+		current.room_picture = null; 
+		current.room_amenities = null; 
+		uploadError = null;
+		modalErrorMessage = string.Empty;
+		roomNameError = false;
+		roomNumberError = false;
 		showModal = true;
 	}
+	
 	void Edit(Hospitality.Models.Room r)
 	{
 		isEdit = true;
@@ -236,13 +418,17 @@
 			room_floor = r.room_floor,
 			room_price = r.room_price,
 			room_status = r.room_status,
-			// room_available = r.room_available,
+			room_occupancy = r.room_occupancy,
 			room_picture = r.room_picture,
 			room_amenities = r.room_amenities
 		};
 		amenitiesText = r.room_amenities ?? string.Empty;
 		previewImage = r.room_picture != null ? $"data:image/jpeg;base64,{Convert.ToBase64String(r.room_picture)}" : null;
-		uploadedPhoto = null; uploadError = null;
+		uploadedPhoto = null; 
+		uploadError = null;
+		modalErrorMessage = string.Empty;
+		roomNameError = false;
+		roomNumberError = false;
 		showModal = true;
 	}
 
@@ -255,7 +441,6 @@
 		{
 			uploadError = "Only JPEG/PNG allowed."; return;
 		}
-		// Increase file size limit (default ~512KB). Allow up to8MB.
 		var maxSize = 8 * 1024 * 1024;
 		try
 		{
@@ -270,6 +455,7 @@
 			uploadError = $"Upload failed: {ex.Message}";
 		}
 	}
+	
 	async Task Delete(Hospitality.Models.Room r)
 	{
 		try
@@ -277,23 +463,58 @@
 			await RoomService.DeleteRoomAsync(r.room_id);
 			rooms.Remove(r);
 		}
-		catch
+		catch (Exception ex)
 		{
-			loadError = true;
+			errorMessage = $"Failed to delete room: {ex.Message}";
+			Console.WriteLine($"❌ Delete room error: {ex.Message}");
 		}
 	}
+	
 	void BookRoom(Hospitality.Models.Room r)
 	{
 		Console.WriteLine($"Booking room: {r.room_number}");
 	}
+	
 	void CloseModal()
 	{
 		showModal = false;
 		current = new();
+		modalErrorMessage = string.Empty;
+		roomNameError = false;
+		roomNumberError = false;
 	}
+	
+	bool ValidateForm()
+	{
+		bool isValid = true;
+		modalErrorMessage = string.Empty;
+		roomNameError = false;
+		roomNumberError = false;
+		
+		if (string.IsNullOrWhiteSpace(current.room_name))
+		{
+			roomNameError = true;
+			isValid = false;
+		}
+		
+		if (current.room_number <= 0)
+		{
+			roomNumberError = true;
+			isValid = false;
+		}
+		
+		if (!isValid)
+		{
+			modalErrorMessage = "Please fill in all required fields.";
+		}
+		
+		return isValid;
+	}
+	
 	async Task Save()
 	{
-		if (string.IsNullOrWhiteSpace(current.room_name) || current.room_number <= 0) return;
+		if (!ValidateForm()) return;
+		
 		try
 		{
 			current.room_amenities = string.IsNullOrWhiteSpace(amenitiesText) ? null : amenitiesText.Trim();
@@ -306,7 +527,7 @@
 				existing.room_floor = current.room_floor;
 				existing.room_price = current.room_price;
 				existing.room_status = current.room_status;
-				// existing.room_available = current.room_available;
+				existing.room_occupancy = current.room_occupancy;
 				existing.room_picture = current.room_picture;
 				existing.room_amenities = current.room_amenities;
 			}
@@ -320,7 +541,8 @@
 		}
 		catch (Exception ex)
 		{
-			loadError = true; Console.WriteLine($"Save room error: {ex}");
+			modalErrorMessage = $"Failed to save room: {ex.Message}";
+			Console.WriteLine($"❌ Save room error: {ex}");
 		}
 	}
 
@@ -335,6 +557,4 @@
 	}
 
 	void Logout() => Navigation.NavigateTo("/");
-
-	string currentUserRole = "admin"; // TODO: replace with actual injected auth context
 }

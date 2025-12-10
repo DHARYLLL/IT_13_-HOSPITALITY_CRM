@@ -1,0 +1,834 @@
+@page "/admin/walkin"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.RoomService RoomService
+@inject Hospitality.Services.BookingService BookingService
+@inject Hospitality.Services.PaymentService PaymentService
+
+<link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-walkin.css" />
+
+<div class="admin-page">
+	<!-- Sidebar -->
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				<span>Admin console</span>
+			</div>
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/walkin" class="nav-item active"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
+			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
+			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
+		</nav>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Walk-In Booking</h1>
+				<p class="page-subtitle">Create a new booking for walk-in customers</p>
+			</div>
+			<div class="header-actions">
+				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
+			</div>
+		</header>
+
+		<div class="walkin-container">
+			<!-- Step Indicator -->
+			<div class="step-indicator">
+				<div class="step @(currentStep >= 1 ? "active" : "") @(currentStep > 1 ? "completed" : "")">
+					<div class="step-number">@(currentStep > 1 ? "?" : "1")</div>
+					<span class="step-label">Guest Info</span>
+				</div>
+				<div class="step-line @(currentStep > 1 ? "completed" : "")"></div>
+				<div class="step @(currentStep >= 2 ? "active" : "") @(currentStep > 2 ? "completed" : "")">
+					<div class="step-number">@(currentStep > 2 ? "?" : "2")</div>
+					<span class="step-label">Room Selection</span>
+				</div>
+				<div class="step-line @(currentStep > 2 ? "completed" : "")"></div>
+				<div class="step @(currentStep >= 3 ? "active" : "")">
+					<div class="step-number">3</div>
+					<span class="step-label">Confirmation</span>
+				</div>
+			</div>
+
+			@if (!string.IsNullOrEmpty(errorMessage))
+			{
+				<div class="error-banner">
+					<i class="icon icon-error"></i>
+					<span>@errorMessage</span>
+					<button class="error-dismiss" @onclick="() => errorMessage = null">×</button>
+				</div>
+			}
+
+			@if (!string.IsNullOrEmpty(successMessage))
+			{
+				<div class="success-banner">
+					<i class="icon icon-success"></i>
+					<span>@successMessage</span>
+				</div>
+			}
+
+			<!-- Step 1: Guest Information -->
+			@if (currentStep == 1)
+			{
+				<div class="step-content">
+					<div class="form-section">
+						<div class="section-header">
+							<h2><span class="section-icon">??</span> Guest Information</h2>
+							<p>Enter the walk-in customer's details</p>
+						</div>
+
+						<div class="form-grid">
+							<div class="form-group">
+								<label for="firstName">First Name <span class="required">*</span></label>
+								<input type="text" id="firstName" @bind="guestFirstName" class="form-input" placeholder="Enter first name" />
+							</div>
+							<div class="form-group">
+								<label for="middleName">Middle Name</label>
+								<input type="text" id="middleName" @bind="guestMiddleName" class="form-input" placeholder="Enter middle name (optional)" />
+							</div>
+							<div class="form-group">
+								<label for="lastName">Last Name <span class="required">*</span></label>
+								<input type="text" id="lastName" @bind="guestLastName" class="form-input" placeholder="Enter last name" />
+							</div>
+							<div class="form-group">
+								<label for="email">Email Address</label>
+								<input type="email" id="email" @bind="guestEmail" class="form-input" placeholder="Enter email address (optional)" />
+							</div>
+							<div class="form-group">
+								<label for="phone">Contact Number <span class="required">*</span></label>
+								<input type="tel" id="phone" @bind="guestPhone" class="form-input" placeholder="Enter contact number" />
+							</div>
+							<div class="form-group">
+								<label for="birthDate">Date of Birth</label>
+								<input type="date" id="birthDate" @bind="guestBirthDate" class="form-input" />
+							</div>
+						</div>
+					</div>
+
+					<div class="form-section">
+						<div class="section-header">
+							<h2><span class="section-icon">??</span> Stay Details</h2>
+							<p>Specify the booking dates and guest count</p>
+						</div>
+
+						<div class="form-grid">
+							<div class="form-group">
+								<label for="checkIn">Check-in Date <span class="required">*</span></label>
+								<input type="date" id="checkIn" @bind="checkInDate" class="form-input" min="@DateTime.Today.ToString("yyyy-MM-dd")" />
+							</div>
+							<div class="form-group">
+								<label for="checkOut">Check-out Date <span class="required">*</span></label>
+								<input type="date" id="checkOut" @bind="checkOutDate" class="form-input" min="@(checkInDate?.AddDays(1).ToString("yyyy-MM-dd") ?? DateTime.Today.AddDays(1).ToString("yyyy-MM-dd"))" />
+							</div>
+							<div class="form-group">
+								<label for="adults">Number of Guests <span class="required">*</span></label>
+								<div class="counter-input">
+									<button class="counter-btn" @onclick="() => ChangeGuests(-1)" disabled="@(numberOfGuests <= 1)">?</button>
+									<span class="counter-value">@numberOfGuests guest@(numberOfGuests != 1 ? "s" : "")</span>
+									<button class="counter-btn" @onclick="() => ChangeGuests(1)">+</button>
+								</div>
+							</div>
+							<div class="form-group">
+								<label for="rooms">Number of Rooms <span class="required">*</span></label>
+								<div class="counter-input">
+									<button class="counter-btn" @onclick="() => ChangeRoomCount(-1)" disabled="@(numberOfRooms <= 1)">?</button>
+									<span class="counter-value">@numberOfRooms room@(numberOfRooms != 1 ? "s" : "")</span>
+									<button class="counter-btn" @onclick="() => ChangeRoomCount(1)">+</button>
+								</div>
+							</div>
+						</div>
+
+						<div class="form-group full-width">
+							<label for="requests">Special Requests</label>
+							<textarea id="requests" @bind="specialRequests" class="form-textarea" rows="3"
+									  placeholder="Add any special requests or notes (e.g., high floor, late check-out, accessibility needs)..."></textarea>
+						</div>
+					</div>
+
+					<div class="form-actions">
+						<button class="btn-secondary" @onclick="ClearForm">Clear Form</button>
+						<button class="btn-primary" @onclick="ProceedToRoomSelection">
+							Continue to Room Selection ?
+						</button>
+					</div>
+				</div>
+			}
+
+			<!-- Step 2: Room Selection -->
+			@if (currentStep == 2)
+			{
+				<div class="step-content">
+					<div class="form-section">
+						<div class="section-header">
+							<h2><span class="section-icon">??</span> Available Rooms</h2>
+							<p>Select @numberOfRooms room@(numberOfRooms != 1 ? "s" : "") for @guestFirstName @guestLastName • @checkInDate?.ToString("MMM dd") – @checkOutDate?.ToString("MMM dd") (@NightsCount night@(NightsCount != 1 ? "s" : ""))</p>
+						</div>
+
+						@if (loadingRooms)
+						{
+							<div class="loading-state">
+								<div class="spinner"></div>
+								<p>Loading available rooms...</p>
+							</div>
+						}
+						else if (!availableRooms.Any())
+						{
+							<div class="empty-state">
+								<div class="empty-icon">??</div>
+								<h3>No rooms available</h3>
+								<p>No rooms are available for the selected dates. Please try different dates.</p>
+								<button class="btn-secondary" @onclick="GoBackToStep1">? Change Dates</button>
+							</div>
+						}
+						else
+						{
+							<div class="room-selection-info">
+								<span class="room-count">@availableRooms.Count room@(availableRooms.Count != 1 ? "s" : "") available</span>
+								<span class="selection-progress">@selectedRooms.Count of @numberOfRooms selected</span>
+							</div>
+
+							<div class="rooms-grid">
+								@foreach (var room in availableRooms)
+								{
+									var isSelected = selectedRooms.Any(r => r.room_id == room.room_id);
+									var canSelect = !isSelected && selectedRooms.Count < numberOfRooms;
+
+									<div class="room-card @(isSelected ? "selected" : "") @(!canSelect && !isSelected ? "disabled" : "")"
+										 @onclick="() => ToggleRoom(room)">
+										<div class="room-image">
+											@if (room.room_picture != null)
+											{
+												<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" alt="@room.room_name" />
+											}
+											else
+											{
+												<div class="room-placeholder">
+													<span>Room @room.room_number</span>
+												</div>
+											}
+											@if (isSelected)
+											{
+												<div class="selected-badge">? Selected</div>
+											}
+										</div>
+										<div class="room-details">
+											<div class="room-header">
+												<h3 class="room-name">@room.room_name</h3>
+												<span class="room-number">Room @room.room_number</span>
+											</div>
+											<div class="room-features">
+												<span class="feature">?? Floor @room.room_floor</span>
+												<span class="feature status-@room.room_status.ToLower()">@room.room_status</span>
+											</div>
+											@if (!string.IsNullOrWhiteSpace(room.room_amenities))
+											{
+												<div class="room-amenities">
+													@foreach (var amenity in room.room_amenities.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(4))
+													{
+														<span class="amenity">@amenity.Trim()</span>
+													}
+												</div>
+											}
+											<div class="room-pricing">
+												<span class="price-per-night">?@room.room_price.ToString("N2")/night</span>
+												<span class="price-total">?@((room.room_price * NightsCount).ToString("N2")) total</span>
+											</div>
+										</div>
+									</div>
+								}
+							</div>
+						}
+					</div>
+
+					<div class="form-actions">
+						<button class="btn-secondary" @onclick="GoBackToStep1">? Back</button>
+						<button class="btn-primary" @onclick="ProceedToConfirmation" disabled="@(selectedRooms.Count != numberOfRooms)">
+							@if (selectedRooms.Count == numberOfRooms)
+							{
+								<span>Continue to Payment ?</span>
+							}
+							else
+							{
+								<span>Select @(numberOfRooms - selectedRooms.Count) more room@((numberOfRooms - selectedRooms.Count) != 1 ? "s" : "")</span>
+							}
+						</button>
+					</div>
+				</div>
+			}
+
+			<!-- Step 3: Confirmation & Payment -->
+			@if (currentStep == 3)
+			{
+				<div class="step-content">
+					<div class="confirmation-grid">
+						<!-- Left Column - Booking Summary -->
+						<div class="summary-section">
+							<div class="form-section">
+								<div class="section-header">
+									<h2><span class="section-icon">??</span> Booking Summary</h2>
+								</div>
+
+								<div class="summary-card">
+									<div class="summary-group">
+										<h4>Guest Information</h4>
+										<div class="summary-row">
+											<span class="label">Name:</span>
+											<span class="value">@guestFirstName @guestMiddleName @guestLastName</span>
+										</div>
+										@if (!string.IsNullOrEmpty(guestEmail))
+										{
+											<div class="summary-row">
+												<span class="label">Email:</span>
+												<span class="value">@guestEmail</span>
+											</div>
+										}
+										<div class="summary-row">
+											<span class="label">Phone:</span>
+											<span class="value">@guestPhone</span>
+										</div>
+									</div>
+
+									<div class="summary-group">
+										<h4>Stay Details</h4>
+										<div class="summary-row">
+											<span class="label">Check-in:</span>
+											<span class="value">@checkInDate?.ToString("dddd, MMMM dd, yyyy") • 3:00 PM</span>
+										</div>
+										<div class="summary-row">
+											<span class="label">Check-out:</span>
+											<span class="value">@checkOutDate?.ToString("dddd, MMMM dd, yyyy") • 11:00 AM</span>
+										</div>
+										<div class="summary-row">
+											<span class="label">Duration:</span>
+											<span class="value">@NightsCount night@(NightsCount != 1 ? "s" : "")</span>
+										</div>
+										<div class="summary-row">
+											<span class="label">Guests:</span>
+											<span class="value">@numberOfGuests guest@(numberOfGuests != 1 ? "s" : "")</span>
+										</div>
+									</div>
+
+									<div class="summary-group">
+										<h4>Selected Rooms</h4>
+										@foreach (var room in selectedRooms)
+										{
+											<div class="room-summary-item">
+												<div class="room-info">
+													<span class="room-name">@room.room_name</span>
+													<span class="room-number">Room @room.room_number • Floor @room.room_floor</span>
+												</div>
+												<span class="room-price">?@((room.room_price * NightsCount).ToString("N2"))</span>
+											</div>
+										}
+									</div>
+
+									@if (!string.IsNullOrEmpty(specialRequests))
+									{
+										<div class="summary-group">
+											<h4>Special Requests</h4>
+											<p class="special-requests">@specialRequests</p>
+										</div>
+									}
+								</div>
+							</div>
+						</div>
+
+						<!-- Right Column - Payment -->
+						<div class="payment-section">
+							<div class="form-section">
+								<div class="section-header">
+									<h2><span class="section-icon">??</span> Payment Details</h2>
+								</div>
+
+								<div class="payment-card">
+									<div class="price-breakdown">
+										<div class="price-row">
+											<span>Room charges (@NightsCount night@(NightsCount != 1 ? "s" : ""))</span>
+											<span>?@Subtotal.ToString("N2")</span>
+										</div>
+										<div class="price-row">
+											<span>Taxes & Fees (12%)</span>
+											<span>?@TaxAmount.ToString("N2")</span>
+										</div>
+										<div class="price-row total">
+											<span>Total Amount</span>
+											<span>?@TotalAmount.ToString("N2")</span>
+										</div>
+									</div>
+
+									<div class="payment-options">
+										<h4>Payment Method</h4>
+										<div class="payment-method-list">
+											<label class="payment-method @(paymentMethod == "cash" ? "selected" : "")">
+												<input type="radio" name="paymentMethod" value="cash" @onchange="@(() => paymentMethod = "cash")" checked="@(paymentMethod == "cash")" />
+												<span class="method-icon">??</span>
+												<span class="method-name">Cash</span>
+											</label>
+											<label class="payment-method @(paymentMethod == "card" ? "selected" : "")">
+												<input type="radio" name="paymentMethod" value="card" @onchange="@(() => paymentMethod = "card")" checked="@(paymentMethod == "card")" />
+												<span class="method-icon">??</span>
+												<span class="method-name">Credit/Debit Card</span>
+											</label>
+											<label class="payment-method @(paymentMethod == "gcash" ? "selected" : "")">
+												<input type="radio" name="paymentMethod" value="gcash" @onchange="@(() => paymentMethod = "gcash")" checked="@(paymentMethod == "gcash")" />
+												<span class="method-icon">??</span>
+												<span class="method-name">GCash</span>
+											</label>
+										</div>
+									</div>
+
+									<div class="payment-amount-section">
+										<h4>Payment Amount</h4>
+										<div class="payment-type-list">
+											<label class="payment-type @(paymentType == "full" ? "selected" : "")">
+												<input type="radio" name="paymentType" value="full" @onchange="@(() => paymentType = "full")" checked="@(paymentType == "full")" />
+												<div class="type-details">
+													<span class="type-name">Full Payment</span>
+													<span class="type-amount">?@TotalAmount.ToString("N2")</span>
+												</div>
+											</label>
+											<label class="payment-type @(paymentType == "partial" ? "selected" : "")">
+												<input type="radio" name="paymentType" value="partial" @onchange="@(() => paymentType = "partial")" checked="@(paymentType == "partial")" />
+												<div class="type-details">
+													<span class="type-name">Partial Payment (50% Deposit)</span>
+													<span class="type-amount">?@(TotalAmount * 0.5m).ToString("N2")</span>
+												</div>
+											</label>
+										</div>
+									</div>
+
+									@if (paymentType == "partial")
+									{
+										<div class="balance-notice">
+											<i class="icon icon-info-circle"></i>
+											<span>Remaining balance of ?@(TotalAmount * 0.5m).ToString("N2") will be due at check-out.</span>
+										</div>
+									}
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="form-actions">
+						<button class="btn-secondary" @onclick="GoBackToStep2">? Back to Room Selection</button>
+						<button class="btn-primary btn-confirm" @onclick="ConfirmBooking" disabled="@processing">
+							@if (processing)
+							{
+								<span>Processing...</span>
+							}
+							else
+							{
+								<span>? Confirm Booking & Check-In</span>
+							}
+						</button>
+					</div>
+				</div>
+			}
+
+			<!-- Step 4: Success -->
+			@if (currentStep == 4)
+			{
+				<div class="step-content success-content">
+					<div class="success-card">
+						<div class="success-icon">?</div>
+						<h2>Booking Confirmed!</h2>
+						<p class="booking-id">Booking ID: #@createdBookingId.ToString("D7")</p>
+
+						<div class="success-summary">
+							<div class="summary-row">
+								<span>Guest:</span>
+								<span>@guestFirstName @guestLastName</span>
+							</div>
+							<div class="summary-row">
+								<span>Room@(selectedRooms.Count > 1 ? "s" : ""):</span>
+								<span>@string.Join(", ", selectedRooms.Select(r => $"{r.room_name} (#{r.room_number})"))</span>
+							</div>
+							<div class="summary-row">
+								<span>Check-in:</span>
+								<span>@checkInDate?.ToString("MMM dd, yyyy")</span>
+							</div>
+							<div class="summary-row">
+								<span>Check-out:</span>
+								<span>@checkOutDate?.ToString("MMM dd, yyyy")</span>
+							</div>
+							<div class="summary-row">
+								<span>Payment:</span>
+								<span>?@(paymentType == "full" ? TotalAmount : TotalAmount * 0.5m).ToString("N2") (@paymentMethod.ToUpper())</span>
+							</div>
+						</div>
+
+						<div class="success-actions">
+							<button class="btn-secondary" @onclick="PrintReceipt">??? Print Receipt</button>
+							<button class="btn-primary" @onclick="NewBooking">+ New Walk-In Booking</button>
+						</div>
+					</div>
+				</div>
+			}
+		</div>
+	</main>
+</div>
+
+@code {
+	int currentStep = 1;
+	bool processing = false;
+	bool loadingRooms = false;
+	string? errorMessage;
+	string? successMessage;
+
+	// Guest Information
+	string guestFirstName = "";
+	string guestMiddleName = "";
+	string guestLastName = "";
+	string guestEmail = "";
+	string guestPhone = "";
+	DateTime? guestBirthDate;
+
+	// Stay Details
+	DateTime? checkInDate;
+	DateTime? checkOutDate;
+	int numberOfGuests = 1;
+	int numberOfRooms = 1;
+	string specialRequests = "";
+
+	// Room Selection
+	List<Hospitality.Models.Room> availableRooms = new();
+	List<Hospitality.Models.Room> selectedRooms = new();
+
+	// Payment
+	string paymentMethod = "cash";
+	string paymentType = "full";
+
+	// Confirmation
+	int createdBookingId = 0;
+	int createdClientId = 0;
+
+	// Calculated values
+	int NightsCount => checkInDate.HasValue && checkOutDate.HasValue ? (checkOutDate.Value - checkInDate.Value).Days : 0;
+	decimal Subtotal => selectedRooms.Sum(r => r.room_price * NightsCount);
+	decimal TaxAmount => Subtotal * 0.12m;
+	decimal TotalAmount => Subtotal + TaxAmount;
+
+	protected override void OnInitialized()
+	{
+		// Default to today for check-in
+		checkInDate = DateTime.Today;
+		checkOutDate = DateTime.Today.AddDays(1);
+	}
+
+	void ChangeGuests(int delta)
+	{
+		numberOfGuests = Math.Max(1, Math.Min(10, numberOfGuests + delta));
+	}
+
+	void ChangeRoomCount(int delta)
+	{
+		numberOfRooms = Math.Max(1, Math.Min(5, numberOfRooms + delta));
+	}
+
+	void ClearForm()
+	{
+		guestFirstName = "";
+		guestMiddleName = "";
+		guestLastName = "";
+		guestEmail = "";
+		guestPhone = "";
+		guestBirthDate = null;
+		checkInDate = DateTime.Today;
+		checkOutDate = DateTime.Today.AddDays(1);
+		numberOfGuests = 1;
+		numberOfRooms = 1;
+		specialRequests = "";
+		selectedRooms.Clear();
+		errorMessage = null;
+		successMessage = null;
+	}
+
+	async Task ProceedToRoomSelection()
+	{
+		errorMessage = null;
+
+		// Validation
+		if (string.IsNullOrWhiteSpace(guestFirstName))
+		{
+			errorMessage = "First name is required.";
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(guestLastName))
+		{
+			errorMessage = "Last name is required.";
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(guestPhone))
+		{
+			errorMessage = "Contact number is required.";
+			return;
+		}
+
+		if (!checkInDate.HasValue || !checkOutDate.HasValue)
+		{
+			errorMessage = "Please select check-in and check-out dates.";
+			return;
+		}
+
+		if (checkOutDate.Value <= checkInDate.Value)
+		{
+			errorMessage = "Check-out date must be after check-in date.";
+			return;
+		}
+
+		// Load available rooms
+		loadingRooms = true;
+		currentStep = 2;
+		StateHasChanged();
+
+		try
+		{
+			availableRooms = await BookingService.GetAvailableRoomsAsync(checkInDate.Value, checkOutDate.Value, numberOfGuests);
+			selectedRooms.Clear();
+		}
+		catch (Exception ex)
+		{
+			errorMessage = $"Error loading rooms: {ex.Message}";
+			currentStep = 1;
+		}
+		finally
+		{
+			loadingRooms = false;
+			StateHasChanged();
+		}
+	}
+
+	void ToggleRoom(Hospitality.Models.Room room)
+	{
+		var existing = selectedRooms.FirstOrDefault(r => r.room_id == room.room_id);
+		if (existing != null)
+		{
+			selectedRooms.Remove(existing);
+		}
+		else if (selectedRooms.Count < numberOfRooms)
+		{
+			selectedRooms.Add(room);
+		}
+		StateHasChanged();
+	}
+
+	void GoBackToStep1()
+	{
+		currentStep = 1;
+		errorMessage = null;
+	}
+
+	void GoBackToStep2()
+	{
+		currentStep = 2;
+		errorMessage = null;
+	}
+
+	void ProceedToConfirmation()
+	{
+		if (selectedRooms.Count != numberOfRooms)
+		{
+			errorMessage = $"Please select {numberOfRooms} room(s).";
+			return;
+		}
+
+		errorMessage = null;
+		currentStep = 3;
+	}
+
+	async Task ConfirmBooking()
+	{
+		if (processing) return;
+
+		processing = true;
+		errorMessage = null;
+		StateHasChanged();
+
+		try
+		{
+			using var con = Hospitality.Database.DbConnection.GetConnection();
+			await con.OpenAsync();
+
+			using var tx = con.BeginTransaction();
+
+			try
+			{
+				// Step 1: Create or find user
+				int userId = await CreateOrFindUserAsync(con, tx);
+
+				// Step 2: Create or find client
+				createdClientId = await CreateOrFindClientAsync(con, tx, userId);
+
+				// Step 3: Create booking
+				string bookingSql = @"
+					INSERT INTO Bookings (client_id, [check-in_date], [check-out_date], person_count, client_request, [check-in_time], [check-out_time], booking_status, sync_status)
+					VALUES (@clientId, @checkIn, @checkOut, @personCount, @clientRequest, @checkInTime, @checkOutTime, 'checked-in', 'pending');
+					SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+				using var bookingCmd = new Microsoft.Data.SqlClient.SqlCommand(bookingSql, con, tx);
+				bookingCmd.Parameters.AddWithValue("@clientId", createdClientId);
+				bookingCmd.Parameters.AddWithValue("@checkIn", checkInDate!.Value);
+				bookingCmd.Parameters.AddWithValue("@checkOut", checkOutDate!.Value);
+				bookingCmd.Parameters.AddWithValue("@personCount", numberOfGuests);
+				bookingCmd.Parameters.AddWithValue("@clientRequest", string.IsNullOrEmpty(specialRequests) ? DBNull.Value : specialRequests);
+				bookingCmd.Parameters.AddWithValue("@checkInTime", TimeOnly.FromTimeSpan(new TimeSpan(15, 0, 0))); // 3:00 PM
+				bookingCmd.Parameters.AddWithValue("@checkOutTime", TimeOnly.FromTimeSpan(new TimeSpan(11, 0, 0))); // 11:00 AM
+
+				var bookingResult = await bookingCmd.ExecuteScalarAsync();
+				createdBookingId = Convert.ToInt32(bookingResult);
+
+				// Step 4: Add rooms to booking and update room status to Occupied (walk-in = immediate check-in)
+				foreach (var room in selectedRooms)
+				{
+					// Add to booking_rooms
+					string roomBookingSql = @"
+						INSERT INTO Booking_rooms (booking_id, room_id)
+						VALUES (@bookingId, @roomId);";
+
+					using var roomBookingCmd = new Microsoft.Data.SqlClient.SqlCommand(roomBookingSql, con, tx);
+					roomBookingCmd.Parameters.AddWithValue("@bookingId", createdBookingId);
+					roomBookingCmd.Parameters.AddWithValue("@roomId", room.room_id);
+					await roomBookingCmd.ExecuteNonQueryAsync();
+
+					// Update room status to Occupied
+					string updateRoomSql = "UPDATE rooms SET room_status = 'Occupied' WHERE room_id = @roomId";
+					using var updateRoomCmd = new Microsoft.Data.SqlClient.SqlCommand(updateRoomSql, con, tx);
+					updateRoomCmd.Parameters.AddWithValue("@roomId", room.room_id);
+					await updateRoomCmd.ExecuteNonQueryAsync();
+				}
+
+				// Step 5: Record payment
+				decimal paymentAmount = paymentType == "full" ? TotalAmount : TotalAmount * 0.5m;
+				string paymentStatus = paymentType == "full" ? "completed" : "partial";
+
+				string paymentSql = @"
+					INSERT INTO Payments (booking_id, amount, payment_method, payment_status, payment_date)
+					VALUES (@bookingId, @amount, @method, @status, GETDATE());";
+
+				using var paymentCmd = new Microsoft.Data.SqlClient.SqlCommand(paymentSql, con, tx);
+				paymentCmd.Parameters.AddWithValue("@bookingId", createdBookingId);
+				paymentCmd.Parameters.AddWithValue("@amount", paymentAmount);
+				paymentCmd.Parameters.AddWithValue("@method", paymentMethod);
+				paymentCmd.Parameters.AddWithValue("@status", paymentStatus);
+				await paymentCmd.ExecuteNonQueryAsync();
+
+				tx.Commit();
+
+				Console.WriteLine($"? Walk-in booking created: ID={createdBookingId}, Client={createdClientId}, Rooms={string.Join(",", selectedRooms.Select(r => r.room_number))}");
+
+				currentStep = 4;
+				successMessage = "Booking created successfully!";
+			}
+			catch
+			{
+				tx.Rollback();
+				throw;
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Error creating walk-in booking: {ex.Message}");
+			errorMessage = $"Error creating booking: {ex.Message}";
+		}
+		finally
+		{
+			processing = false;
+			StateHasChanged();
+		}
+	}
+
+	async Task<int> CreateOrFindUserAsync(Microsoft.Data.SqlClient.SqlConnection con, Microsoft.Data.SqlClient.SqlTransaction tx)
+	{
+		// Check if user with same email exists
+		if (!string.IsNullOrWhiteSpace(guestEmail))
+		{
+			string checkUserSql = "SELECT user_id FROM users WHERE user_email = @email";
+			using var checkCmd = new Microsoft.Data.SqlClient.SqlCommand(checkUserSql, con, tx);
+			checkCmd.Parameters.AddWithValue("@email", guestEmail);
+			var existingUserId = await checkCmd.ExecuteScalarAsync();
+			if (existingUserId != null)
+			{
+				return Convert.ToInt32(existingUserId);
+			}
+		}
+
+		// Get client role_id
+		string getRoleSql = "SELECT role_id FROM Roles WHERE LOWER(role_name) = 'client'";
+		using var roleCmd = new Microsoft.Data.SqlClient.SqlCommand(getRoleSql, con, tx);
+		var roleIdObj = await roleCmd.ExecuteScalarAsync();
+		int roleId = roleIdObj != null ? Convert.ToInt32(roleIdObj) : 3; // Default to 3 if not found
+
+		// Create new user
+		string createUserSql = @"
+			INSERT INTO users (role_id, user_fname, user_mname, user_lname, user_email, user_contact_number, user_brith_date, user_password)
+			VALUES (@roleId, @fname, @mname, @lname, @email, @phone, @birthDate, @password);
+			SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+		using var createCmd = new Microsoft.Data.SqlClient.SqlCommand(createUserSql, con, tx);
+		createCmd.Parameters.AddWithValue("@roleId", roleId);
+		createCmd.Parameters.AddWithValue("@fname", guestFirstName);
+		createCmd.Parameters.AddWithValue("@mname", string.IsNullOrEmpty(guestMiddleName) ? DBNull.Value : guestMiddleName);
+		createCmd.Parameters.AddWithValue("@lname", guestLastName);
+		createCmd.Parameters.AddWithValue("@email", string.IsNullOrEmpty(guestEmail) ? $"walkin_{Guid.NewGuid():N}@innsight.local" : guestEmail);
+		createCmd.Parameters.AddWithValue("@phone", guestPhone);
+		createCmd.Parameters.AddWithValue("@birthDate", guestBirthDate.HasValue ? guestBirthDate.Value : DBNull.Value);
+		createCmd.Parameters.AddWithValue("@password", Guid.NewGuid().ToString("N").Substring(0, 8)); // Random temp password
+
+		var result = await createCmd.ExecuteScalarAsync();
+		return Convert.ToInt32(result);
+	}
+
+	async Task<int> CreateOrFindClientAsync(Microsoft.Data.SqlClient.SqlConnection con, Microsoft.Data.SqlClient.SqlTransaction tx, int userId)
+	{
+		// Check if client exists for this user
+		string checkClientSql = "SELECT client_id FROM Clients WHERE user_id = @userId";
+		using var checkCmd = new Microsoft.Data.SqlClient.SqlCommand(checkClientSql, con, tx);
+		checkCmd.Parameters.AddWithValue("@userId", userId);
+		var existingClientId = await checkCmd.ExecuteScalarAsync();
+		if (existingClientId != null)
+		{
+			return Convert.ToInt32(existingClientId);
+		}
+
+		// Create new client - Clients table only has user_id column
+		// Guest information (first_name, last_name, email) is stored in the Users table
+		string createClientSql = @"
+			INSERT INTO Clients (user_id)
+			VALUES (@userId);
+			SELECT CAST(SCOPE_IDENTITY() AS int);";
+
+		using var createCmd = new Microsoft.Data.SqlClient.SqlCommand(createClientSql, con, tx);
+		createCmd.Parameters.AddWithValue("@userId", userId);
+
+		var result = await createCmd.ExecuteScalarAsync();
+		return Convert.ToInt32(result);
+	}
+
+	void PrintReceipt()
+	{
+		// In a real implementation, this would trigger a print dialog or generate a PDF
+		Console.WriteLine($"Print receipt for booking #{createdBookingId}");
+	}
+
+	void NewBooking()
+	{
+		currentStep = 1;
+		ClearForm();
+		createdBookingId = 0;
+		createdClientId = 0;
+	}
+
+	void Logout() => Navigation.NavigateTo("/");
+}

@@ -19,8 +19,13 @@ packages/
 *.sqlite
 *.db
 
-# Secrets (only if you actually use these; remove if needed)
-appsettings*.json
+# Configuration files with secrets
+appsettings.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+# IMPORTANT: Allow the example file to be committed
+!appsettings.example.json
 
 # Crash dumps
 *.dmp

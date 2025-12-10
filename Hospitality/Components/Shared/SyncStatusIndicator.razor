@@ -1,0 +1,127 @@
+@inject Hospitality.Services.ConnectivityService ConnectivityService
+@inject Hospitality.Services.SyncService SyncService
+@implements IDisposable
+
+<div class="sync-status-indicator @(isOnline ? "online" : "offline")">
+    <div class="sync-status-dot"></div>
+    <span class="sync-status-text">
+@if (isSyncing)
+     {
+          <span>?? Syncing...</span>
+        }
+        else if (isOnline)
+        {
+            @if (pendingChanges > 0)
+ {
+                <span>?? @pendingChanges pending</span>
+            }
+     else
+    {
+         <span>?? Online</span>
+            }
+        }
+   else
+   {
+            @if (pendingChanges > 0)
+{
+           <span>?? Offline (@pendingChanges pending)</span>
+          }
+            else
+            {
+           <span>?? Offline</span>
+  }
+        }
+    </span>
+  
+    @if (showDetails)
+    {
+        <div class="sync-status-details">
+ <div class="sync-detail-item">
+          <span class="detail-label">Connection:</span>
+             <span class="detail-value">@ConnectivityService.CurrentMode</span>
+            </div>
+         <div class="sync-detail-item">
+      <span class="detail-label">Pending:</span>
+  <span class="detail-value">@pendingChanges changes</span>
+  </div>
+   @if (lastSyncTime.HasValue)
+        {
+           <div class="sync-detail-item">
+         <span class="detail-label">Last sync:</span>
+              <span class="detail-value">@lastSyncTime.Value.ToString("HH:mm")</span>
+    </div>
+    }
+          @if (!isOnline)
+            {
+             <p class="offline-notice">Changes will sync automatically when connection is restored.</p>
+    }
+         @if (isOnline && pendingChanges > 0)
+   {
+    <button class="sync-now-btn" @onclick="SyncNow" disabled="@isSyncing">
+   Sync Now
+        </button>
+    }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool showDetails { get; set; } = false;
+
+    bool isOnline = false;
+    bool isSyncing = false;
+  int pendingChanges = 0;
+    DateTime? lastSyncTime = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Subscribe to events
+        ConnectivityService.ConnectivityChanged += OnConnectivityChanged;
+        SyncService.SyncStatusChanged += OnSyncStatusChanged;
+        SyncService.SyncCompleted += OnSyncCompleted;
+
+        // Initial status check
+        await RefreshStatusAsync();
+    }
+
+    private async Task RefreshStatusAsync()
+{
+      isOnline = await ConnectivityService.CheckOnlineDatabaseAsync();
+        pendingChanges = await SyncService.GetPendingChangesCountAsync();
+      await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnConnectivityChanged(bool online)
+    {
+   isOnline = online;
+        pendingChanges = await SyncService.GetPendingChangesCountAsync();
+await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnSyncStatusChanged(string status)
+    {
+        isSyncing = status == "Syncing...";
+      await InvokeAsync(StateHasChanged);
+  }
+
+    private async void OnSyncCompleted(SyncResult result)
+    {
+        isSyncing = false;
+        lastSyncTime = DateTime.Now;
+      pendingChanges = await SyncService.GetPendingChangesCountAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task SyncNow()
+    {
+  if (isSyncing) return;
+   await SyncService.SyncAllAsync();
+    }
+
+public void Dispose()
+    {
+        ConnectivityService.ConnectivityChanged -= OnConnectivityChanged;
+        SyncService.SyncStatusChanged -= OnSyncStatusChanged;
+        SyncService.SyncCompleted -= OnSyncCompleted;
+    }
+}
