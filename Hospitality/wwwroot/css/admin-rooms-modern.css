@@ -508,3 +508,60 @@ color: #495057;
     color: #6c757d;
     margin-bottom: 1.5rem;
 }
+
+/* Status Badge Table - Text only, no background */
+.data-table td .status-badge-table,
+table.data-table .status-badge-table,
+.status-badge-table {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: capitalize;
+    font-family: 'Open Sans', sans-serif;
+    background: transparent !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    display: inline;
+}
+
+.data-table td .status-badge-table.status-available,
+table.data-table .status-badge-table.status-available,
+.status-badge-table.status-available {
+    color: #27ae60;
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.data-table td .status-badge-table.status-occupied,
+table.data-table .status-badge-table.status-occupied,
+.status-badge-table.status-occupied {
+    color: #e74c3c;
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.data-table td .status-badge-table.status-reserved,
+table.data-table .status-badge-table.status-reserved,
+.status-badge-table.status-reserved {
+    color: #3498db;
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.data-table td .status-badge-table.status-cleaning,
+table.data-table .status-badge-table.status-cleaning,
+.status-badge-table.status-cleaning {
+    color: #f39c12;
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+.data-table td .status-badge-table.status-maintenance,
+table.data-table .status-badge-table.status-maintenance,
+.status-badge-table.status-maintenance {
+    color: #95a5a6;
+    background: transparent !important;
+    background-color: transparent !important;
+}

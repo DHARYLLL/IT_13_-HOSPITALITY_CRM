@@ -2,6 +2,7 @@
 @inject NavigationManager Navigation
 @inject Hospitality.Services.UserService UserService
 @inject Hospitality.Services.LoyaltyService LoyaltyService
+@using Hospitality.Services
 
 <link rel="stylesheet" href="css/clientprofile.css" />
 <link rel="stylesheet" href="css/client-layout.css" />
@@ -31,7 +32,7 @@
 			<header class="page-header">
 				<div class="header-content">
 					<button class="back-btn" @onclick="GoBack">
-						<span>?</span> Back to Dashboard
+						<span>←</span> Back to Dashboard
 					</button>
 					<h1 class="page-title">Edit Profile</h1>
 					<p class="page-subtitle">Update your personal information and account settings.</p>
@@ -56,7 +57,7 @@
 				<!-- Personal Information -->
 				<div class="card personal-info-card">
 					<div class="card-header">
-						<h3>?? Personal Information</h3>
+						<h3>Personal Information</h3>
 					</div>
 					<div class="form-grid">
 						<div class="form-group">
@@ -81,7 +82,7 @@
 				<!-- Contact Information -->
 				<div class="card contact-info-card">
 					<div class="card-header">
-						<h3>?? Contact Information</h3>
+						<h3>Contact Information</h3>
 					</div>
 					<div class="form-grid">
 						<div class="form-group full-width">
@@ -99,7 +100,7 @@
 				<!-- Security Settings -->
 				<div class="card security-card">
 					<div class="card-header">
-						<h3>?? Security Settings</h3>
+						<h3>Security Settings</h3>
 					</div>
 					<div class="form-grid">
 						<div class="form-group">
@@ -121,7 +122,7 @@
 				<!-- Account Info -->
 				<div class="card account-info-card">
 					<div class="card-header">
-						<h3>?? Account Information</h3>
+						<h3>Account Information</h3>
 					</div>
 					<div class="account-details">
 						<div class="account-item">
@@ -149,13 +150,13 @@
 				@if (!string.IsNullOrEmpty(errorMessage))
 				{
 					<div class="error-message">
-						<span>??</span> @errorMessage
+						<span>⚠️</span> @errorMessage
 					</div>
 				}
 				@if (!string.IsNullOrEmpty(successMessage))
 				{
 					<div class="success-message">
-						<span>?</span> @successMessage
+						<span>✓</span> @successMessage
 					</div>
 				}
 				<div class="action-buttons-row">
@@ -167,7 +168,7 @@
 						}
 						else
 						{
-							<span>?? Save Changes</span>
+							<span>💾 Save Changes</span>
 						}
 					</button>
 				</div>
@@ -301,7 +302,22 @@
 				verifyCmd.Parameters.AddWithValue("@userId", id);
 				var currentStoredPassword = await verifyCmd.ExecuteScalarAsync() as string;
 
-				if (currentStoredPassword != editModel.CurrentPassword)
+				bool passwordValid = false;
+				if (!string.IsNullOrWhiteSpace(currentStoredPassword))
+				{
+					if (PasswordHasher.IsHashed(currentStoredPassword))
+					{
+						// Password is hashed, verify using BCrypt
+						passwordValid = PasswordHasher.VerifyPassword(editModel.CurrentPassword ?? "", currentStoredPassword);
+					}
+					else
+					{
+						// Password is plain text (legacy), compare directly
+						passwordValid = currentStoredPassword == editModel.CurrentPassword;
+					}
+				}
+
+				if (!passwordValid)
 				{
 					errorMessage = "Current password is incorrect.";
 					saving = false;
@@ -332,7 +348,10 @@
 
 			if (!string.IsNullOrWhiteSpace(editModel.NewPassword))
 			{
-				cmd.Parameters.AddWithValue("@newPassword", editModel.NewPassword);
+				// Hash the new password before storing
+				// Hash the new password before storing
+				var hashedPassword = PasswordHasher.HashPassword(editModel.NewPassword);
+				cmd.Parameters.AddWithValue("@newPassword", hashedPassword);
 			}
 
 			await cmd.ExecuteNonQueryAsync();
@@ -390,11 +409,11 @@
 
 	string GetTierBadge() => CurrentTier switch
 	{
-		"Bronze" => "??",
-		"Silver" => "??",
-		"Gold" => "??",
-		"Platinum" => "??",
-		_ => "?"
+		"Bronze" => "🥉",
+		"Silver" => "🥈",
+		"Gold" => "🥇",
+		"Platinum" => "💎",
+		_ => "⭐"
 	};
 
 	void GoBack() => Navigation.NavigateTo($"/client/profile/{id}");

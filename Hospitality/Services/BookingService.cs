@@ -288,6 +288,7 @@ INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
         await con.OpenAsync();
 
         // Get rooms that are not booked for the specified dates
+        // Exclude cancelled bookings from the availability check
         string sql = @"
         SELECT r.room_id, r.room_name, r.room_number, r.room_floor, r.room_price, 
         r.room_status, r.room_picture, r.room_amenities
@@ -298,6 +299,7 @@ INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
         FROM Booking_rooms br
         INNER JOIN Bookings b ON br.booking_id = b.booking_id
         WHERE (b.[check-in_date] <= @checkOut AND b.[check-out_date] >= @checkIn)
+        AND (b.booking_status IS NULL OR b.booking_status != 'cancelled')
         )
         ORDER BY r.room_floor, r.room_number";
 
@@ -636,14 +638,14 @@ INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
                      async (con, tx) =>
              {
                  // Get booking and client info for the confirmation message
+                 // First get basic booking info
                  string getBookingInfoSql = @"
-             SELECT b.client_id, b.[check-in_date], b.[check-out_date], r.room_name,
-              SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as total_amount
+             SELECT b.client_id, b.[check-in_date], b.[check-out_date],
+                    (SELECT TOP 1 r.room_name FROM Booking_rooms br2 
+                     INNER JOIN rooms r ON br2.room_id = r.room_id 
+                     WHERE br2.booking_id = b.booking_id) as room_name
   FROM Bookings b
-          LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
-        LEFT JOIN rooms r ON br.room_id = r.room_id
-  WHERE b.booking_id = @bookingId
- GROUP BY b.client_id, b.[check-in_date], b.[check-out_date], r.room_name";
+  WHERE b.booking_id = @bookingId";
 
                  using var getInfoCmd = new SqlCommand(getBookingInfoSql, con, tx);
                  getInfoCmd.Parameters.AddWithValue("@bookingId", bookingId);
@@ -661,9 +663,27 @@ INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
                      checkInDate = infoReader.GetDateTime(1);
                      checkOutDate = infoReader.GetDateTime(2);
                      roomName = infoReader.IsDBNull(3) ? "Room" : infoReader.GetString(3);
-                     totalAmount = infoReader.IsDBNull(4) ? 0 : infoReader.GetDecimal(4);
+                 }
+                 else
+                 {
+                     // Booking not found
+                     Console.WriteLine($"❌ Booking {bookingId} not found");
+                     return false;
                  }
                  await infoReader.CloseAsync();
+
+                 // Calculate total amount separately
+                 int nights = (checkOutDate - checkInDate).Days;
+                 string getTotalSql = @"
+             SELECT SUM(r.room_price) 
+             FROM Booking_rooms br
+             INNER JOIN rooms r ON br.room_id = r.room_id
+             WHERE br.booking_id = @bookingId";
+                 using var getTotalCmd = new SqlCommand(getTotalSql, con, tx);
+                 getTotalCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                 var totalResult = await getTotalCmd.ExecuteScalarAsync();
+                 decimal dailyRate = totalResult != null && totalResult != DBNull.Value ? Convert.ToDecimal(totalResult) : 0;
+                 totalAmount = dailyRate * nights;
 
                  // Get room IDs for this booking
                  string getRoomsSql = @"SELECT br.room_id FROM Booking_rooms br WHERE br.booking_id = @bookingId";
@@ -688,14 +708,38 @@ INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
                  }
 
                  // Update booking status to cancelled
+                 // Check if sync_status and last_modified columns exist
                  string updateBookingSql = @"
         UPDATE Bookings 
-       SET booking_status = 'cancelled', sync_status = 'pending', last_modified = GETDATE()
+       SET booking_status = 'cancelled'
             WHERE booking_id = @bookingId";
 
                  using var updateBookingCmd = new SqlCommand(updateBookingSql, con, tx);
                  updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
-                 await updateBookingCmd.ExecuteNonQueryAsync();
+                 
+                 int rowsAffected = await updateBookingCmd.ExecuteNonQueryAsync();
+                 if (rowsAffected == 0)
+                 {
+                     Console.WriteLine($"❌ No booking found with ID {bookingId} to cancel");
+                     return false;
+                 }
+
+                 // Try to update sync columns if they exist (don't fail if they don't)
+                 try
+                 {
+                     string updateSyncSql = @"
+        UPDATE Bookings 
+       SET sync_status = 'pending', last_modified = GETDATE()
+            WHERE booking_id = @bookingId";
+                     using var updateSyncCmd = new SqlCommand(updateSyncSql, con, tx);
+                     updateSyncCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                     await updateSyncCmd.ExecuteNonQueryAsync();
+                 }
+                 catch
+                 {
+                     // Columns don't exist, that's okay - continue without sync tracking
+                     Console.WriteLine("⚠️ sync_status/last_modified columns not found, continuing without sync tracking");
+                 }
 
                  // Send cancellation confirmation message to client
                  if (clientId > 0)
@@ -704,25 +748,25 @@ INSERT INTO Booking_rooms (booking_id, room_id) VALUES (@bookingId, @roomId)";
 
 Your booking has been successfully cancelled.
 
-?? Cancellation Details:
-????????????????????????
-� Booking ID: #{bookingId:D7}
-� Room: {roomName}
-� Check-in: {checkInDate:dddd, MMMM dd, yyyy}
-� Check-out: {checkOutDate:dddd, MMMM dd, yyyy}
-� Original Amount: ?{totalAmount:N2}
-{(string.IsNullOrEmpty(cancellationReason) ? "" : $"� Reason: {cancellationReason}")}
+Cancellation Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+�• Booking ID: #{bookingId:D7}
+�• Room: {roomName}
+�• Check-in: {checkInDate:dddd, MMMM dd, yyyy}
+�• Check-out: {checkOutDate:dddd, MMMM dd, yyyy}
+�• Original Amount: ₱{totalAmount:N2}
+{(string.IsNullOrEmpty(cancellationReason) ? "" : $"�• Reason: {cancellationReason}")}
 
-?? Refund Information:
-????????????????????????
+Refund Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Your refund will be processed according to our cancellation policy.
 
 Best regards,
 InnSight Hotels Team";
 
                      string insertMessageSql = @"
-    INSERT INTO Messages (client_id, booking_id, message_subject, message_body, message_type, message_category, regarding_text, sent_date, is_read, sync_status)
-            VALUES (@clientId, @bookingId, @subject, @body, 'service', 'Booking Cancellation', 'Booking Cancellation Confirmation', GETDATE(), 0, 'pending')";
+    INSERT INTO Messages (client_id, booking_id, message_subject, message_body, message_type, regarding_text, sent_date, is_read)
+            VALUES (@clientId, @bookingId, @subject, @body, 'service', 'Booking Cancellation Confirmation', GETDATE(), 0)";
 
                      using var msgCmd = new SqlCommand(insertMessageSql, con, tx);
                      msgCmd.Parameters.AddWithValue("@clientId", clientId);
@@ -734,13 +778,8 @@ InnSight Hotels Team";
                      Console.WriteLine($"?? Cancellation confirmation message sent to client {clientId}");
                  }
 
-                 await ((SqlTransaction)tx).CommitAsync();
-
-                 // Queue for sync
-                 if (_syncService != null)
-                 {
-                     await _syncService.MarkForSyncAsync("Bookings", bookingId, "UPDATE");
-                 }
+                 // Don't commit here - DualWriteService will handle the commit
+                 // Also, sync is handled by DualWriteService automatically
 
                  Console.WriteLine($"? Booking {bookingId} cancelled successfully");
                  return true;
@@ -758,14 +797,14 @@ InnSight Hotels Team";
             try
             {
                 // Get booking and client info for the confirmation message
+                // First get basic booking info
                 string getBookingInfoSql = @"
-         SELECT b.client_id, b.[check-in_date], b.[check-out_date], r.room_name,
-            SUM(r.room_price * DATEDIFF(day, b.[check-in_date], b.[check-out_date])) as total_amount
+         SELECT b.client_id, b.[check-in_date], b.[check-out_date],
+                (SELECT TOP 1 r.room_name FROM Booking_rooms br2 
+                 INNER JOIN rooms r ON br2.room_id = r.room_id 
+                 WHERE br2.booking_id = b.booking_id) as room_name
                 FROM Bookings b
-      LEFT JOIN Booking_rooms br ON b.booking_id = br.booking_id
-     LEFT JOIN rooms r ON br.room_id = r.room_id
-    WHERE b.booking_id = @bookingId
- GROUP BY b.client_id, b.booking_id, b.[check-in_date], b.[check-out_date], br.room_id";
+    WHERE b.booking_id = @bookingId";
 
                 using var getInfoCmd = new SqlCommand(getBookingInfoSql, con, (SqlTransaction)tx);
                 getInfoCmd.Parameters.AddWithValue("@bookingId", bookingId);
@@ -783,9 +822,27 @@ InnSight Hotels Team";
                     checkInDate = infoReader.GetDateTime(1);
                     checkOutDate = infoReader.GetDateTime(2);
                     roomName = infoReader.IsDBNull(3) ? "Room" : infoReader.GetString(3);
-                    totalAmount = infoReader.IsDBNull(4) ? 0 : infoReader.GetDecimal(4);
+                }
+                else
+                {
+                    // Booking not found
+                    Console.WriteLine($"❌ Booking {bookingId} not found");
+                    return false;
                 }
                 await infoReader.CloseAsync();
+
+                // Calculate total amount separately
+                int nights = (checkOutDate - checkInDate).Days;
+                string getTotalSql = @"
+         SELECT SUM(r.room_price) 
+         FROM Booking_rooms br
+         INNER JOIN rooms r ON br.room_id = r.room_id
+         WHERE br.booking_id = @bookingId";
+                using var getTotalCmd = new SqlCommand(getTotalSql, con, (SqlTransaction)tx);
+                getTotalCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                var totalResult = await getTotalCmd.ExecuteScalarAsync();
+                decimal dailyRate = totalResult != null && totalResult != DBNull.Value ? Convert.ToDecimal(totalResult) : 0;
+                totalAmount = dailyRate * nights;
 
                 // Get room IDs for this booking
                 string getRoomsSql = @"
@@ -815,15 +872,38 @@ InnSight Hotels Team";
                     Console.WriteLine($"? Room {roomId} set back to Available (booking cancelled)");
                 }
 
-                // Update booking status to cancelled with sync tracking
+                // Update booking status to cancelled
                 string updateBookingSql = @"
       UPDATE Bookings 
- SET booking_status = 'cancelled', sync_status = 'pending', last_modified = GETDATE()
+ SET booking_status = 'cancelled'
            WHERE booking_id = @bookingId";
 
                 using var updateBookingCmd = new SqlCommand(updateBookingSql, con, (SqlTransaction)tx);
                 updateBookingCmd.Parameters.AddWithValue("@bookingId", bookingId);
-                await updateBookingCmd.ExecuteNonQueryAsync();
+                
+                int rowsAffected = await updateBookingCmd.ExecuteNonQueryAsync();
+                if (rowsAffected == 0)
+                {
+                    Console.WriteLine($"❌ No booking found with ID {bookingId} to cancel");
+                    return false;
+                }
+
+                // Try to update sync columns if they exist (don't fail if they don't)
+                try
+                {
+                    string updateSyncSql = @"
+      UPDATE Bookings 
+ SET sync_status = 'pending', last_modified = GETDATE()
+           WHERE booking_id = @bookingId";
+                    using var updateSyncCmd = new SqlCommand(updateSyncSql, con, (SqlTransaction)tx);
+                    updateSyncCmd.Parameters.AddWithValue("@bookingId", bookingId);
+                    await updateSyncCmd.ExecuteNonQueryAsync();
+                }
+                catch
+                {
+                    // Columns don't exist, that's okay - continue without sync tracking
+                    Console.WriteLine("⚠️ sync_status/last_modified columns not found, continuing without sync tracking");
+                }
 
                 // Send cancellation confirmation message to client
                 if (clientId > 0)
@@ -832,17 +912,17 @@ InnSight Hotels Team";
 
 Your booking has been successfully cancelled.
 
-?? Cancellation Details:
-????????????????????????
-� Booking ID: #{bookingId:D7}
-� Room: {roomName}
-� Check-in: {checkInDate:dddd, MMMM dd, yyyy}
-� Check-out: {checkOutDate:dddd, MMMM dd, yyyy}
-� Original Amount: ?{totalAmount:N2}
-{(string.IsNullOrEmpty(cancellationReason) ? "" : $"� Reason: {cancellationReason}")}
+Cancellation Details:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+�• Booking ID: #{bookingId:D7}
+�• Room: {roomName}
+�• Check-in: {checkInDate:dddd, MMMM dd, yyyy}
+�• Check-out: {checkOutDate:dddd, MMMM dd, yyyy}
+�• Original Amount: ₱{totalAmount:N2}
+{(string.IsNullOrEmpty(cancellationReason) ? "" : $"�• Reason: {cancellationReason}")}
 
-?? Refund Information:
-????????????????????????
+Refund Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Your refund will be processed according to our cancellation policy. Please allow 5-7 business days for the refund to appear in your account.
 
 If you have any questions about your cancellation or refund, please don't hesitate to contact us.
@@ -853,8 +933,8 @@ Best regards,
 InnSight Hotels Team";
 
                     string insertMessageSql = @"
-              INSERT INTO Messages (client_id, booking_id, message_subject, message_body, message_type, message_category, regarding_text, sent_date, is_read, sync_status)
-     VALUES (@clientId, @bookingId, @subject, @body, 'service', 'Booking Cancellation', 'Booking Cancellation Confirmation', GETDATE(), 0, 'pending')";
+              INSERT INTO Messages (client_id, booking_id, message_subject, message_body, message_type, regarding_text, sent_date, is_read)
+     VALUES (@clientId, @bookingId, @subject, @body, 'service', 'Booking Cancellation Confirmation', GETDATE(), 0)";
 
                     using var msgCmd = new SqlCommand(insertMessageSql, con, (SqlTransaction)tx);
                     msgCmd.Parameters.AddWithValue("@clientId", clientId);

@@ -193,26 +193,24 @@ gap: 1rem;
 /* Type Badge */
 .type-badge {
  display: inline-block;
-    padding: 0.375rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
   text-transform: capitalize;
+    color: #374151;
 }
 
 .type-voucher {
-    background: #e3f2fd;
-    color: #1565c0;
+    color: #374151;
 }
 
 .type-upgrade {
-    background: #f3e5f5;
-    color: #7b1fa2;
+    color: #374151;
 }
 
 .type-service {
-    background: #e8f5e9;
-    color: #2e7d32;
+    color: #374151;
 }
 
 /* Points Display */
@@ -236,20 +234,18 @@ gap: 1rem;
 /* Status Badge */
 .status-badge {
   display: inline-block;
-    padding: 0.375rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
 }
 
 .status-active {
-    background: #d4edda;
-    color: #155724;
+    color: #374151;
 }
 
 .status-inactive {
-    background: #f8d7da;
-    color: #721c24;
+    color: #374151;
 }
 
 /* Expiry Date */

@@ -31,20 +31,50 @@ namespace Hospitality.Services
                 {
                     await con.OpenAsync();
 
+                    // First, get the user by email (without password check in SQL)
                     string query = @"SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, 
                                     U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, R.role_name
                                      FROM users U JOIN Roles R ON U.role_id = R.role_id
-                                     WHERE U.user_email = @email AND U.user_password = @password";
+                                     WHERE U.user_email = @email";
 
                     using var cmd = new SqlCommand(query, con);
                     cmd.Parameters.AddWithValue("@email", email);
-                    cmd.Parameters.AddWithValue("@password", password);
 
                     using var reader = await cmd.ExecuteReaderAsync();
 
                     if (await reader.ReadAsync())
                     {
-                        user = MapUser(reader);
+                        var storedPassword = reader["user_password"]?.ToString();
+                        
+                        // Verify password - handle both hashed and plain text (for migration)
+                        bool passwordValid = false;
+                        if (!string.IsNullOrWhiteSpace(storedPassword))
+                        {
+                            if (PasswordHasher.IsHashed(storedPassword))
+                            {
+                                // Password is hashed, verify using BCrypt
+                                passwordValid = PasswordHasher.VerifyPassword(password, storedPassword);
+                            }
+                            else
+                            {
+                                // Password is plain text (legacy), compare directly
+                                // This allows existing users to login while we migrate
+                                passwordValid = storedPassword == password;
+                                
+                                // If login successful with plain text, upgrade to hashed
+                                if (passwordValid)
+                                {
+                                    await UpgradePasswordToHashAsync(reader.GetInt32(reader.GetOrdinal("user_id")), password);
+                                }
+                            }
+                        }
+
+                        if (passwordValid)
+                        {
+                            // Reset reader position to map user
+                            // Since we already read, we need to map from current position
+                            user = MapUser(reader);
+                        }
                     }
                 }
             }
@@ -56,6 +86,28 @@ namespace Hospitality.Services
             }
 
             return user;
+        }
+
+        private async Task UpgradePasswordToHashAsync(int userId, string plainPassword)
+        {
+            try
+            {
+                var hashedPassword = PasswordHasher.HashPassword(plainPassword);
+                using var con = DbConnection.GetConnection();
+                await con.OpenAsync();
+                
+                string updateSql = "UPDATE users SET user_password = @hashedPassword WHERE user_id = @userId";
+                using var cmd = new SqlCommand(updateSql, con);
+                cmd.Parameters.AddWithValue("@hashedPassword", hashedPassword);
+                cmd.Parameters.AddWithValue("@userId", userId);
+                
+                await cmd.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                // Log but don't throw - password upgrade is not critical for login
+                System.Diagnostics.Debug.WriteLine($"Password upgrade error: {ex}");
+            }
         }
 
         public async Task<int> RegisterAsync(User user)
@@ -103,7 +155,11 @@ namespace Hospitality.Services
                             cmd.Parameters.AddWithValue("@birth", (object?)user.user_brith_date ?? DBNull.Value);
                             cmd.Parameters.AddWithValue("@email", (object?)user.user_email ?? DBNull.Value);
                             cmd.Parameters.AddWithValue("@contact", (object?)user.user_contact_number ?? DBNull.Value);
-                            cmd.Parameters.AddWithValue("@password", (object?)user.user_password ?? DBNull.Value);
+                            // Hash password before storing
+                            var passwordToStore = string.IsNullOrWhiteSpace(user.user_password) 
+                                ? DBNull.Value 
+                                : (object)PasswordHasher.HashPassword(user.user_password);
+                            cmd.Parameters.AddWithValue("@password", passwordToStore);
 
                             var idObj = await cmd.ExecuteScalarAsync();
                             return (idObj is int i) ? i : Convert.ToInt32(idObj);
@@ -167,7 +223,11 @@ namespace Hospitality.Services
                 cmd.Parameters.AddWithValue("@birth", (object?)user.user_brith_date ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@email", (object?)user.user_email ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@contact", (object?)user.user_contact_number ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@password", (object?)user.user_password ?? DBNull.Value);
+                // Hash password before storing
+                var passwordToStore = string.IsNullOrWhiteSpace(user.user_password) 
+                    ? DBNull.Value 
+                    : (object)PasswordHasher.HashPassword(user.user_password);
+                cmd.Parameters.AddWithValue("@password", passwordToStore);
 
                 var idObj = await cmd.ExecuteScalarAsync();
                 int newUserId = (idObj is int i) ? i : Convert.ToInt32(idObj);
@@ -336,6 +396,117 @@ namespace Hospitality.Services
 
             var result = await cmd.ExecuteScalarAsync();
             return Convert.ToInt32(result);
+        }
+
+        public async Task<List<User>> GetClientsAsync(int page, int pageSize, string? search = null)
+        {
+            var users = new List<User>();
+
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            var sql = @"SELECT U.user_id, U.role_id, U.user_fname, U.user_mname, U.user_lname, U.user_brith_date, U.user_email, U.user_contact_number, U.user_password, R.role_name
+                        FROM users U JOIN Roles R ON U.role_id=R.role_id";
+
+            var whereParts = new List<string>();
+
+            // Only get clients
+            whereParts.Add("LOWER(R.role_name) = 'client'");
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                whereParts.Add("(U.user_fname LIKE @search OR U.user_lname LIKE @search OR U.user_email LIKE @search)");
+            }
+
+            if (whereParts.Count > 0)
+            {
+                sql += " WHERE " + string.Join(" AND ", whereParts);
+            }
+
+            sql += " ORDER BY U.user_id OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY";
+
+            using var cmd = new SqlCommand(sql, con);
+
+            if (!string.IsNullOrWhiteSpace(search)) cmd.Parameters.AddWithValue("@search", "%" + search + "%");
+            cmd.Parameters.AddWithValue("@skip", (page - 1) * pageSize);
+            cmd.Parameters.AddWithValue("@take", pageSize);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                users.Add(MapUser(reader));
+            }
+
+            return users;
+        }
+
+        public async Task<int> GetClientsCountAsync(string? search = null)
+        {
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            var sql = "SELECT COUNT(1) FROM users U JOIN Roles R ON U.role_id=R.role_id";
+
+            var whereParts = new List<string>();
+
+            // Only get clients
+            whereParts.Add("LOWER(R.role_name) = 'client'");
+
+            if (!string.IsNullOrWhiteSpace(search)) whereParts.Add("(U.user_fname LIKE @search OR U.user_lname LIKE @search OR U.user_email LIKE @search)");
+
+            if (whereParts.Count > 0) sql += " WHERE " + string.Join(" AND ", whereParts);
+
+            using var cmd = new SqlCommand(sql, con);
+
+            if (!string.IsNullOrWhiteSpace(search)) cmd.Parameters.AddWithValue("@search", "%" + search + "%");
+
+            var result = await cmd.ExecuteScalarAsync();
+            return Convert.ToInt32(result);
+        }
+
+        public async Task UpdateUserAsync(User user)
+        {
+            using var con = DbConnection.GetConnection();
+            await con.OpenAsync();
+
+            // Build SQL dynamically to include password only if provided
+            var updateFields = new List<string>
+            {
+                "user_fname = @fname",
+                "user_mname = @mname",
+                "user_lname = @lname",
+                "user_brith_date = @birth",
+                "user_email = @email",
+                "user_contact_number = @contact"
+            };
+
+            if (!string.IsNullOrWhiteSpace(user.user_password))
+            {
+                updateFields.Add("user_password = @password");
+            }
+
+            string sql = $@"UPDATE users 
+                          SET {string.Join(", ", updateFields)}
+                          WHERE user_id = @user_id";
+
+            using var cmd = new SqlCommand(sql, con);
+            cmd.Parameters.AddWithValue("@user_id", user.userId);
+            cmd.Parameters.AddWithValue("@fname", (object?)user.user_fname ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@mname", (object?)user.user_mname ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@lname", (object?)user.user_lname ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@birth", (object?)user.user_brith_date ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@email", (object?)user.user_email ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@contact", (object?)user.user_contact_number ?? DBNull.Value);
+            
+            if (!string.IsNullOrWhiteSpace(user.user_password))
+            {
+                // Hash password before storing
+                var hashedPassword = PasswordHasher.HashPassword(user.user_password);
+                cmd.Parameters.AddWithValue("@password", hashedPassword);
+            }
+
+            await cmd.ExecuteNonQueryAsync();
         }
 
         public async Task<User?> GetUserByIdAsync(int userId)

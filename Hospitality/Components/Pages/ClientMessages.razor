@@ -16,7 +16,7 @@
 		<!-- Left Sidebar - Inbox List -->
 		<div class="messages-left">
 			<div class="inbox-header">
-				<h2 class="inbox-title">Messages & notifications</h2>
+				<h2 class="inbox-title">Messages and Notifications</h2>
 				<p class="inbox-subtitle">Review updates about your stays, offers, and account activity, or email the hotel team.</p>
 			</div>
 
@@ -53,7 +53,7 @@
 				else if (!conversationGroups.Any())
 				{
 					<div class="empty-state">
-						<div class="empty-icon">??</div>
+						<div class="empty-icon">📭</div>
 						<h3>No messages</h3>
 						<p>You don't have any messages matching this filter.</p>
 					</div>
@@ -66,7 +66,7 @@
 							 @onclick="() => SelectConversation(group)">
 							<div class="inbox-item-header">
 								<div class="inbox-item-category">
-									<span class="category-icon">@GetCategoryIcon(group.Category)</span>
+									<span class="category-icon">@GetCategoryIcon(group.HasAdminMessage ? "Admin" : group.Category)</span>
 									<span class="category-name">@(group.HasAdminMessage ? "Admin" : group.Category)</span>
 								</div>
 								<span class="inbox-item-date">@FormatDate(group.LatestDate)</span>
@@ -92,12 +92,10 @@
 			@if (selectedConversationSubject == null && !showEmailForm)
 			{
 				<div class="no-selection">
-					<div class="no-selection-icon">??</div>
+					<div class="no-selection-icon">💬</div>
 					<h3>Select a message</h3>
 					<p>Choose a message from the list to view its contents</p>
-					<button class="btn-primary" @onclick="ShowNewEmailForm">
-						<span class="btn-icon">??</span> Email the hotel team
-					</button>
+					<button class="btn-login" @onclick="ShowNewEmailForm">Message the hotel team</button>
 				</div>
 			}
 			else if (showEmailForm && !isReplyMode)
@@ -105,7 +103,7 @@
 				<!-- New Email to Hotel Team Form -->
 				<div class="email-form">
 					<div class="email-header">
-						<button class="back-btn" @onclick="HideEmailForm">? Back</button>
+						<button class="back-btn" @onclick="HideEmailForm">← Back</button>
 						<h3>Email the hotel team</h3>
 					</div>
 
@@ -137,26 +135,24 @@
 
 						<div class="form-group">
 							<label class="field-label">Message</label>
-	<textarea @bind="emailMessage" class="form-textarea" rows="10" placeholder="Share the details of your request (e.g. early check-in, room preference, invoice request)..."></textarea>
+							<textarea @bind="emailMessage" class="form-textarea" rows="10" placeholder="Share the details of your request (e.g. early check-in, room preference, invoice request)..."></textarea>
 						</div>
 
 						<div class="email-footer">
-							<p class="email-note">Your message will be sent as an email to the selected hotel team. Replies will be sent to your email address on file.</p>
+							<p class="email-note">Your message will be sent to the selected hotel team. Replies will be sent to your email address on file.</p>
 							<div class="email-actions">
 								<button class="btn-secondary" @onclick="SaveDraft">Save draft</button>
-								<button class="btn-primary" @onclick="SendEmail" disabled="@(!IsEmailValid())">
-									<span class="btn-icon">??</span> Send email to hotel
-								</button>
+								<button class="btn-login" @onclick="SendEmail" disabled="@(!IsEmailValid())">Send email to hotel</button>
 							</div>
 						</div>
 
 						@if (!string.IsNullOrEmpty(successMessage))
 						{
-							<div class="success-message">? @successMessage</div>
+							<div class="success-message">✓ @successMessage</div>
 						}
 						@if (!string.IsNullOrEmpty(errorMessage))
 						{
-							<div class="error-message">? @errorMessage</div>
+							<div class="error-message">✕ @errorMessage</div>
 						}
 					</div>
 				</div>
@@ -166,14 +162,13 @@
 				<!-- Conversation Thread View -->
 				<div class="message-detail">
 					<div class="message-header">
-						<button class="back-btn mobile-only" @onclick="ClearSelection">? Back</button>
+						<button class="back-btn mobile-only" @onclick="ClearSelection">← Back</button>
 						<div class="message-category-badge">
 							<span class="category-icon">@GetCategoryIcon(selectedConversationCategory)</span>
 							<span>@selectedConversationCategory</span>
 						</div>
 						<div class="message-actions">
-							<button class="action-btn" @onclick="ShowReplyForm" title="Reply">??</button>
-							<button class="action-btn" title="More">?</button>
+							<button class="action-btn" title="More">⋯</button>
 						</div>
 					</div>
 
@@ -194,7 +189,7 @@
 												}
 												else
 												{
-													<span>??</span>
+													<span>🏨</span>
 												}
 											</div>
 											<div class="sender-details">
@@ -220,40 +215,25 @@
 						</div>
 
 						<!-- Reply Section -->
-						@if (showEmailForm && isReplyMode)
+						@if (selectedConversationSubject != null)
 						{
 							<div class="reply-form-inline">
-								<div class="reply-header">
-									<span class="reply-icon">??</span>
-									<span>Reply to this conversation</span>
-								</div>
 								<div class="form-group">
-									<textarea @bind="emailMessage" class="form-textarea" rows="5" placeholder="Write your reply..."></textarea>
+									<textarea @bind="emailMessage" class="form-textarea" rows="3" placeholder="Write your reply..."></textarea>
 								</div>
 								<div class="reply-actions">
-									<button class="btn-secondary" @onclick="HideEmailForm">Cancel</button>
-									<button class="btn-primary" @onclick="SendReply" disabled="@(string.IsNullOrWhiteSpace(emailMessage))">
-										<span class="btn-icon">??</span> Send Reply
-									</button>
+									<button class="btn-login" @onclick="SendReply" disabled="@(string.IsNullOrWhiteSpace(emailMessage))">Send Reply</button>
 								</div>
-							</div>
-						}
-						else
-						{
-							<div class="message-cta">
-								<button class="btn-primary" @onclick="ShowReplyForm">
-									<span class="btn-icon">??</span> Reply to this message
-								</button>
 							</div>
 						}
 
 						@if (!string.IsNullOrEmpty(successMessage))
 						{
-							<div class="success-message">? @successMessage</div>
+							<div class="success-message">✓ @successMessage</div>
 						}
 						@if (!string.IsNullOrEmpty(errorMessage))
 						{
-							<div class="error-message">? @errorMessage</div>
+							<div class="error-message">✕ @errorMessage</div>
 						}
 					</div>
 				</div>
@@ -602,8 +582,6 @@
 			Console.WriteLine("? Reply sent successfully");
 
 			emailMessage = "";
-			showEmailForm = false;
-			isReplyMode = false;
 
 			await LoadMessages();
 
@@ -666,13 +644,14 @@
 	{
 		return category switch
 		{
-			"Member Services" => "??",
-			"Billing & Receipts" => "??",
-			"Harbourkey Waterfront" => "??",
-			"Membership Rewards" => "?",
-			"Email Sent" => "??",
-			"Front Desk" => "???",
-			_ => "??"
+			"Member Services" => "💼",
+			"Billing & Receipts" => "🧾",
+			"Harbourkey Waterfront" => "🏨",
+			"Membership Rewards" => "🎁",
+			"Email Sent" => "📧",
+			"Front Desk" => "🏢",
+			"Admin" => "👤",
+			_ => "💬"
 		};
 	}
 

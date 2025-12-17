@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @layout EmptyLayout
 @inject NavigationManager Navigation
 @inject Hospitality.Services.UserService UserService
@@ -9,42 +9,43 @@
 	<div class="login-container">
 		<div class="login-left">
 			<div class="logo-container">
-				<img src="images/InnSight.png" alt="InnSight Logo" class="innsight-logo" />
+				<img src="images/InnSight_NO_BG.png" alt="InnSight Logo" class="innsight-logo" />
 			</div>
-			<h1 class="welcome-text">Welcome Back!</h1>
+			<h1 class="welcome-text">InnSight</h1>
 		</div>
 		<div class="login-right">
 			<div class="login-form">
 				<h2 class="login-title">Log in</h2>
-				@if (!string.IsNullOrEmpty(errorMessage))
-				{
-					<div class="error-banner">
-						<span class="error-icon">⚠️</span>
-						<span class="error-text">@errorMessage</span>
+				<form @onsubmit="HandleLogin" @onsubmit:preventDefault="true">
+					<div class="form-group">
+						<label class="input-label">Email</label>
+						<div class="input-wrapper @(emailError ? "input-error" : "")">
+							<input type="email" class="form-input" placeholder="Enter your email" @bind="email" @oninput="ClearErrors" />
+						</div>
+						@if (emailError)
+						{
+							<span class="field-error">Please enter a valid email address</span>
+						}
 					</div>
-				}
-				<div class="form-group">
-					<div class="input-wrapper @(emailError ? "input-error" : "")">
-						<span class="input-icon">✉️</span>
-						<input type="email" class="form-input" placeholder="Email" @bind="email" @oninput="ClearErrors" />
+					<div class="form-group">
+						<label class="input-label">Password</label>
+						<div class="input-wrapper @(passwordError ? "input-error" : "")">
+							<input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Enter your password" @bind="password" @oninput="ClearErrors" />
+							<button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">@(showPassword ? "👁️" : "👁️‍🗨️")</button>
+						</div>
+						@if (passwordError)
+						{
+							<span class="field-error">Please enter your password</span>
+						}
 					</div>
-					@if (emailError)
+					@if (!string.IsNullOrEmpty(errorMessage))
 					{
-						<span class="field-error">Please enter a valid email address</span>
+						<div class="form-group">
+							<span class="field-error">@errorMessage</span>
+						</div>
 					}
-				</div>
-				<div class="form-group">
-					<div class="input-wrapper @(passwordError ? "input-error" : "")">
-						<span class="input-icon">🔒</span>
-						<input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Password" @bind="password" @oninput="ClearErrors" />
-						<button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">@(showPassword ? "👁️" : "👁️‍🗨️")</button>
-					</div>
-					@if (passwordError)
-					{
-						<span class="field-error">Please enter your password</span>
-					}
-				</div>
-				<button class="btn-login" @onclick="HandleLogin" disabled="@isLoading">@(isLoading?"Authenticating...":"Log in")</button>
+					<button type="submit" class="btn-login" disabled="@isLoading">@(isLoading?"Authenticating...":"Log in")</button>
+				</form>
 				<div class="divider"><span>Or</span></div>
 				<button class="btn-signup" @onclick="HandleSignup">Sign up</button>
 			</div>

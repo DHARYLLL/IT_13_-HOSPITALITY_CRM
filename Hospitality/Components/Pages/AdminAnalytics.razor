@@ -6,458 +6,446 @@
 <link rel="stylesheet" href="css/admin-analytics.css" />
 
 <div class="admin-page">
-<aside class="admin-sidebar">
- <div class="sidebar-header">
-   <img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
-            <div class="admin-console-text">
-       <h4>InnSight Hotels</h4>
-     <span>Admin console</span>
-   </div>
-   </div>
-        <nav class="sidebar-nav">
-     <a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
-   <a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
-  <a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
-  <a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
- <a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
-     <a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
-    <a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
-            <a href="/admin/analytics" class="nav-item active"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
-     </nav>
-    </aside>
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				<span>Admin console</span>
+			</div>
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
+			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
+			<a href="/admin/analytics" class="nav-item active"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
+			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/clients" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>CLIENTS</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
+		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
+	</aside>
 
-    <main class="admin-main">
-        <header class="admin-header">
-     <div class="header-left">
-      <h1 class="page-title">Sales & Marketing Analytics</h1>
-    <p class="page-subtitle">Customer insights, revenue trends, and campaign performance.</p>
-   </div>
-    <div class="header-actions">
-    <select class="btn-filter" @onchange="OnDateRangeChanged">
-      <option value="30" selected="@(dateRangeDays == 30)">Last 30 days</option>
-    <option value="90" selected="@(dateRangeDays == 90)">Last 90 days</option>
- <option value="365" selected="@(dateRangeDays == 365)">Last Year</option>
-           <option value="730" selected="@(dateRangeDays == 730)">All Time</option>
- </select>
-          <button class="btn-export" @onclick="RefreshData">
-      <span><i class="icon icon-refresh"></i></span> Refresh
-      </button>
-    </div>
-  </header>
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Sales and Marketing Analytics</h1>
+				<p class="page-subtitle">Customer insights, revenue trends, and campaign performance.</p>
+			</div>
+			<div class="header-actions">
+				<select class="btn-filter" @onchange="OnDateRangeChanged">
+					<option value="30" selected="@(dateRangeDays == 30)">Last 30 days</option>
+					<option value="90" selected="@(dateRangeDays == 90)">Last 90 days</option>
+					<option value="365" selected="@(dateRangeDays == 365)">Last Year</option>
+					<option value="730" selected="@(dateRangeDays == 730)">All Time</option>
+				</select>
+				<button class="btn-refresh" @onclick="RefreshData" disabled="@loading">
+					<i class="icon icon-refresh @(loading ? "spinning" : "")"></i> Refresh
+				</button>
+			</div>
+		</header>
 
-        @if (loading)
-        {
-          <div class="loading-container">
- <div class="spinner"></div>
-      <p>Loading analytics...</p>
-     </div>
-  }
-     else
-    {
-    <!-- Quick Stats Row -->
-  <section class="quick-stats">
-         <div class="stat-card">
-    <div class="stat-icon"><i class="icon icon-retention"></i></div>
-        <div class="stat-content">
-             <span class="stat-value">@marketing?.RetentionRate.ToString("F1")%</span>
-      <span class="stat-label">Retention Rate</span>
-  </div>
-       </div>
-     <div class="stat-card">
-       <div class="stat-icon"><i class="icon icon-customers"></i></div>
-            <div class="stat-content">
-      <span class="stat-value">@TotalCustomers</span>
-  <span class="stat-label">Total Customers</span>
- </div>
- </div>
-  <div class="stat-card">
-  <div class="stat-icon"><i class="icon icon-clock"></i></div>
-      <div class="stat-content">
-        <span class="stat-value">@sales?.AverageLeadTime days</span>
-           <span class="stat-label">Avg Lead Time</span>
-           </div>
-    </div>
-  <div class="stat-card">
-    <div class="stat-icon"><i class="icon icon-completion"></i></div>
-         <div class="stat-content">
-           <span class="stat-value">@conversion?.CompletionRate.ToString("F1")%</span>
-      <span class="stat-label">Completion Rate</span>
-</div>
-      </div>
-          </section>
+		@if (loading)
+		{
+			<div class="loading-container">
+				<div class="spinner"></div>
+				<p>Loading analytics...</p>
+			</div>
+		}
+		else
+		{
 
-     <!-- Customer Segmentation -->
-     <section class="analytics-section">
-         <div class="section-header">
-        <h2 class="section-title"><i class="icon icon-segment"></i> Customer Segmentation by Loyalty Tier</h2>
-    <p class="section-subtitle">Understanding your customer base by membership level</p>
-          </div>
- <div class="segment-grid">
-    @if (marketing?.CustomerSegments.Any() == true)
-   {
-          @foreach (var segment in marketing.CustomerSegments)
-{
-    <div class="segment-card tier-@segment.Tier.ToLower()">
-    <div class="segment-header">
-      <span class="tier-icon">@GetTierIcon(segment.Tier)</span>
- <h3>@segment.Tier</h3>
-    </div>
-<div class="segment-stats">
-      <div class="stat">
-        <span class="value">@segment.MemberCount</span>
-     <span class="label">Members</span>
-            </div>
-  <div class="stat">
-        <span class="value">$@segment.AvgSpend.ToString("N0")</span>
-    <span class="label">Avg Spend</span>
-     </div>
-         <div class="stat">
-  <span class="value">@segment.AvgStays</span>
-  <span class="label">Avg Stays</span>
-   </div>
-    <div class="stat">
-       <span class="value">@segment.AvgPoints.ToString("N0")</span>
-        <span class="label">Avg Points</span>
-  </div>
-   </div>
-      </div>
- }
-}
-     else
-     {
-     <div class="empty-state">
-      <span class="empty-icon"><i class="icon icon-empty"></i></span>
-          <p>No loyalty data available yet.</p>
-     </div>
-       }
-     </div>
-      </section>
+		<!-- Monthly Revenue Trend -->
+			<section class="analytics-section">
+				<div class="section-header">
+					<h2 class="section-title"><i class="icon icon-trend"></i> Monthly Revenue Trend</h2>
+					<p class="section-subtitle">Revenue performance over the last 12 months</p>
+				</div>
+				<div class="trend-chart-container">
+					@if (sales?.MonthlyTrend.Any() == true)
+					{
+						<div class="trend-chart">
+							@foreach (var month in sales.MonthlyTrend)
+							{
+								<div class="trend-bar-container">
+									<div class="trend-bar" style="height: @GetTrendHeight(month.Revenue)%">
+										<span class="trend-tooltip">
+											<strong>PHP @month.Revenue.ToString("N0")</strong>
+											<small>@month.Bookings bookings</small>
+										</span>
+									</div>
+									<span class="trend-label">@month.MonthName</span>
+								</div>
+							}
+						</div>
+						<div class="trend-summary">
+							<div class="trend-stat">
+								<span class="trend-stat-label">Total Revenue</span>
+								<span class="trend-stat-value">PHP @sales.MonthlyTrend.Sum(m => m.Revenue).ToString("N0")</span>
+							</div>
+							<div class="trend-stat">
+								<span class="trend-stat-label">Total Bookings</span>
+								<span class="trend-stat-value">@sales.MonthlyTrend.Sum(m => m.Bookings)</span>
+							</div>
+							<div class="trend-stat">
+								<span class="trend-stat-label">Best Month</span>
+								<span class="trend-stat-value">@(sales.MonthlyTrend.OrderByDescending(m => m.Revenue).FirstOrDefault()?.MonthName ?? "N/A")</span>
+							</div>
+						</div>
+					}
+					else
+					{
+						<div class="empty-state">
+							<span class="empty-icon"><i class="icon icon-empty"></i></span>
+							<p>No monthly trend data available.</p>
+						</div>
+					}
+				</div>
+			</section>
 
-      <!-- Revenue by Room Type -->
-    <section class="analytics-section">
-     <div class="section-header">
-          <h2 class="section-title"><i class="icon icon-room-revenue"></i> Revenue by Room Type</h2>
-           <p class="section-subtitle">Which room types generate the most revenue</p>
-      </div>
-    <div class="room-revenue-grid">
-        @if (sales?.RevenueByRoomType.Any() == true)
- {
-       @foreach (var room in sales.RevenueByRoomType)
-      {
-    <div class="room-card">
-       <div class="room-header">
-    <h4>@room.RoomType</h4>
-     <span class="room-bookings">@room.Bookings bookings</span>
-      </div>
-  <div class="room-revenue">$@room.Revenue.ToString("N0")</div>
-      <div class="progress-bar">
-    <div class="progress" style="width: @GetRevenuePercentage(room.Revenue)%"></div>
-    </div>
-      <div class="room-stats">
-      <span>Avg per booking: $@(room.Bookings > 0 ? (room.Revenue / room.Bookings).ToString("N0") : "0")</span>
-           </div>
-           </div>
-       }
-        }
-   else
-          {
-    <div class="empty-state">
-      <span class="empty-icon"><i class="icon icon-empty"></i></span>
-          <p>No room revenue data available.</p>
-    </div>
-        }
-       </div>
-      </section>
+			<!-- Two Column Layout -->
+			<div class="two-column-grid">
+				<!-- Customer Retention -->
+				<section class="analytics-section">
+					<div class="section-header">
+						<h2 class="section-title"><i class="icon icon-retention-chart"></i> Customer Retention</h2>
+					</div>
+					<div class="retention-container">
+						<div class="retention-donut-container">
+							<svg class="retention-donut" viewBox="0 0 36 36">
+								<path class="circle-bg"
+									  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+								<path class="circle"
+									  stroke-dasharray="@GetRetentionDashArray()"
+									  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+							</svg>
+							<div class="retention-center">
+								<span class="retention-value">@marketing?.RetentionRate.ToString("F1")%</span>
+								<span class="retention-label">Retention</span>
+							</div>
+						</div>
+						<div class="retention-breakdown">
+							<div class="breakdown-item">
+								<span class="dot one-time"></span>
+								<span class="breakdown-label">One-time guests</span>
+								<strong>@marketing?.OneTimeCustomers</strong>
+							</div>
+							<div class="breakdown-item">
+								<span class="dot repeat"></span>
+								<span class="breakdown-label">Repeat guests (2-3 stays)</span>
+								<strong>@marketing?.RepeatCustomers</strong>
+							</div>
+							<div class="breakdown-item">
+								<span class="dot loyal"></span>
+								<span class="breakdown-label">Loyal guests (4+ stays)</span>
+								<strong>@marketing?.LoyalCustomers</strong>
+							</div>
+						</div>
+					</div>
+				</section>
 
-      <!-- Two Column Layout -->
-     <div class="two-column-grid">
-   <!-- Customer Retention -->
-     <section class="analytics-section">
-        <div class="section-header">
-      <h2 class="section-title"><i class="icon icon-retention-chart"></i> Customer Retention</h2>
-   </div>
-          <div class="retention-container">
-   <div class="retention-donut-container">
-        <svg class="retention-donut" viewBox="0 0 36 36">
-   <path class="circle-bg"
- d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path class="circle"
-        stroke-dasharray="@marketing?.RetentionRate.ToString("F0"), 100"
-    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-               </svg>
-  <div class="retention-center">
-       <span class="retention-value">@marketing?.RetentionRate.ToString("F1")%</span>
-         <span class="retention-label">Retention</span>
-          </div>
-  </div>
-      <div class="retention-breakdown">
-<div class="breakdown-item">
-      <span class="dot one-time"></span>
-        <span class="breakdown-label">One-time guests</span>
- <strong>@marketing?.OneTimeCustomers</strong>
-       </div>
-         <div class="breakdown-item">
-         <span class="dot repeat"></span>
-    <span class="breakdown-label">Repeat guests (2-3 stays)</span>
-     <strong>@marketing?.RepeatCustomers</strong>
-        </div>
-    <div class="breakdown-item">
-     <span class="dot loyal"></span>
-        <span class="breakdown-label">Loyal guests (4+ stays)</span>
-        <strong>@marketing?.LoyalCustomers</strong>
-       </div>
-    </div>
-      </div>
-     </section>
+				<!-- Booking Conversion -->
+				<section class="analytics-section">
+					<div class="section-header">
+						<h2 class="section-title"><i class="icon icon-conversion"></i> Booking Conversion</h2>
+					</div>
+					<div class="conversion-grid">
+						<div class="conversion-stat">
+							<div class="conversion-icon total"><i class="icon icon-bookings-total"></i></div>
+							<span class="conversion-value">@conversion?.TotalBookings</span>
+							<span class="conversion-label">Total Bookings</span>
+						</div>
+						<div class="conversion-stat">
+							<div class="conversion-icon confirmed"><i class="icon icon-check-circle"></i></div>
+							<span class="conversion-value">@conversion?.ConfirmedBookings</span>
+							<span class="conversion-label">Confirmed</span>
+						</div>
+						<div class="conversion-stat">
+							<div class="conversion-icon completed"><i class="icon icon-success"></i></div>
+							<span class="conversion-value">@conversion?.CompletedBookings</span>
+							<span class="conversion-label">Completed</span>
+						</div>
+						<div class="conversion-stat">
+							<div class="conversion-icon cancelled"><i class="icon icon-cancel"></i></div>
+							<span class="conversion-value">@conversion?.CancelledBookings</span>
+							<span class="conversion-label">Cancelled</span>
+						</div>
+					</div>
+					<div class="conversion-rates">
+						<div class="rate-item success">
+							<span class="rate-label">Completion Rate</span>
+							<span class="rate-value">@conversion?.CompletionRate.ToString("F1")%</span>
+						</div>
+						<div class="rate-item warning">
+							<span class="rate-label">Cancellation Rate</span>
+							<span class="rate-value">@conversion?.CancellationRate.ToString("F1")%</span>
+						</div>
+					</div>
+				</section>
+			</div>
+			
+			<!-- Customer Segmentation -->
+			<section class="analytics-section">
+				<div class="section-header">
+					<h2 class="section-title"><i class="icon icon-segment"></i> Customer Segmentation by Loyalty Tier</h2>
+					<p class="section-subtitle">Understanding your customer base by membership level</p>
+				</div>
+				<div class="segment-grid">
+					@if (marketing?.CustomerSegments.Any() == true)
+					{
+						@foreach (var segment in marketing.CustomerSegments)
+						{
+							<div class="segment-card tier-@segment.Tier.ToLower()">
+								<div class="segment-header">
+									<span class="tier-icon">@GetTierIcon(segment.Tier)</span>
+									<h3>@segment.Tier</h3>
+								</div>
+								<div class="segment-stats">
+									<div class="stat">
+										<span class="value">@segment.MemberCount</span>
+										<span class="label">Members</span>
+									</div>
+									<div class="stat">
+										<span class="value">PHP @segment.AvgSpend.ToString("N0")</span>
+										<span class="label">Avg Spend</span>
+									</div>
+									<div class="stat">
+										<span class="value">@segment.AvgStays</span>
+										<span class="label">Avg Stays</span>
+									</div>
+									<div class="stat">
+										<span class="value">@segment.AvgPoints.ToString("N0")</span>
+										<span class="label">Avg Points</span>
+									</div>
+								</div>
+							</div>
+						}
+					}
+					else
+					{
+						<div class="empty-state">
+							<span class="empty-icon"><i class="icon icon-empty"></i></span>
+							<p>No loyalty data available yet.</p>
+						</div>
+					}
+				</div>
+			</section>
 
-    <!-- Booking Conversion -->
-    <section class="analytics-section">
-   <div class="section-header">
-  <h2 class="section-title"><i class="icon icon-conversion"></i> Booking Conversion</h2>
-</div>
-       <div class="conversion-grid">
-      <div class="conversion-stat">
-  <div class="conversion-icon total"><i class="icon icon-bookings-total"></i></div>
-     <span class="conversion-value">@conversion?.TotalBookings</span>
-      <span class="conversion-label">Total Bookings</span>
-  </div>
-     <div class="conversion-stat">
-        <div class="conversion-icon confirmed"><i class="icon icon-check-circle"></i></div>
-<span class="conversion-value">@conversion?.ConfirmedBookings</span>
- <span class="conversion-label">Confirmed</span>
-        </div>
-             <div class="conversion-stat">
-         <div class="conversion-icon completed"><i class="icon icon-success"></i></div>
-   <span class="conversion-value">@conversion?.CompletedBookings</span>
-    <span class="conversion-label">Completed</span>
-    </div>
-         <div class="conversion-stat">
-      <div class="conversion-icon cancelled"><i class="icon icon-cancel"></i></div>
-         <span class="conversion-value">@conversion?.CancelledBookings</span>
-       <span class="conversion-label">Cancelled</span>
-      </div>
- </div>
-   <div class="conversion-rates">
-     <div class="rate-item success">
-         <span class="rate-label">Completion Rate</span>
-  <span class="rate-value">@conversion?.CompletionRate.ToString("F1")%</span>
-      </div>
-    <div class="rate-item warning">
-    <span class="rate-label">Cancellation Rate</span>
-         <span class="rate-value">@conversion?.CancellationRate.ToString("F1")%</span>
-      </div>
-</div>
-   </section>
-        </div>
+			<!-- Revenue by Room Type -->
+			<section class="analytics-section">
+				<div class="section-header">
+					<h2 class="section-title"><i class="icon icon-room-revenue"></i> Revenue by Room Type</h2>
+					<p class="section-subtitle">Which room types generate the most revenue</p>
+				</div>
+				<div class="room-revenue-grid">
+					@if (sales?.RevenueByRoomType.Any() == true)
+					{
+						@foreach (var room in sales.RevenueByRoomType)
+						{
+							<div class="room-card">
+								<div class="room-header">
+									<h4>@room.RoomType</h4>
+									<span class="room-bookings">@room.Bookings bookings</span>
+								</div>
+								<div class="room-revenue">
+									<span class="revenue-currency">PHP</span>
+									<span class="revenue-amount">@room.Revenue.ToString("N0")</span>
+								</div>
+								<div class="progress-bar">
+									<div class="progress" style="width: @GetRevenuePercentage(room.Revenue)%"></div>
+								</div>
+								<div class="room-stats">
+									<span>Avg per booking: PHP @(room.Bookings > 0 ? (room.Revenue / room.Bookings).ToString("N0") : "0")</span>
+								</div>
+							</div>
+						}
+					}
+					else
+					{
+						<div class="empty-state">
+							<span class="empty-icon"><i class="icon icon-empty"></i></span>
+							<p>No room revenue data available.</p>
+						</div>
+					}
+				</div>
+			</section>
 
- <!-- Monthly Revenue Trend -->
-    <section class="analytics-section">
-     <div class="section-header">
-            <h2 class="section-title"><i class="icon icon-trend"></i> Monthly Revenue Trend</h2>
-             <p class="section-subtitle">Revenue performance over the last 12 months</p>
-    </div>
-        <div class="trend-chart-container">
-        @if (sales?.MonthlyTrend.Any() == true)
-      {
-            <div class="trend-chart">
-           @foreach (var month in sales.MonthlyTrend)
-       {
-    <div class="trend-bar-container">
-      <div class="trend-bar" style="height: @GetTrendHeight(month.Revenue)%">
-           <span class="trend-tooltip">
-       <strong>$@month.Revenue.ToString("N0")</strong>
-     <small>@month.Bookings bookings</small>
-          </span>
- </div>
-     <span class="trend-label">@month.MonthName</span>
-        </div>
-  }
-         </div>
-    <div class="trend-summary">
-           <div class="trend-stat">
-        <span class="trend-stat-label">Total Revenue</span>
-   <span class="trend-stat-value">$@sales.MonthlyTrend.Sum(m => m.Revenue).ToString("N0")</span>
-   </div>
- <div class="trend-stat">
-        <span class="trend-stat-label">Total Bookings</span>
-        <span class="trend-stat-value">@sales.MonthlyTrend.Sum(m => m.Bookings)</span>
-        </div>
-   <div class="trend-stat">
-        <span class="trend-stat-label">Best Month</span>
-  <span class="trend-stat-value">@(sales.MonthlyTrend.OrderByDescending(m => m.Revenue).FirstOrDefault()?.MonthName ?? "N/A")</span>
-</div>
-      </div>
-  }
-        else
-        {
-      <div class="empty-state">
-       <span class="empty-icon"><i class="icon icon-empty"></i></span>
-   <p>No monthly trend data available.</p>
-         </div>
-           }
-         </div>
-      </section>
 
-        <!-- Day of Week Performance -->
-      <section class="analytics-section">
-    <div class="section-header">
- <h2 class="section-title"><i class="icon icon-calendar-week"></i> Performance by Day of Week</h2>
-       <p class="section-subtitle">Identify your busiest check-in days</p>
-</div>
-             <div class="day-grid">
-   @if (sales?.RevenueByDayOfWeek.Any() == true)
-  {
-          @foreach (var day in sales.RevenueByDayOfWeek)
-{
-           <div class="day-card @(day.Revenue == sales.RevenueByDayOfWeek.Max(d => d.Revenue) ? "best-day" : "")">
-         <div class="day-name">@day.DayName</div>
-     <div class="day-bookings">@day.Bookings bookings</div>
-   <div class="day-revenue">$@day.Revenue.ToString("N0")</div>
-         @if (day.Revenue == sales.RevenueByDayOfWeek.Max(d => d.Revenue))
-     {
-         <span class="best-badge"><i class="icon icon-star"></i> Best Day</span>
-    }
-      </div>
-   }
-         }
-     else
-  {
-       <div class="empty-state full-width">
-        <span class="empty-icon"><i class="icon icon-empty"></i></span>
-        <p>No day of week data available.</p>
-     </div>
-           }
-        </div>
-   </section>
+			<!-- Day of Week Performance -->
+			<section class="analytics-section">
+				<div class="section-header">
+					<h2 class="section-title"><i class="icon icon-calendar-week"></i> Performance by Day of Week</h2>
+					<p class="section-subtitle">Identify your busiest check-in days</p>
+				</div>
+				<div class="day-grid">
+					@if (sales?.RevenueByDayOfWeek.Any() == true)
+					{
+						@foreach (var day in sales.RevenueByDayOfWeek)
+						{
+							<div class="day-card @(day.Revenue == sales.RevenueByDayOfWeek.Max(d => d.Revenue) ? "best-day" : "")">
+								<div class="day-name">@day.DayName</div>
+								<div class="day-bookings">@day.Bookings bookings</div>
+								<div class="day-revenue">PHP @day.Revenue.ToString("N0")</div>
+								@if (day.Revenue == sales.RevenueByDayOfWeek.Max(d => d.Revenue))
+								{
+									<span class="best-badge"><i class="icon icon-star"></i> Best Day</span>
+								}
+							</div>
+						}
+					}
+					else
+					{
+						<div class="empty-state full-width">
+							<span class="empty-icon"><i class="icon icon-empty"></i></span>
+							<p>No day of week data available.</p>
+						</div>
+					}
+				</div>
+			</section>
 
-          <!-- Guest Demographics -->
-    <section class="analytics-section">
-       <div class="section-header">
-      <h2 class="section-title"><i class="icon icon-demographics"></i> Guest Demographics</h2>
-      <p class="section-subtitle">Understanding your guest profiles</p>
-  </div>
-    <div class="demographics-grid">
-         <div class="demographic-card">
-     <div class="demographic-header">
-        <span class="demographic-icon"><i class="icon icon-category"></i></span>
- <h4>Guest Categories</h4>
-  </div>
-  <div class="category-list">
-         @if (demographics?.GuestCategories.Any() == true)
-      {
-    @foreach (var cat in demographics.GuestCategories)
-         {
-     <div class="category-item">
-       <span class="category-name">@cat.Category</span>
- <span class="category-count">@cat.Count guests</span>
-   </div>
-         }
-           }
-       else
-  {
-        <p class="no-data">No category data available</p>
-    }
-     </div>
-     </div>
-     <div class="demographic-card">
-        <div class="demographic-header">
-              <span class="demographic-icon"><i class="icon icon-party-size"></i></span>
-     <h4>Party Size</h4>
-    </div>
-   <div class="party-size-display">
-       <span class="party-size-value">@demographics?.AveragePartySize</span>
-         <span class="party-size-label">Average guests per booking</span>
-             </div>
-</div>
-        </div>
-     </section>
-     }
-    </main>
+			<!-- Guest Demographics -->
+			<section class="analytics-section">
+				<div class="section-header">
+					<h2 class="section-title"><i class="icon icon-demographics"></i> Guest Demographics</h2>
+					<p class="section-subtitle">Understanding your guest profiles</p>
+				</div>
+				<div class="demographics-grid">
+					<div class="demographic-card">
+						<div class="demographic-header">
+							<span class="demographic-icon"><i class="icon icon-category"></i></span>
+							<h4>Guest Categories</h4>
+						</div>
+						<div class="category-list">
+							@if (demographics?.GuestCategories.Any() == true)
+							{
+								@foreach (var cat in demographics.GuestCategories)
+								{
+									<div class="category-item">
+										<span class="category-name">@cat.Category</span>
+										<span class="category-count">@cat.Count guests</span>
+									</div>
+								}
+							}
+							else
+							{
+								<p class="no-data">No category data available</p>
+							}
+						</div>
+					</div>
+					<div class="demographic-card">
+						<div class="demographic-header">
+							<span class="demographic-icon"><i class="icon icon-party-size"></i></span>
+							<h4>Party Size</h4>
+						</div>
+						<div class="party-size-display">
+							<span class="party-size-value">@demographics?.AveragePartySize</span>
+							<span class="party-size-label">Average guests per booking</span>
+						</div>
+					</div>
+				</div>
+			</section>
+		}
+	</main>
 </div>
 
 @code {
-    bool loading = true;
-    int dateRangeDays = 365;
-    string errorMessage = string.Empty;
+	bool loading = true;
+	int dateRangeDays = 365;
+	string errorMessage = string.Empty;
 
-    SalesAnalytics? sales;
-    MarketingAnalytics? marketing;
-    ConversionAnalytics? conversion;
-    GuestDemographics? demographics;
+	SalesAnalytics? sales;
+	MarketingAnalytics? marketing;
+	ConversionAnalytics? conversion;
+	GuestDemographics? demographics;
 
-    int TotalCustomers => (marketing?.OneTimeCustomers ?? 0) + (marketing?.RepeatCustomers ?? 0) + (marketing?.LoyalCustomers ?? 0);
+	int TotalCustomers => (marketing?.OneTimeCustomers ?? 0) + (marketing?.RepeatCustomers ?? 0) + (marketing?.LoyalCustomers ?? 0);
 
- protected override async Task OnInitializedAsync()
-    {
-      await LoadAnalytics();
- }
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadAnalytics();
+	}
 
-    async Task LoadAnalytics()
-  {
-        loading = true;
-        errorMessage = string.Empty;
-   StateHasChanged();
+	async Task LoadAnalytics()
+	{
+		loading = true;
+		errorMessage = string.Empty;
+		StateHasChanged();
 
-    try
-   {
-  Console.WriteLine($"?? Loading analytics for last {dateRangeDays} days...");
+		try
+		{
+			Console.WriteLine($"?? Loading analytics for last {dateRangeDays} days...");
 
-   sales = await AnalyticsService.GetSalesAnalyticsAsync(dateRangeDays);
-     Console.WriteLine($"? Sales data loaded: {sales.RevenueByRoomType.Count} room types, {sales.MonthlyTrend.Count} months");
+			sales = await AnalyticsService.GetSalesAnalyticsAsync(dateRangeDays);
+			Console.WriteLine($"? Sales data loaded: {sales.RevenueByRoomType.Count} room types, {sales.MonthlyTrend.Count} months");
 
-   marketing = await AnalyticsService.GetMarketingAnalyticsAsync();
-            Console.WriteLine($"? Marketing data loaded: {marketing.CustomerSegments.Count} segments, {marketing.RetentionRate:F1}% retention");
+			marketing = await AnalyticsService.GetMarketingAnalyticsAsync();
+			Console.WriteLine($"? Marketing data loaded: {marketing.CustomerSegments.Count} segments, {marketing.RetentionRate:F1}% retention");
 
- conversion = await AnalyticsService.GetConversionAnalyticsAsync(dateRangeDays);
-   Console.WriteLine($"? Conversion data loaded: {conversion.TotalBookings} bookings, {conversion.CompletionRate:F1}% completion");
+			conversion = await AnalyticsService.GetConversionAnalyticsAsync(dateRangeDays);
+			Console.WriteLine($"? Conversion data loaded: {conversion.TotalBookings} bookings, {conversion.CompletionRate:F1}% completion");
 
-       demographics = await AnalyticsService.GetGuestDemographicsAsync();
-    Console.WriteLine($"? Demographics loaded: {demographics.GuestCategories.Count} categories, {demographics.AveragePartySize} avg party size");
-    }
-        catch (Exception ex)
-        {
-    Console.WriteLine($"? Error loading analytics: {ex.Message}");
-  errorMessage = $"Failed to load analytics data: {ex.Message}";
-        }
- finally
-     {
-    loading = false;
-       StateHasChanged();
-        }
-    }
+			demographics = await AnalyticsService.GetGuestDemographicsAsync();
+			Console.WriteLine($"? Demographics loaded: {demographics.GuestCategories.Count} categories, {demographics.AveragePartySize} avg party size");
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"? Error loading analytics: {ex.Message}");
+			errorMessage = $"Failed to load analytics data: {ex.Message}";
+		}
+		finally
+		{
+			loading = false;
+			StateHasChanged();
+		}
+	}
 
-    async Task RefreshData()
-  {
-  await LoadAnalytics();
-    }
+	async Task RefreshData()
+	{
+		await LoadAnalytics();
+	}
 
-  void OnDateRangeChanged(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out var days))
-   {
-     dateRangeDays = days;
-  _ = LoadAnalytics();
-     }
-    }
+	void OnDateRangeChanged(ChangeEventArgs e)
+	{
+		if (int.TryParse(e.Value?.ToString(), out var days))
+		{
+			dateRangeDays = days;
+			_ = LoadAnalytics();
+		}
+	}
 
-    string GetTierIcon(string tier) => tier switch
-  {
-  "Platinum" => "💎",
-    "Gold" => "🥇",
-      "Silver" => "🥈",
-        "Bronze" => "🥉",
-        _ => "⭐"
-    };
+	string GetTierIcon(string tier) => tier switch
+	{
+		"Platinum" => "💎",
+		"Gold" => "🥇",
+		"Silver" => "🥈",
+		"Bronze" => "🥉",
+		_ => "⭐"
+	};
 
-    double GetRevenuePercentage(decimal revenue)
-    {
- var max = sales?.RevenueByRoomType.Max(r => r.Revenue) ?? 1;
-        return max > 0 ? (double)(revenue / max * 100) : 0;
-    }
+	double GetRevenuePercentage(decimal revenue)
+	{
+		var max = sales?.RevenueByRoomType.Max(r => r.Revenue) ?? 1;
+		return max > 0 ? (double)(revenue / max * 100) : 0;
+	}
 
-    double GetTrendHeight(decimal revenue)
-    {
-        var max = sales?.MonthlyTrend.Max(m => m.Revenue) ?? 1;
- return max > 0 ? Math.Max(10, (double)(revenue / max * 100)) : 10;
-    }
+	double GetTrendHeight(decimal revenue)
+	{
+		var max = sales?.MonthlyTrend.Max(m => m.Revenue) ?? 1;
+		return max > 0 ? Math.Max(10, (double)(revenue / max * 100)) : 10;
+	}
+
+	string GetRetentionDashArray()
+	{
+		var rate = marketing?.RetentionRate ?? 0;
+		return $"{rate:F0}, 100";
+	}
+
+	void Logout() => Navigation.NavigateTo("/");
 }

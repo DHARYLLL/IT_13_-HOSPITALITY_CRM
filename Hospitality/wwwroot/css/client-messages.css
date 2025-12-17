@@ -510,8 +510,8 @@ border-radius: 12px;
     background: white;
     border: 1px solid #e5e5e7;
     border-radius: 12px;
-    padding: 20px;
-    margin-top: 24px;
+    padding: 16px;
+    margin-top: 20px;
 }
 
 .reply-header {
@@ -529,7 +529,7 @@ font-size: 16px;
 }
 
 .reply-form-inline .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 12px;
 }
 
 .reply-actions {
@@ -679,24 +679,39 @@ font-weight: 600;
 /* Buttons */
 .btn-primary,
 .btn-secondary {
-    padding: 12px 24px;
-    border-radius: 10px;
-    font-size: 14px;
+    padding: 1rem;
+    border-radius: 12px;
+    font-size: 1rem;
     font-weight: 600;
-    font-family: 'Open Sans', sans-serif;
+    font-family: 'Lora', serif;
 cursor: pointer;
     transition: all 0.2s;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 5px;
     border: none;
+    line-height: 1.4;
 }
 
 .btn-primary {
     background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
     color: white;
     box-shadow: 0 4px 12px rgba(94, 19, 105, 0.3);
+}
+
+.no-selection .btn-primary {
+    padding: 1rem;
+    font-size: 1rem;
+    gap: 8px;
+    line-height: 1.4;
+    width: auto !important;
+    max-width: fit-content;
+    min-width: auto;
+    display: inline-flex;
+    border-radius: 12px;
+    font-weight: 600;
+    font-family: 'Lora', serif;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -709,6 +724,43 @@ cursor: pointer;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #5e1369 0%, #9937c8 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'Lora', serif;
+}
+
+.btn-login:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4a0e52 0%, #7d2ba3 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(94, 19, 105, 0.3);
+}
+
+.btn-login:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-login:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.no-selection .btn-login,
+.email-actions .btn-login,
+.reply-actions .btn-login {
+    width: auto;
 }
 
 .btn-secondary {
@@ -729,8 +781,8 @@ border-color: #5e1369;
 /* Icon Styles */
 .icon {
     display: inline-block;
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;

@@ -1,0 +1,563 @@
+@page "/admin/clients"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.UserService UserService
+
+<link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-employees-modern.css" />
+
+<div class="admin-page">
+	<!-- Sidebar -->
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				@* <span>Admin console</span> *@
+			</div>
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/admin/dashboard" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-dashboard"></i></span>
+				<span>DASHBOARD</span>
+			</a>
+			<a href="/admin/reports" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-reports"></i></span>
+				<span>REPORTS</span>
+			</a>
+			<a href="/admin/analytics" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-analytics"></i></span>
+				<span>SALES & MARKETING</span>
+			</a>
+			<a href="/admin/walkin" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-bookings-detail"></i></span>
+				<span>WALK-IN</span>
+			</a>
+			<a href="/admin/messages" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-messages"></i></span>
+				<span>MESSAGES</span>
+			</a>
+			<a href="/admin" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
+				<span>EMPLOYEES</span>
+			</a>
+			<a href="/admin/clients" class="nav-item active">
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
+				<span>CLIENTS</span>
+			</a>
+			<a href="/admin/rooms" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-rooms"></i></span>
+				<span>ROOMS</span>
+			</a>
+			<a href="/admin/rewards" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-gift"></i></span>
+				<span>REWARDS</span>
+			</a>
+		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Client Management</h1>
+				<p class="page-subtitle">View and manage client information</p>
+			</div>
+			<div class="header-actions">
+			</div>
+		</header>
+
+		<div class="toolbar">
+			<div class="search-box">
+				<span><i class="icon icon-search"></i></span>
+				<input type="text" placeholder="Search by name or email..." @bind="searchQuery" @bind:event="oninput" @bind:after="OnSearchChanged" />
+			</div>
+		</div>
+
+		@if (loading)
+		{
+			<div class="loading-container">
+				<div class="spinner"></div>
+				<p>Loading clients...</p>
+			</div>
+		}
+		else if (loadError)
+		{
+			<div class="error-banner">
+				<span><i class="icon icon-error"></i></span>
+				<span>Failed to load clients. Please try again.</span>
+				<button class="btn-add-new" style="margin-left: auto;" @onclick="LoadPageAsync">Retry</button>
+			</div>
+		}
+		else if (!ClientsPage.Any())
+		{
+			<div class="empty-state-modern">
+				<div class="empty-state-icon">👥</div>
+				<h3 class="empty-state-title">No clients found</h3>
+				<p class="empty-state-text">@(string.IsNullOrWhiteSpace(searchQuery) ? "No clients registered yet" : "Try adjusting your search")</p>
+			</div>
+		}
+		else
+		{
+			<!-- Clients Table -->
+			<div class="table-container">
+				<table class="data-table">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Email</th>
+							<th>Contact</th>
+							<th>Birth Date</th>
+							<th>Password</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var client in ClientsPage)
+						{
+							<tr>
+								<td>
+									<div class="table-cell-name">
+										<div class="table-avatar">@GetInitials(client)</div>
+										<span>@GetFullName(client)</span>
+									</div>
+								</td>
+								<td>@client.user_email</td>
+								<td>@(string.IsNullOrWhiteSpace(client.user_contact_number) ? "-" : client.user_contact_number)</td>
+								<td>@(client.user_brith_date?.ToString("MMM dd, yyyy") ?? "-")</td>
+								<td>
+									<div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+										@if (string.IsNullOrWhiteSpace(client.user_password))
+										{
+											<span>-</span>
+										}
+										else
+										{
+											<span class="password-display" style="max-width: 400px; word-break: break-all; font-family: 'Courier New', monospace; font-size: 0.75rem;">
+												@if (visiblePasswords.ContainsKey(client.userId) && visiblePasswords[client.userId])
+												{
+													@if (lastSetPasswords.ContainsKey(client.userId))
+													{
+														<span style="color: #059669; font-weight: 600;">@lastSetPasswords[client.userId]</span>
+													}
+													else
+													{
+														<span style="color: #86868b;">(Hashed - cannot display original)</span>
+													}
+												}
+												else
+												{
+													<span style="color: #86868b;">••••••••••••••••</span>
+												}
+											</span>
+											<button class="btn-table-action" style="padding: 4px 8px; font-size: 0.875rem; flex-shrink: 0;" @onclick="() => TogglePasswordVisibility(client.userId)" title="@(visiblePasswords.ContainsKey(client.userId) && visiblePasswords[client.userId] ? "Hide password" : "Show password")">
+												@if (visiblePasswords.ContainsKey(client.userId) && visiblePasswords[client.userId])
+												{
+													<span>👁️</span>
+												}
+												else
+												{
+													<span>👁️‍🗨️</span>
+												}
+											</button>
+										}
+									</div>
+								</td>
+								<td>
+									<div class="table-actions">
+										<button class="btn-table-action primary" @onclick="() => Edit(client)" title="Edit">
+											<i class="icon icon-edit"></i>
+										</button>
+									</div>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+
+			<!-- Modern Pagination -->
+			<div class="pagination-modern">
+				<div class="pagination-controls">
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="FirstPage">
+						<i class="icon icon-chevron-double-left"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="PrevPage">
+						<i class="icon icon-chevron-left"></i>
+					</button>
+					
+					@foreach (var p in GetVisiblePageNumbers())
+					{
+						@if (p == -1)
+						{
+							<span class="page-dots">...</span>
+						}
+						else
+						{
+							<button class="page-btn-modern @(p == page ? "active" : "")" @onclick="() => GoPage(p)">
+								@p
+							</button>
+						}
+					}
+
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="NextPage">
+						<i class="icon icon-chevron-right"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="LastPage">
+						<i class="icon icon-chevron-double-right"></i>
+					</button>
+				</div>
+
+				<div class="pagination-info">
+					<span class="page-info-text">
+						Showing <strong>@((page - 1) * pageSize + 1)</strong> to <strong>@Math.Min(page * pageSize, totalCount)</strong> of <strong>@totalCount</strong> clients
+					</span>
+					<div class="page-size-selector">
+						<label>Show:</label>
+						<select class="page-size-select" @onchange="PageSizeChanged">
+							<option value="8" selected="@(pageSize==8)">8 per page</option>
+							<option value="16" selected="@(pageSize==16)">16 per page</option>
+							<option value="24" selected="@(pageSize==24)">24 per page</option>
+							<option value="32" selected="@(pageSize==32)">32 per page</option>
+						</select>
+					</div>
+				</div>
+			</div>
+		}
+	</main>
+</div>
+
+@if (showModal)
+{
+	<div class="modal-overlay" @onclick="CloseModal">
+		<div class="modal-card" @onclick:stopPropagation>
+			<div class="modal-header">
+				<h2 class="modal-title">Edit Client</h2>
+				<button class="modal-close-btn" @onclick="CloseModal"><i class="icon icon-close"></i></button>
+			</div>
+			<div class="modal-body">
+				@if (!string.IsNullOrEmpty(modalErrorMessage))
+				{
+					<div class="error-banner" style="margin-bottom: 1rem;">
+						<span><i class="icon icon-error"></i></span>
+						<span>@modalErrorMessage</span>
+					</div>
+				}
+				<div class="form-grid">
+					<div class="form-field @(firstNameError ? "has-error" : "")">
+						<label>First Name *</label>
+						<input type="text" @bind="formFirstName" />
+						@if (firstNameError)
+						{
+							<span class="error-text">First name is required</span>
+						}
+					</div>
+					<div class="form-field">
+						<label>Middle Name</label>
+						<input type="text" @bind="formMiddleName" />
+					</div>
+				</div>
+				<div class="form-grid">
+					<div class="form-field @(lastNameError ? "has-error" : "")">
+						<label>Last Name *</label>
+						<input type="text" @bind="formLastName" />
+						@if (lastNameError)
+						{
+							<span class="error-text">Last name is required</span>
+						}
+					</div>
+					<div class="form-field">
+						<label>Birth Date</label>
+						<input type="date" value="@formBirthDateString" @onchange="OnBirthDateChanged" />
+					</div>
+				</div>
+				<div class="form-grid">
+					<div class="form-field @(emailError ? "has-error" : "")">
+						<label>Email *</label>
+						<input type="email" @bind="formEmail" />
+						@if (emailError)
+						{
+							<span class="error-text">Valid email is required</span>
+						}
+					</div>
+					<div class="form-field">
+						<label>Contact Number</label>
+						<input type="text" @bind="formContact" />
+					</div>
+				</div>
+				<div class="form-grid">
+					<div class="form-field">
+						<label>Password</label>
+						<div style="display: flex; gap: 0.5rem; align-items: center;">
+							<input type="text" @bind="formPassword" placeholder="Enter new password (leave empty to keep current)" style="flex: 1;" />
+							<button type="button" class="btn-table-action" style="padding: 8px 12px; font-size: 0.875rem;" @onclick="GeneratePassword" title="Generate random password">
+								Generate
+							</button>
+						</div>
+						<small style="color: #666; font-size: 0.75rem; margin-top: 0.25rem; display: block;">Leave empty to keep current password. Generated password will be shown after saving.</small>
+						@if (!string.IsNullOrWhiteSpace(formPassword))
+						{
+							<div style="margin-top: 0.5rem; padding: 0.5rem; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 4px;">
+								<small style="color: #0369a1; font-weight: 600;">New password will be: <span style="font-family: 'Courier New', monospace;">@formPassword</span></small>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button class="btn-modal-cancel" @onclick="CloseModal">Cancel</button>
+				<button class="btn-modal-save" @onclick="Save">Update</button>
+			</div>
+		</div>
+	</div>
+}
+
+@code {
+	List<Hospitality.Models.User> clients = new();
+	bool loading = true;
+	bool loadError = false;
+	bool showModal = false;
+	string searchQuery = string.Empty;
+	string errorMessage = string.Empty;
+	string modalErrorMessage = string.Empty;
+	int page = 1;
+	int pageSize = 8;
+	int totalCount = 0;
+	int totalPages => totalCount == 0 ? 1 : (int)Math.Ceiling(totalCount / (double)pageSize);
+	List<int> PageNumbers => Enumerable.Range(1, totalPages).ToList();
+	List<Hospitality.Models.User> ClientsPage => clients;
+	bool CanPrev => page > 1;
+	bool CanNext => page < totalPages;
+
+	string formFirstName = "";
+	string formMiddleName = "";
+	string formLastName = "";
+	string formBirthDateString = "";
+	string formEmail = "";
+	string formContact = "";
+	string formPassword = "";
+	int editingClientId = 0;
+	Dictionary<int, bool> visiblePasswords = new();
+	Dictionary<int, string> lastSetPasswords = new(); // Store last set password for display
+	
+	bool firstNameError = false;
+	bool lastNameError = false;
+	bool emailError = false;
+
+	// New method for smart pagination
+	List<int> GetVisiblePageNumbers()
+	{
+		var pages = new List<int>();
+		int maxVisible = 7;
+		
+		if (totalPages <= maxVisible)
+		{
+			return Enumerable.Range(1, totalPages).ToList();
+		}
+		
+		pages.Add(1);
+		
+		int start = Math.Max(2, page - 2);
+		int end = Math.Min(totalPages - 1, page + 2);
+		
+		if (start > 2) pages.Add(-1); // ellipsis
+		
+		for (int i = start; i <= end; i++)
+		{
+			pages.Add(i);
+		}
+		
+		if (end < totalPages - 1) pages.Add(-1); // ellipsis
+		
+		pages.Add(totalPages);
+		
+		return pages;
+	}
+
+	protected override async Task OnInitializedAsync() => await LoadPageAsync();
+
+	async Task LoadPageAsync()
+	{
+		loading = true; 
+		loadError = false;
+		errorMessage = string.Empty;
+		try
+		{
+			clients = await UserService.GetClientsAsync(page, pageSize, searchQuery);
+			totalCount = await UserService.GetClientsCountAsync(searchQuery);
+		}
+		catch (Exception ex)
+		{
+			loadError = true;
+			errorMessage = $"Failed to load clients: {ex.Message}";
+			Console.WriteLine($"❌ Error loading clients: {ex.Message}");
+		}
+		finally { loading = false; }
+	}
+
+	async Task OnSearchChanged()
+	{
+		page = 1;
+		await LoadPageAsync();
+	}
+
+	void Edit(Hospitality.Models.User u) 
+	{ 
+		editingClientId = u.userId;
+		formFirstName = u.user_fname ?? ""; 
+		formMiddleName = u.user_mname ?? ""; 
+		formLastName = u.user_lname ?? ""; 
+		formEmail = u.user_email ?? ""; 
+		formContact = u.user_contact_number ?? ""; 
+		formBirthDateString = u.user_brith_date.HasValue ? u.user_brith_date.Value.ToString("yyyy-MM-dd") : ""; 
+		formPassword = ""; // Don't populate password for security - admin can set new one
+		firstNameError = lastNameError = emailError = false;
+		modalErrorMessage = string.Empty;
+		showModal = true; 
+	}
+	
+	void CloseModal() { showModal = false; ResetForm(); }
+	
+	void ResetForm() 
+	{ 
+		formFirstName = formMiddleName = formLastName = formBirthDateString = formEmail = formContact = formPassword = string.Empty; 
+		firstNameError = lastNameError = emailError = false;
+		modalErrorMessage = string.Empty;
+		editingClientId = 0;
+	}
+	
+	bool ValidateForm()
+	{
+		bool isValid = true;
+		modalErrorMessage = string.Empty;
+		firstNameError = lastNameError = emailError = false;
+		
+		if (string.IsNullOrWhiteSpace(formFirstName))
+		{
+			firstNameError = true;
+			isValid = false;
+		}
+		
+		if (string.IsNullOrWhiteSpace(formLastName))
+		{
+			lastNameError = true;
+			isValid = false;
+		}
+		
+		if (string.IsNullOrWhiteSpace(formEmail) || !formEmail.Contains("@"))
+		{
+			emailError = true;
+			isValid = false;
+		}
+		
+		if (!isValid)
+		{
+			modalErrorMessage = "Please fill in all required fields correctly.";
+		}
+		
+		return isValid;
+	}
+
+	async Task Save()
+	{
+		if (!ValidateForm()) return;
+		
+		try
+		{
+			DateTime? birth = DateTime.TryParse(formBirthDateString, out var b) ? b : null;
+			var updatedUser = new Hospitality.Models.User
+			{
+				userId = editingClientId,
+				user_fname = formFirstName,
+				user_mname = string.IsNullOrWhiteSpace(formMiddleName) ? null : formMiddleName,
+				user_lname = string.IsNullOrWhiteSpace(formLastName) ? null : formLastName,
+				user_brith_date = birth,
+				user_email = formEmail,
+				user_contact_number = formContact,
+				user_password = string.IsNullOrWhiteSpace(formPassword) ? null : formPassword
+			};
+			
+			// Store the plain text password before hashing (for display purposes)
+			if (!string.IsNullOrWhiteSpace(formPassword))
+			{
+				lastSetPasswords[editingClientId] = formPassword;
+			}
+			
+			// Store the plain text password before hashing (for display purposes)
+			if (!string.IsNullOrWhiteSpace(formPassword))
+			{
+				lastSetPasswords[editingClientId] = formPassword;
+			}
+			
+			await UserService.UpdateUserAsync(updatedUser);
+			
+			CloseModal();
+			// Reload the page to ensure data is fresh
+			await LoadPageAsync();
+		}
+		catch (Exception ex)
+		{
+			modalErrorMessage = $"Failed to save: {ex.Message}";
+			Console.WriteLine($"❌ Error saving client: {ex.Message}");
+		}
+	}
+	
+	string GetInitials(Hospitality.Models.User u) 
+	{ 
+		var parts = new List<string>();
+		if (!string.IsNullOrWhiteSpace(u.user_fname))
+			parts.Add(u.user_fname.Substring(0, 1));
+		if (!string.IsNullOrWhiteSpace(u.user_lname))
+			parts.Add(u.user_lname.Substring(0, 1));
+
+		return string.Join("", parts).ToUpper();
+	}
+	
+	string GetFullName(Hospitality.Models.User u) 
+	{ 
+		var mn = string.IsNullOrWhiteSpace(u.user_mname) ? "" : u.user_mname;
+		var ln = string.IsNullOrWhiteSpace(u.user_lname) ? "" : u.user_lname;
+
+		return string.Join(" ", new[] { u.user_fname, mn, ln }.Where(s => !string.IsNullOrWhiteSpace(s)));
+	}
+
+	async Task PrevPage() { if (CanPrev) { page--; await LoadPageAsync(); } }
+	async Task NextPage() { if (CanNext) { page++; await LoadPageAsync(); } }
+	async Task FirstPage() { if (CanPrev) { page = 1; await LoadPageAsync(); } }
+	async Task LastPage() { if (CanNext) { page = totalPages; await LoadPageAsync(); } }
+	async Task GoPage(int p) { if (p != page) { page = p; await LoadPageAsync(); } }
+	async Task PageSizeChanged(ChangeEventArgs e) { if (int.TryParse(e.Value?.ToString(), out var ps) && ps > 0) { pageSize = ps; page = 1; await LoadPageAsync(); } }
+
+	void OnBirthDateChanged(ChangeEventArgs e) { formBirthDateString = e.Value?.ToString() ?? string.Empty; }
+
+	void TogglePasswordVisibility(int clientId)
+	{
+		if (visiblePasswords.ContainsKey(clientId))
+		{
+			visiblePasswords[clientId] = !visiblePasswords[clientId];
+		}
+		else
+		{
+			visiblePasswords[clientId] = true;
+		}
+		StateHasChanged();
+	}
+
+	void GeneratePassword()
+	{
+		// Generate a random 8-character password
+		const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+		var random = new Random();
+		formPassword = new string(Enumerable.Repeat(chars, 8)
+			.Select(s => s[random.Next(s.Length)]).ToArray());
+		StateHasChanged();
+	}
+
+	void Logout() => Navigation.NavigateTo("/");
+}
+

@@ -33,7 +33,16 @@
 				@if (isDropdownOpen)
 				{
 					<div class="user-dropdown">
-						<button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
+						<button class="dropdown-item" @onclick="GoToEditProfile">
+							<i class="icon icon-edit"></i> Edit Profile
+						</button>
+						<button class="dropdown-item" @onclick="GoToReceipts">
+							<i class="icon icon-receipt"></i> View Receipts
+						</button>
+						<div class="dropdown-divider"></div>
+						<button class="dropdown-item logout" @onclick="Logout">
+							<i class="icon icon-logout"></i> Logout
+						</button>
 					</div>
 				}
 			</div>
@@ -310,16 +319,16 @@
 	decimal EstimatedTaxes => 0m; // No taxes and fees
 	decimal TotalPrice => Subtotal - DiscountAmount;
 	decimal MinimumDownpayment => TotalPrice * 0.5m;
-	int PointsEarned => (int)(TotalPrice * GetPointsMultiplier());
+	int PointsEarned => (int)(TotalPrice * GetPointsPerPHP());
 
-	decimal GetPointsMultiplier()
+	int GetPointsPerPHP()
 	{
 		return loyaltyTier.ToLower() switch
 		{
-			"silver" => 1.2m,
-			"gold" => 1.5m,
-			"platinum" => 2.0m,
-			_ => 1.0m
+			"silver" => 12,
+			"gold" => 15,
+			"platinum" => 20,
+			_ => 10 // Bronze
 		};
 	}
 
@@ -507,5 +516,28 @@
 	}
 
 	void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
-	void Logout() => Navigation.NavigateTo("/");
+	
+	void GoToEditProfile()
+	{
+		isDropdownOpen = false;
+		if (clientId.HasValue)
+		{
+			Navigation.NavigateTo($"/client/edit-profile/{clientId.Value}");
+		}
+	}
+
+	void GoToReceipts()
+	{
+		isDropdownOpen = false;
+		if (clientId.HasValue)
+		{
+			Navigation.NavigateTo($"/client/receipts/{clientId.Value}");
+		}
+	}
+
+	void Logout()
+	{
+		isDropdownOpen = false;
+		Navigation.NavigateTo("/");
+	}
 }

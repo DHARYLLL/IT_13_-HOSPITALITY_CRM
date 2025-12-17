@@ -30,18 +30,35 @@
 }
 
 /* Global Typography */
-body {
+body, html {
 	font-family: var(--font-body);
 	color: var(--color-gray-900);
 }
 
-h1, h2, h3, h4, h5, h6 {
+/* All headings use Playfair Display */
+h1, h2, h3, h4, h5, h6,
+.page-title, .section-title, .card-title,
+h1.page-title, h2.section-title, h3.card-title,
+.admin-header h1, .section-header h2, .chart-header h3,
+.kpi-value, .donut-value, .stat-percent {
 	font-family: var(--font-heading);
 	font-weight: 700;
 }
 
-.subheading {
+/* Sub-headings use Lora */
+.subheading, .page-subtitle, .section-subtitle, .card-subtitle,
+h2.subheading, h3.subheading, h4.subheading,
+.chart-subtitle, .kpi-label, .card-title-group h3 {
 	font-family: var(--font-subheading);
+}
+
+/* Body text uses Open Sans - ensure all text elements default to Open Sans */
+body, p, span, div, a, button, input, select, textarea, label,
+.text, .content, .kpi-change, .kpi-period, .legend-item,
+table, td, th, .booking-item, .guest-name, .guest-email,
+.nav-link, .btn, .filter-btn, .page-btn, .showing-info,
+.per-page-label, .per-page-select {
+	font-family: var(--font-body);
 }
 
 /* Global Utility Classes */

@@ -120,6 +120,32 @@ BEGIN
 END
 GO
 
+-- LoyaltyRewards table
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('LoyaltyRewards') AND name = 'sync_status')
+BEGIN
+    ALTER TABLE LoyaltyRewards ADD sync_status NVARCHAR(20) DEFAULT 'synced';
+    ALTER TABLE LoyaltyRewards ADD last_modified DATETIME DEFAULT GETDATE();
+    PRINT '? Added sync columns to LoyaltyRewards table';
+END
+ELSE
+BEGIN
+    PRINT '?? LoyaltyRewards table already has sync columns';
+END
+GO
+
+-- RedeemedRewards table
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('RedeemedRewards') AND name = 'sync_status')
+BEGIN
+    ALTER TABLE RedeemedRewards ADD sync_status NVARCHAR(20) DEFAULT 'synced';
+    ALTER TABLE RedeemedRewards ADD last_modified DATETIME DEFAULT GETDATE();
+    PRINT '? Added sync columns to RedeemedRewards table';
+END
+ELSE
+BEGIN
+    PRINT '?? RedeemedRewards table already has sync columns';
+END
+GO
+
 PRINT '';
 PRINT '========================================';
 PRINT '? Simplified sync tracking setup complete!';
@@ -132,13 +158,15 @@ PRINT '  - Messages';
 PRINT '  - rooms';
 PRINT '  - LoyaltyPrograms';
 PRINT '  - LoyaltyTransactions';
+PRINT '  - LoyaltyRewards';
 PRINT '  - Users';
 PRINT '  - Clients';
+PRINT '  - RedeemedRewards';
 PRINT '';
 PRINT 'How it works:';
-PRINT '  • sync_status = ''pending'' ? Needs sync to online DB';
-PRINT '  • sync_status = ''synced'' ? Already synced';
-PRINT '  • last_modified ? Timestamp of last change';
+PRINT '  ï¿½ sync_status = ''pending'' ? Needs sync to online DB';
+PRINT '  ï¿½ sync_status = ''synced'' ? Already synced';
+PRINT '  ï¿½ last_modified ? Timestamp of last change';
 PRINT '';
 PRINT 'No SyncQueue or SyncStatus tables needed!';
 PRINT '';

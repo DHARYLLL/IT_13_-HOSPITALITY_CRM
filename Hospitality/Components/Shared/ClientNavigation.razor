@@ -18,21 +18,21 @@
   <a href="/client/messages/@UserId" class="nav-link @(IsActive("messages") ? "active" : "")">Messages</a>
     </div>
     <div class="nav-right">
-        <span class="points-badge">@CurrentTier • @LoyaltyPoints pts</span>
+        <span class="points-badge">@CurrentTier ï¿½ @LoyaltyPoints pts</span>
         <div class="user-menu">
  <div class="user-avatar-small" @onclick="ToggleDropdown">@GetInitials()</div>
             @if (isDropdownOpen)
          {
       <div class="user-dropdown">
    <button class="dropdown-item @(IsActive("edit-profile") ? "active-page" : "")" @onclick="GoToEditProfile">
-<span class="dropdown-icon">??</span> Edit Profile
+<i class="icon icon-edit"></i> Edit Profile
           </button>
           <button class="dropdown-item" @onclick="GoToReceipts">
-              <span class="dropdown-icon">??</span> View Receipts
+              <i class="icon icon-receipt"></i> View Receipts
   </button>
                     <div class="dropdown-divider"></div>
     <button class="dropdown-item logout" @onclick="Logout">
-         <span class="dropdown-icon">??</span> Logout
+         <i class="icon icon-logout"></i> Logout
          </button>
   </div>
      }

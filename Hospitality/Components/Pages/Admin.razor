@@ -9,36 +9,16 @@
 	<!-- Sidebar -->
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
-			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
 			<div class="admin-console-text">
 				<h4>InnSight Hotels</h4>
-				<span>Admin console</span>
+				@* <span>Admin console</span> *@
 			</div>
 		</div>
 		<nav class="sidebar-nav">
 			<a href="/admin/dashboard" class="nav-item">
 				<span class="nav-icon"><i class="icon icon-dashboard"></i></span>
 				<span>DASHBOARD</span>
-			</a>
-			<a href="/admin" class="nav-item active">
-				<span class="nav-icon"><i class="icon icon-users"></i></span>
-				<span>EMPLOYEES</span>
-			</a>
-			<a href="/admin/rooms" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-rooms"></i></span>
-				<span>ROOMS</span>
-			</a>
-			<a href="/admin/walkin" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-bookings-detail"></i></span>
-				<span>WALK-IN</span>
-			</a>
-			<a href="/admin/rewards" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-gift"></i></span>
-				<span>REWARDS</span>
-			</a>
-			<a href="/admin/messages" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-messages"></i></span>
-				<span>MESSAGES</span>
 			</a>
 			<a href="/admin/reports" class="nav-item">
 				<span class="nav-icon"><i class="icon icon-reports"></i></span>
@@ -48,7 +28,38 @@
 				<span class="nav-icon"><i class="icon icon-analytics"></i></span>
 				<span>SALES & MARKETING</span>
 			</a>
+			<a href="/admin/walkin" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-bookings-detail"></i></span>
+				<span>WALK-IN</span>
+			</a>
+			<a href="/admin/messages" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-messages"></i></span>
+				<span>MESSAGES</span>
+			</a>
+			<a href="/admin" class="nav-item active">
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
+				<span>EMPLOYEES</span>
+			</a>
+			<a href="/admin/clients" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
+				<span>CLIENTS</span>
+			</a>
+			<a href="/admin/rooms" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-rooms"></i></span>
+				<span>ROOMS</span>
+			</a>
+			
+			<a href="/admin/rewards" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-gift"></i></span>
+				<span>REWARDS</span>
+			</a>
 		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
 	</aside>
 
 	<!-- Main Content -->
@@ -59,57 +70,20 @@
 				<p class="page-subtitle">Manage your team members and staff</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span><i class="icon icon-notification"></i></button>
-				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
-
-		<!-- Stats Bar -->
-		<div class="stats-bar">
-			<div class="stat-card">
-				<div class="stat-icon purple">
-					<i class="icon icon-users"></i>
-				</div>
-				<div class="stat-content">
-					<div class="stat-number">@totalCount</div>
-					<div class="stat-text">Total Employees</div>
-				</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-icon blue">
-					<i class="icon icon-shield"></i>
-				</div>
-				<div class="stat-content">
-					<div class="stat-number">@employees.Count(e => e.roleName == "admin")</div>
-					<div class="stat-text">Administrators</div>
-				</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-icon green">
-					<i class="icon icon-users"></i>
-				</div>
-				<div class="stat-content">
-					<div class="stat-number">@employees.Count(e => e.roleName == "staff")</div>
-					<div class="stat-text">Staff Members</div>
-				</div>
-			</div>
-		</div>
 
 		<div class="toolbar">
 			<div class="search-box">
 				<span><i class="icon icon-search"></i></span>
-				<input type="text" placeholder="Search by name or email..." @bind="searchQuery" @bind:event="oninput" />
+				<input type="text" placeholder="Search by name or email..." @bind="searchQuery" @bind:event="oninput" @bind:after="OnSearchChanged" />
 			</div>
-			<div class="filter-pills">
-				<button class="filter-pill @(string.IsNullOrEmpty(roleFilter) ? "active" : "")" @onclick='() => SetRoleFilter("")'>
-					All <span class="count">@totalCount</span>
-				</button>
-				<button class="filter-pill @(roleFilter == "admin" ? "active" : "")" @onclick='() => SetRoleFilter("admin")'>
-					Admin <span class="count">@employees.Count(e => e.roleName == "admin")</span>
-				</button>
-				<button class="filter-pill @(roleFilter == "staff" ? "active" : "")" @onclick='() => SetRoleFilter("staff")'>
-					Staff <span class="count">@employees.Count(e => e.roleName == "staff")</span>
-				</button>
+			<div class="filter-dropdown-wrapper">
+				<select class="filter-dropdown" @onchange="OnRoleFilterChanged">
+					<option value="" selected="@(string.IsNullOrEmpty(roleFilter))">All (@totalCount)</option>
+					<option value="admin" selected="@(roleFilter == "admin")">Admin (@employees.Count(e => e.roleName == "admin"))</option>
+					<option value="staff" selected="@(roleFilter == "staff")">Staff (@employees.Count(e => e.roleName == "staff"))</option>
+				</select>
 			</div>
 			<button class="btn-add-new" @onclick="ShowAddModal">
 				<span>+</span> Add New Employee
@@ -147,37 +121,46 @@
 		}
 		else
 		{
-			<!-- Employee Cards Grid -->
-			<div class="employees-grid">
-				@foreach (var emp in EmployeesPage)
-				{
-					<div class="employee-card-modern">
-						<div class="employee-avatar-modern">@GetInitials(emp)</div>
-						<div class="role-badge @emp.roleName">
-							<i class="icon icon-@(emp.roleName == "admin" ? "shield" : "user")"></i>
-							@emp.roleName
-						</div>
-						<h3 class="employee-name-modern">@GetFullName(emp)</h3>
-						<p class="employee-email-modern">@emp.user_email</p>
-						@if (!string.IsNullOrWhiteSpace(emp.user_contact_number))
+			<!-- Employee Table -->
+			<div class="table-container">
+				<table class="data-table">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Email</th>
+							<th>Contact</th>
+							<th>Role</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var emp in EmployeesPage)
 						{
-							<div class="contact-info">
-								<div class="contact-item">
-									<i class="icon icon-phone"></i>
-									@emp.user_contact_number
-								</div>
-							</div>
+							<tr>
+								<td>
+									<div class="table-cell-name">
+										<div class="table-avatar">@GetInitials(emp)</div>
+										<span>@GetFullName(emp)</span>
+									</div>
+								</td>
+								<td>@emp.user_email</td>
+								<td>@(string.IsNullOrWhiteSpace(emp.user_contact_number) ? "-" : emp.user_contact_number)</td>
+								<td>
+									<span class="role-text">
+										@emp.roleName
+									</span>
+								</td>
+								<td>
+									<div class="table-actions">
+										<button class="btn-table-action primary" @onclick="() => Edit(emp)" title="Edit">
+											<i class="icon icon-edit"></i>
+										</button>
+									</div>
+								</td>
+							</tr>
 						}
-						<div class="employee-actions-modern">
-							<button class="btn-employee-action primary" @onclick="() => Edit(emp)">
-								<i class="icon icon-edit"></i> Edit
-							</button>
-							<button class="btn-employee-action secondary">
-								<i class="icon icon-email"></i>
-							</button>
-						</div>
-					</div>
-				}
+					</tbody>
+				</table>
 			</div>
 
 			<!-- Modern Pagination -->
@@ -385,6 +368,19 @@
 		_ = LoadPageAsync();
 	}
 
+	async Task OnRoleFilterChanged(ChangeEventArgs e)
+	{
+		roleFilter = e.Value?.ToString() ?? string.Empty;
+		page = 1;
+		await LoadPageAsync();
+	}
+
+	async Task OnSearchChanged()
+	{
+		page = 1;
+		await LoadPageAsync();
+	}
+
 	protected override async Task OnInitializedAsync() => await LoadPageAsync();
 
 	async Task LoadPageAsync()
@@ -427,8 +423,15 @@
 	{ 
 		isEdit = true; 
 		formFirstName = u.user_fname ?? ""; 
+		formMiddleName = u.user_mname ?? ""; 
+		formLastName = u.user_lname ?? ""; 
 		formEmail = u.user_email ?? ""; 
+		formContact = u.user_contact_number ?? ""; 
 		formRole = u.roleName ?? "staff"; 
+		formBirthDateString = u.user_brith_date.HasValue ? u.user_brith_date.Value.ToString("yyyy-MM-dd") : ""; 
+		formPassword = ""; // Don't populate password for security
+		firstNameError = lastNameError = emailError = passwordError = false;
+		modalErrorMessage = string.Empty;
 		showModal = true; 
 	}
 	

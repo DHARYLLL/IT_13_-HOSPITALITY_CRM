@@ -31,7 +31,16 @@
 				@if (isDropdownOpen)
 				{
 					<div class="user-dropdown">
-						<button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
+						<button class="dropdown-item" @onclick="GoToEditProfile">
+							<i class="icon icon-edit"></i> Edit Profile
+						</button>
+						<button class="dropdown-item" @onclick="GoToReceipts">
+							<i class="icon icon-receipt"></i> View Receipts
+						</button>
+						<div class="dropdown-divider"></div>
+						<button class="dropdown-item logout" @onclick="Logout">
+							<i class="icon icon-logout"></i> Logout
+						</button>
 					</div>
 				}
 			</div>
@@ -173,7 +182,7 @@
 		<div class="booking-right">
 			<div class="summary-card">
 				<div class="summary-header">
-					<div class="summary-icon">📊</div>
+					<i class="icon icon-calendar"></i>
 					<h3>Stay summary</h3>
 					@if (discountPercentage > 0)
 					{
@@ -230,40 +239,15 @@
 				{
 					<div class="summary-section">
 						<div class="offer-badge">
-							<span class="badge-icon">🎁</span>
+							<i class="icon icon-gift"></i>
 							<div class="badge-content">
 								<div class="badge-title">@loyaltyTier member discount</div>
-								<div class="badge-desc">@discountPercentage% off your stay as a @loyaltyTier member</div>
+								<div class="badge-desc">@discountPercentage% off your stay</div>
 							</div>
 						</div>
 					</div>
 				}
 
-				<div class="summary-section pricing-section">
-					<div class="pricing-label">Estimated nightly rate (Before tax)</div>
-					<div class="price-range">
-						<span class="price-to">From ₱@EstimatedNightlyRate.ToString("N0")</span>
-					</div>
-				</div>
-
-				<div class="summary-section">
-					<h4 class="summary-title">Points & payment</h4>
-					<div class="points-info">
-						<div class="points-row">
-							<span>Earn → @EstimatedPoints points</span>
-						</div>
-						<div class="points-sub">You currently have @LoyaltyPoints points</div>
-					</div>
-				</div>
-
-				<div class="summary-total">
-					<div class="total-label">Final amount shown on the next step before confirming.</div>
-					<div class="total-amount">₱@EstimatedTotal.ToString("N2")</div>
-					@if (discountPercentage > 0)
-					{
-						<div style="font-size: 12px; color: #27ae60;">Includes @discountPercentage% @loyaltyTier discount</div>
-					}
-				</div>
 
 				<div class="summary-section">
 					<h4 class="summary-title">Policies</h4>
@@ -365,20 +349,15 @@
 	}
 
 	int NightsCount => (checkInDate.HasValue && checkOutDate.HasValue) ? (checkOutDate.Value - checkInDate.Value).Days : 0;
-	decimal EstimatedNightlyRate => 248m;
-	decimal EstimatedSubtotal => EstimatedNightlyRate * NightsCount;
-	decimal EstimatedDiscount => EstimatedSubtotal * (discountPercentage / 100m);
-	decimal EstimatedTotal => EstimatedSubtotal - EstimatedDiscount; // No taxes and fees
-	int EstimatedPoints => (int)(EstimatedTotal * GetPointsMultiplier());
 
-	decimal GetPointsMultiplier()
+	int GetPointsPerPHP()
 	{
 		return loyaltyTier.ToLower() switch
 		{
-			"silver" => 1.2m,
-			"gold" => 1.5m,
-			"platinum" => 2.0m,
-			_ => 1.0m
+			"silver" => 12,
+			"gold" => 15,
+			"platinum" => 20,
+			_ => 10 // Bronze
 		};
 	}
 
@@ -477,5 +456,28 @@
 	}
 
 	void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
-	void Logout() => Navigation.NavigateTo("/");
+	
+	void GoToEditProfile()
+	{
+		isDropdownOpen = false;
+		if (clientId.HasValue)
+		{
+			Navigation.NavigateTo($"/client/edit-profile/{clientId.Value}");
+		}
+	}
+
+	void GoToReceipts()
+	{
+		isDropdownOpen = false;
+		if (clientId.HasValue)
+		{
+			Navigation.NavigateTo($"/client/receipts/{clientId.Value}");
+		}
+	}
+
+	void Logout()
+	{
+		isDropdownOpen = false;
+		Navigation.NavigateTo("/");
+	}
 }

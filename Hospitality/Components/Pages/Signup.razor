@@ -1,4 +1,4 @@
-﻿@page "/signup"
+@page "/signup"
 @layout EmptyLayout
 @inject NavigationManager Navigation
 @inject Hospitality.Services.UserService UserService
@@ -10,27 +10,19 @@
 	<div class="login-container signup-container">
 		<div class="login-left simple">
 			<div class="logo-container">
-				<img src="images/InnSight.png" alt="InnSight Logo" class="innsight-logo" />
+				<img src="images/InnSight_NO_BG.png" alt="InnSight Logo" class="innsight-logo" />
 			</div>
-			<h1 class="welcome-text">Join Us</h1>
+			<h1 class="welcome-text">InnSight</h1>
 			<p class="welcome-subtitle">Create your account</p>
 		</div>
 
 		<div class="login-right signup-right-noscroll">
 			<div class="login-form signup-form-compact">
 				<h2 class="login-title">Create Account</h2>
-				@if (!string.IsNullOrEmpty(errorMessage))
-				{
-					<div class="error-banner">
-						<span class="error-icon">⚠️</span>
-						<span class="error-text">@errorMessage</span>
-					</div>
-				}
 				<div class="form-section-compact">
 					<div class="form-row">
 						<div class="form-group form-group-half">
 							<div class="input-wrapper @(firstNameError ? "input-error" : "")">
-								<span class="input-icon">👤</span>
 								<input type="text" class="form-input" placeholder="First Name *" @bind="firstName" @oninput="ClearErrors" />
 							</div>
 							@if (firstNameError)
@@ -40,7 +32,6 @@
 						</div>
 						<div class="form-group form-group-half">
 							<div class="input-wrapper @(lastNameError ? "input-error" : "")">
-								<span class="input-icon">👤</span>
 								<input type="text" class="form-input" placeholder="Last Name *" @bind="lastName" @oninput="ClearErrors" />
 							</div>
 							@if (lastNameError)
@@ -51,14 +42,12 @@
 					</div>
 					<div class="form-group">
 						<div class="input-wrapper">
-							<span class="input-icon">👤</span>
 							<input type="text" class="form-input" placeholder="Middle Name" @bind="middleName" />
 						</div>
 					</div>
 					<div class="form-row">
 						<div class="form-group form-group-half">
 							<div class="input-wrapper @(birthDateError ? "input-error" : "")">
-								<span class="input-icon">📅</span>
 								<input type="date" class="form-input" @bind="birthDate" max="@MaxBirthDate" @oninput="ClearErrors" />
 							</div>
 							@if (birthDateError)
@@ -68,14 +57,12 @@
 						</div>
 						<div class="form-group form-group-half">
 							<div class="input-wrapper">
-								<span class="input-icon">📱</span>
 								<input type="tel" class="form-input" placeholder="Contact Number" @bind="contactNumber" />
 							</div>
 						</div>
 					</div>
 					<div class="form-group">
 						<div class="input-wrapper @(emailError ? "input-error" : "")">
-							<span class="input-icon">📧</span>
 							<input type="email" class="form-input" placeholder="Email *" @bind="email" @oninput="ClearErrors" />
 						</div>
 						@if (emailError)
@@ -85,9 +72,17 @@
 					</div>
 					<div class="form-group">
 						<div class="input-wrapper @(passwordError ? "input-error" : passwordsMatch && password.Length > 0 ? "input-valid" : "")">
-							<span class="input-icon">🔒</span>
 							<input type="@(showPassword ? "text" : "password")" class="form-input" placeholder="Password *" @bind="password" @oninput="ClearErrors" />
-							<button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">@(showPassword ? "👁️" : "👁️‍🗨️")</button>
+							<button type="button" class="toggle-password" @onclick="TogglePasswordVisibility">
+								@if (showPassword)
+								{
+									<span>👁️</span>
+								}
+								else
+								{
+									<span>👁️‍🗨️</span>
+								}
+							</button>
 						</div>
 						@if (passwordError)
 						{
@@ -96,9 +91,17 @@
 					</div>
 					<div class="form-group">
 						<div class="input-wrapper @(confirmPasswordError ? "input-error" : passwordsMatch && confirmPassword.Length > 0 ? "input-valid" : "")">
-							<span class="input-icon">🔒</span>
 							<input type="@(showConfirmPassword ? "text" : "password")" class="form-input" placeholder="Confirm Password *" @bind="confirmPassword" @oninput="ClearErrors" />
-							<button type="button" class="toggle-password" @onclick="ToggleConfirmPasswordVisibility">@(showConfirmPassword ? "👁️" : "👁️‍🗨️")</button>
+							<button type="button" class="toggle-password" @onclick="ToggleConfirmPasswordVisibility">
+								@if (showConfirmPassword)
+								{
+									<span>👁️</span>
+								}
+								else
+								{
+									<span>👁️‍🗨️</span>
+								}
+							</button>
 						</div>
 						@if (confirmPasswordError)
 						{
@@ -110,6 +113,13 @@
 						}
 					</div>
 				</div>
+
+				@if (!string.IsNullOrEmpty(errorMessage))
+				{
+					<div class="error-message" style="color: #d32f2f; background-color: #ffebee; padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 0.9rem;">
+						<span>⚠️</span> @errorMessage
+					</div>
+				}
 
 				<button class="btn-login btn-signup-primary" @onclick="HandleSignup" disabled="@isLoading">
 					@(isLoading ? "Creating Account..." : "Create Account")
@@ -245,7 +255,6 @@
 		
 		if (!ValidateForm())
 		{
-			errorMessage = "Please correct the errors below.";
 			return;
 		}
 		
@@ -260,11 +269,16 @@
 				return;
 			}
 			
-			var roleId = await UserService.GetRoleIdByNameAsync("client") ?? 0;
+			var roleId = await UserService.GetRoleIdByNameAsync("client");
+			if (roleId == null || roleId == 0)
+			{
+				errorMessage = "Unable to create account: Client role not found. Please contact support.";
+				return;
+			}
 			
 			var user = new Hospitality.Models.User
 			{
-				role_id = roleId,
+				role_id = roleId.Value,
 				user_fname = firstName,
 				user_mname = string.IsNullOrWhiteSpace(middleName) ? null : middleName,
 				user_lname = string.IsNullOrWhiteSpace(lastName) ? null : lastName,
@@ -296,9 +310,9 @@
 			{
 				errorMessage = "Connection error. Please check your internet connection and try again.";
 			}
-			else if (ex.Message.Contains("database") || ex.Message.Contains("SQL"))
+			else if (ex.Message.Contains("database") || ex.Message.Contains("SQL") || ex.Message.Contains("BCrypt"))
 			{
-				errorMessage = "Database error. Please try again later or contact support.";
+				errorMessage = $"Database error: {ex.Message}. Please try again later or contact support.";
 			}
 			else if (ex.Message.Contains("email") || ex.Message.Contains("Email"))
 			{
@@ -308,7 +322,7 @@
 			}
 			else
 			{
-				errorMessage = "An error occurred during registration. Please try again.";
+				errorMessage = $"An error occurred during registration: {ex.Message}. Please try again.";
 			}
 		}
 		finally

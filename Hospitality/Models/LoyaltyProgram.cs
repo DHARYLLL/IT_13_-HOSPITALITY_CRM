@@ -39,10 +39,10 @@ Name = "Bronze",
      MinPoints = 0,
        MaxPoints = 2499,
   Color = "#cd7f32",
-     Icon = "??",
+     Icon = "🥉",
   Benefits = new List<string>
          {
-     "Earn 10 points per $1 spent",
+     "Earn 10 points per peso spent",
                 "Member-only rates and offers",
                 "Free WiFi"
             }
@@ -53,11 +53,11 @@ Name = "Bronze",
             MinPoints = 2500,
             MaxPoints = 6999,
  Color = "#c0c0c0",
- Icon = "??",
+ Icon = "🥈",
     Benefits = new List<string>
   {
          "All Bronze benefits",
-  "Earn 12 points per $1 spent",
+  "Earn 12 points per peso spent",
           "Priority check-in",
      "Complimentary room upgrade (subject to availability)"
             }
@@ -68,11 +68,11 @@ Name = "Bronze",
       MinPoints = 7000,
        MaxPoints = 14999,
             Color = "#ffd700",
-       Icon = "??",
+       Icon = "🥇",
             Benefits = new List<string>
      {
      "All Silver benefits",
-      "Earn 15 points per $1 spent",
+      "Earn 15 points per peso spent",
           "Late checkout (2pm)",
     "Complimentary welcome drink",
  "Access to exclusive member rates"
@@ -84,11 +84,11 @@ Name = "Bronze",
       MinPoints = 15000,
       MaxPoints = int.MaxValue,
           Color = "#e5e4e2",
-Icon = "??",
+Icon = "💎",
             Benefits = new List<string>
         {
     "All Gold benefits",
-       "Earn 20 points per $1 spent",
+       "Earn 20 points per peso spent",
            "Guaranteed room upgrade",
   "Late checkout (4pm)",
         "Complimentary breakfast for two",
@@ -154,4 +154,35 @@ public class LoyaltyTransaction
     public string TransactionType => transaction_type;
     public string Description => description;
     public DateTime TransactionDate => transaction_date;
+}
+
+public class RedeemedReward
+{
+    public int redeemed_id { get; set; }
+    public int loyalty_id { get; set; }
+    public int reward_id { get; set; }
+    public DateTime redemption_date { get; set; }
+    public string status { get; set; } = "active";
+    public DateTime? used_date { get; set; }
+    public int? booking_id { get; set; }
+    public DateTime? expiry_date { get; set; }
+    public string voucher_code { get; set; } = "";
+    public string? notes { get; set; }
+    
+    // Reward details (populated when loading)
+    public string? reward_name { get; set; }
+    public string? reward_description { get; set; }
+    public string? reward_type { get; set; }
+    
+    public int RedeemedId => redeemed_id;
+    public int LoyaltyId => loyalty_id;
+    public int RewardId => reward_id;
+    public DateTime RedemptionDate => redemption_date;
+    public string Status => status;
+    public DateTime? UsedDate => used_date;
+    public int? BookingId => booking_id;
+    public DateTime? ExpiryDate => expiry_date;
+    public string VoucherCode => voucher_code;
+    public bool IsExpired => expiry_date.HasValue && expiry_date.Value < DateTime.Now;
+    public bool IsUsed => used_date.HasValue;
 }

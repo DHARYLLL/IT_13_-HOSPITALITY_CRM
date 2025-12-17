@@ -3,6 +3,7 @@
 @inject Hospitality.Services.RoomService RoomService
 @inject Hospitality.Services.BookingService BookingService
 @inject Hospitality.Services.PaymentService PaymentService
+@using Hospitality.Services
 
 <link rel="stylesheet" href="css/admin.css" />
 <link rel="stylesheet" href="css/admin-walkin.css" />
@@ -11,22 +12,29 @@
 	<!-- Sidebar -->
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
-			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
 			<div class="admin-console-text">
 				<h4>InnSight Hotels</h4>
-				<span>Admin console</span>
+				@* <span>Admin console</span> *@
 			</div>
 		</div>
 		<nav class="sidebar-nav">
 			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
-			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
-			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
-			<a href="/admin/walkin" class="nav-item active"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
-			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
-			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
 			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
 			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
+			<a href="/admin/walkin" class="nav-item active"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/clients" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>CLIENTS</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
 		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
 	</aside>
 
 	<!-- Main Content -->
@@ -37,7 +45,6 @@
 				<p class="page-subtitle">Create a new booking for walk-in customers</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
@@ -83,7 +90,7 @@
 				<div class="step-content">
 					<div class="form-section">
 						<div class="section-header">
-							<h2><span class="section-icon">??</span> Guest Information</h2>
+							<h2><i class="icon icon-users"></i> Guest Information</h2>
 							<p>Enter the walk-in customer's details</p>
 						</div>
 
@@ -117,7 +124,7 @@
 
 					<div class="form-section">
 						<div class="section-header">
-							<h2><span class="section-icon">??</span> Stay Details</h2>
+							<h2><i class="icon icon-calendar"></i> Stay Details</h2>
 							<p>Specify the booking dates and guest count</p>
 						</div>
 
@@ -133,7 +140,7 @@
 							<div class="form-group">
 								<label for="adults">Number of Guests <span class="required">*</span></label>
 								<div class="counter-input">
-									<button class="counter-btn" @onclick="() => ChangeGuests(-1)" disabled="@(numberOfGuests <= 1)">?</button>
+									<button class="counter-btn" @onclick="() => ChangeGuests(-1)" disabled="@(numberOfGuests <= 1)">−</button>
 									<span class="counter-value">@numberOfGuests guest@(numberOfGuests != 1 ? "s" : "")</span>
 									<button class="counter-btn" @onclick="() => ChangeGuests(1)">+</button>
 								</div>
@@ -141,7 +148,7 @@
 							<div class="form-group">
 								<label for="rooms">Number of Rooms <span class="required">*</span></label>
 								<div class="counter-input">
-									<button class="counter-btn" @onclick="() => ChangeRoomCount(-1)" disabled="@(numberOfRooms <= 1)">?</button>
+									<button class="counter-btn" @onclick="() => ChangeRoomCount(-1)" disabled="@(numberOfRooms <= 1)">−</button>
 									<span class="counter-value">@numberOfRooms room@(numberOfRooms != 1 ? "s" : "")</span>
 									<button class="counter-btn" @onclick="() => ChangeRoomCount(1)">+</button>
 								</div>
@@ -184,10 +191,10 @@
 						else if (!availableRooms.Any())
 						{
 							<div class="empty-state">
-								<div class="empty-icon">??</div>
+								<div class="empty-icon">🏨</div>
 								<h3>No rooms available</h3>
 								<p>No rooms are available for the selected dates. Please try different dates.</p>
-								<button class="btn-secondary" @onclick="GoBackToStep1">? Change Dates</button>
+								<button class="btn-secondary" @onclick="GoBackToStep1">← Change Dates</button>
 							</div>
 						}
 						else
@@ -227,7 +234,7 @@
 												<span class="room-number">Room @room.room_number</span>
 											</div>
 											<div class="room-features">
-												<span class="feature">?? Floor @room.room_floor</span>
+												<span class="feature">🏢 Floor @room.room_floor</span>
 												<span class="feature status-@room.room_status.ToLower()">@room.room_status</span>
 											</div>
 											@if (!string.IsNullOrWhiteSpace(room.room_amenities))
@@ -275,7 +282,7 @@
 						<div class="summary-section">
 							<div class="form-section">
 								<div class="section-header">
-									<h2><span class="section-icon">??</span> Booking Summary</h2>
+									<h2><i class="icon icon-receipt"></i> Booking Summary</h2>
 								</div>
 
 								<div class="summary-card">
@@ -347,21 +354,13 @@
 						<div class="payment-section">
 							<div class="form-section">
 								<div class="section-header">
-									<h2><span class="section-icon">??</span> Payment Details</h2>
+									<h2><i class="icon icon-payment"></i> Payment Details</h2>
 								</div>
 
 								<div class="payment-card">
 									<div class="price-breakdown">
-										<div class="price-row">
-											<span>Room charges (@NightsCount night@(NightsCount != 1 ? "s" : ""))</span>
-											<span>?@Subtotal.ToString("N2")</span>
-										</div>
-										<div class="price-row">
-											<span>Taxes & Fees (12%)</span>
-											<span>?@TaxAmount.ToString("N2")</span>
-										</div>
 										<div class="price-row total">
-											<span>Total Amount</span>
+											<span>Total Amount (@NightsCount night@(NightsCount != 1 ? "s" : ""))</span>
 											<span>?@TotalAmount.ToString("N2")</span>
 										</div>
 									</div>
@@ -371,17 +370,17 @@
 										<div class="payment-method-list">
 											<label class="payment-method @(paymentMethod == "cash" ? "selected" : "")">
 												<input type="radio" name="paymentMethod" value="cash" @onchange="@(() => paymentMethod = "cash")" checked="@(paymentMethod == "cash")" />
-												<span class="method-icon">??</span>
+												<span class="method-icon">💵</span>
 												<span class="method-name">Cash</span>
 											</label>
 											<label class="payment-method @(paymentMethod == "card" ? "selected" : "")">
 												<input type="radio" name="paymentMethod" value="card" @onchange="@(() => paymentMethod = "card")" checked="@(paymentMethod == "card")" />
-												<span class="method-icon">??</span>
+												<span class="method-icon">💳</span>
 												<span class="method-name">Credit/Debit Card</span>
 											</label>
 											<label class="payment-method @(paymentMethod == "gcash" ? "selected" : "")">
 												<input type="radio" name="paymentMethod" value="gcash" @onchange="@(() => paymentMethod = "gcash")" checked="@(paymentMethod == "gcash")" />
-												<span class="method-icon">??</span>
+												<span class="method-icon">📱</span>
 												<span class="method-name">GCash</span>
 											</label>
 										</div>
@@ -468,7 +467,7 @@
 						</div>
 
 						<div class="success-actions">
-							<button class="btn-secondary" @onclick="PrintReceipt">??? Print Receipt</button>
+							<button class="btn-secondary" @onclick="PrintReceipt">🖨️ Print Receipt</button>
 							<button class="btn-primary" @onclick="NewBooking">+ New Walk-In Booking</button>
 						</div>
 					</div>
@@ -515,8 +514,8 @@
 	// Calculated values
 	int NightsCount => checkInDate.HasValue && checkOutDate.HasValue ? (checkOutDate.Value - checkInDate.Value).Days : 0;
 	decimal Subtotal => selectedRooms.Sum(r => r.room_price * NightsCount);
-	decimal TaxAmount => Subtotal * 0.12m;
-	decimal TotalAmount => Subtotal + TaxAmount;
+	decimal TaxAmount => 0m; // No taxes and fees
+	decimal TotalAmount => Subtotal;
 
 	protected override void OnInitialized()
 	{
@@ -784,7 +783,10 @@
 		createCmd.Parameters.AddWithValue("@email", string.IsNullOrEmpty(guestEmail) ? $"walkin_{Guid.NewGuid():N}@innsight.local" : guestEmail);
 		createCmd.Parameters.AddWithValue("@phone", guestPhone);
 		createCmd.Parameters.AddWithValue("@birthDate", guestBirthDate.HasValue ? guestBirthDate.Value : DBNull.Value);
-		createCmd.Parameters.AddWithValue("@password", Guid.NewGuid().ToString("N").Substring(0, 8)); // Random temp password
+		// Generate random temp password and hash it
+		var tempPassword = Guid.NewGuid().ToString("N").Substring(0, 8);
+		var hashedPassword = PasswordHasher.HashPassword(tempPassword);
+		createCmd.Parameters.AddWithValue("@password", hashedPassword);
 
 		var result = await createCmd.ExecuteScalarAsync();
 		return Convert.ToInt32(result);

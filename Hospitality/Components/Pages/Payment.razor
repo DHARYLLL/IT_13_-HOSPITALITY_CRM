@@ -34,7 +34,16 @@
 				@if (isDropdownOpen)
 				{
 					<div class="user-dropdown">
-						<button class="dropdown-item" title="Logout" @onclick="Logout">Logout</button>
+						<button class="dropdown-item" @onclick="GoToEditProfile">
+							<i class="icon icon-edit"></i> Edit Profile
+						</button>
+						<button class="dropdown-item" @onclick="GoToReceipts">
+							<i class="icon icon-receipt"></i> View Receipts
+						</button>
+						<div class="dropdown-divider"></div>
+						<button class="dropdown-item logout" @onclick="Logout">
+							<i class="icon icon-logout"></i> Logout
+						</button>
 					</div>
 				}
 			</div>
@@ -141,6 +150,56 @@
 						</div>
 					</div>
 
+					<!-- Voucher Code Section -->
+					<div class="form-section">
+						<div class="section-header">
+							<h3 class="section-title">Voucher Code (Optional)</h3>
+							<span class="section-subtitle">Have a reward voucher? Enter it here</span>
+						</div>
+						<div class="voucher-input-group">
+							<div class="voucher-input-wrapper">
+								<input type="text" 
+									   @bind="voucherCode" 
+									   @bind:event="oninput"
+									   class="voucher-input" 
+									   placeholder="Enter voucher code (e.g., REW-4-20251214202239)" 
+									   maxlength="50" />
+								@if (!string.IsNullOrEmpty(voucherCode))
+								{
+									<button type="button" class="btn-apply-voucher" @onclick="ValidateVoucherCode" disabled="@validatingVoucher">
+										@if (validatingVoucher)
+										{
+											<span class="spinner-small"></span>
+										}
+										else
+										{
+											<span>Apply</span>
+										}
+									</button>
+								}
+							</div>
+							@if (!string.IsNullOrEmpty(voucherMessage))
+							{
+								<div class="voucher-message @(voucherValid ? "success" : "error")">
+									<i class="icon @(voucherValid ? "icon-check" : "icon-lock")"></i>
+									<span>@voucherMessage</span>
+								</div>
+							}
+							@if (appliedVoucher != null)
+							{
+								<div class="voucher-applied">
+									<div class="voucher-info">
+										<strong>@appliedVoucher.reward_name</strong>
+										<p>@appliedVoucher.reward_description</p>
+									</div>
+									<button type="button" class="btn-remove-voucher" @onclick="RemoveVoucher">
+										Remove
+									</button>
+								</div>
+							}
+						</div>
+					</div>
+
 					<!-- Payment Type Selection -->
 					<div class="form-section">
 						<div class="section-header">
@@ -149,23 +208,23 @@
 						</div>
 						<div class="payment-methods">
 							<button type="button" class="payment-method @(selectedPaymentType == "full" ? "selected" : "")" @onclick="SelectFullPayment">
-								<div class="method-icon">💳</div>
-								<div class="method-details">
-									<div class="method-name">Pay in Full</div>
-									<div class="method-desc">₱@totalAmount.ToString("N2") - Complete payment now</div>
-								</div>
-								<div class="method-radio">
-									<input type="radio" name="paymentType" value="full" checked="@(selectedPaymentType == "full")" />
+								<input type="radio" name="paymentType" value="full" checked="@(selectedPaymentType == "full")" class="method-radio-input" />
+								<div class="method-content">
+									<div class="method-icon">💳</div>
+									<div class="method-text">
+										<div class="method-name">Pay in Full</div>
+										<div class="method-desc">₱@totalAmount.ToString("N2") - Complete payment now</div>
+									</div>
 								</div>
 							</button>
 							<button type="button" class="payment-method @(selectedPaymentType == "downpayment" ? "selected" : "")" @onclick="SelectDownpayment">
-								<div class="method-icon">📝</div>
-								<div class="method-details">
-									<div class="method-name">Downpayment (50%)</div>
-									<div class="method-desc">₱@minimumDownpayment.ToString("N2") now, balance at check-in</div>
-								</div>
-								<div class="method-radio">
-									<input type="radio" name="paymentType" value="downpayment" checked="@(selectedPaymentType == "downpayment")" />
+								<input type="radio" name="paymentType" value="downpayment" checked="@(selectedPaymentType == "downpayment")" class="method-radio-input" />
+								<div class="method-content">
+									<div class="method-icon">📝</div>
+									<div class="method-text">
+										<div class="method-name">Downpayment (50%)</div>
+										<div class="method-desc">₱@minimumDownpayment.ToString("N2") now, balance at check-in</div>
+									</div>
 								</div>
 							</button>
 						</div>
@@ -179,33 +238,33 @@
 						</div>
 						<div class="payment-methods">
 							<button type="button" class="payment-method @(selectedPaymentMethod == "card" ? "selected" : "")" @onclick="SelectCardPayment">
-								<div class="method-icon">💳</div>
-								<div class="method-details">
-									<div class="method-name">Credit/Debit Card</div>
-									<div class="method-desc">Visa, Mastercard, JCB</div>
-								</div>
-								<div class="method-radio">
-									<input type="radio" name="paymentMethod" value="card" checked="@(selectedPaymentMethod == "card")" />
+								<input type="radio" name="paymentMethod" value="card" checked="@(selectedPaymentMethod == "card")" class="method-radio-input" />
+								<div class="method-content">
+									<div class="method-icon">💳</div>
+									<div class="method-text">
+										<div class="method-name">Credit/Debit Card</div>
+										<div class="method-desc">Visa, Mastercard, JCB</div>
+									</div>
 								</div>
 							</button>
 							<button type="button" class="payment-method @(selectedPaymentMethod == "gcash" ? "selected" : "")" @onclick="SelectGCashPayment">
-								<div class="method-icon">📱</div>
-								<div class="method-details">
-									<div class="method-name">GCash</div>
-									<div class="method-desc">Pay with your GCash wallet</div>
-								</div>
-								<div class="method-radio">
-									<input type="radio" name="paymentMethod" value="gcash" checked="@(selectedPaymentMethod == "gcash")" />
+								<input type="radio" name="paymentMethod" value="gcash" checked="@(selectedPaymentMethod == "gcash")" class="method-radio-input" />
+								<div class="method-content">
+									<div class="method-icon">📱</div>
+									<div class="method-text">
+										<div class="method-name">GCash</div>
+										<div class="method-desc">Pay with your GCash wallet</div>
+									</div>
 								</div>
 							</button>
 							<button type="button" class="payment-method @(selectedPaymentMethod == "paymaya" ? "selected" : "")" @onclick="SelectPayMayaPayment">
-								<div class="method-icon">💳</div>
-								<div class="method-details">
-									<div class="method-name">PayMaya</div>
-									<div class="method-desc">Pay with your PayMaya wallet</div>
-								</div>
-								<div class="method-radio">
-									<input type="radio" name="paymentMethod" value="paymaya" checked="@(selectedPaymentMethod == "paymaya")" />
+								<input type="radio" name="paymentMethod" value="paymaya" checked="@(selectedPaymentMethod == "paymaya")" class="method-radio-input" />
+								<div class="method-content">
+									<div class="method-icon">💳</div>
+									<div class="method-text">
+										<div class="method-name">PayMaya</div>
+										<div class="method-desc">Pay with your PayMaya wallet</div>
+									</div>
 								</div>
 							</button>
 						</div>
@@ -375,6 +434,13 @@
 	// Terms and conditions
 	bool agreeToTerms = false;
 	bool subscribeToOffers = false;
+
+	// Voucher code
+	string voucherCode = "";
+	bool validatingVoucher = false;
+	bool voucherValid = false;
+	string voucherMessage = "";
+	RedeemedReward? appliedVoucher = null;
 
 	// PayMongo payment tracking
 	string paymentIntentId = "";
@@ -567,6 +633,67 @@
 		return Convert.ToInt32(result);
 	}
 
+	async Task ValidateVoucherCode()
+	{
+		if (string.IsNullOrWhiteSpace(voucherCode))
+		{
+			voucherMessage = "Please enter a voucher code";
+			voucherValid = false;
+			StateHasChanged();
+			return;
+		}
+
+		validatingVoucher = true;
+		voucherMessage = "";
+		voucherValid = false;
+		StateHasChanged();
+
+		try
+		{
+			// Get actual client ID
+			int actualClientId = await GetActualClientId();
+			
+			var voucher = await LoyaltyService.ValidateVoucherCodeAsync(voucherCode.Trim(), actualClientId);
+			
+			if (voucher != null)
+			{
+				appliedVoucher = voucher;
+				voucherValid = true;
+				voucherMessage = $"Voucher '{voucher.reward_name}' applied successfully!";
+				
+				// Note: Voucher discount logic would go here based on reward type
+				// For now, we just validate and store it
+			}
+			else
+			{
+				voucherValid = false;
+				voucherMessage = "Invalid or expired voucher code. Please check and try again.";
+				appliedVoucher = null;
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error validating voucher: {ex.Message}");
+			voucherValid = false;
+			voucherMessage = "Error validating voucher. Please try again.";
+			appliedVoucher = null;
+		}
+		finally
+		{
+			validatingVoucher = false;
+			StateHasChanged();
+		}
+	}
+
+	void RemoveVoucher()
+	{
+		voucherCode = "";
+		appliedVoucher = null;
+		voucherMessage = "";
+		voucherValid = false;
+		StateHasChanged();
+	}
+
 	string GetInitials()
 	{
 		if (user == null) return "G";
@@ -577,7 +704,24 @@
 	}
 
 	void ToggleDropdown() => isDropdownOpen = !isDropdownOpen;
-	void Logout() => Navigation.NavigateTo("/");
+	
+	void Logout()
+	{
+		isDropdownOpen = false;
+		Navigation.NavigateTo("/");
+	}
+
+	void GoToEditProfile()
+	{
+		isDropdownOpen = false;
+		Navigation.NavigateTo($"/client/edit-profile/{clientId}");
+	}
+
+	void GoToReceipts()
+	{
+		isDropdownOpen = false;
+		Navigation.NavigateTo($"/client/receipts/{clientId}");
+	}
 
 	string GetDashboardLink() => $"/client/profile/{clientId}";
 
@@ -757,6 +901,21 @@
 				if (success)
 				{
 					Console.WriteLine($"✅ Booking {newBookingId} created successfully!");
+					
+					// Mark voucher as used if one was applied
+					if (appliedVoucher != null && !string.IsNullOrEmpty(appliedVoucher.voucher_code))
+					{
+						int actualClientId = await GetActualClientId();
+						bool marked = await LoyaltyService.MarkRewardAsUsedAsync(
+							appliedVoucher.voucher_code, 
+							newBookingId, 
+							actualClientId
+						);
+						if (marked)
+						{
+							Console.WriteLine($"✅ Voucher {appliedVoucher.voucher_code} marked as used for booking {newBookingId}");
+						}
+					}
 					
 					// Award loyalty points
 					await LoyaltyService.AddPointsForBookingAsync(

@@ -11,35 +11,6 @@
     vertical-align: middle;
 }
 
-/* Sidebar Nav Icons */
-.icon-users {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Cpath d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M23 21v-2a4 4 0 0 0-3-3.87'/%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E");
-}
-
-.icon-dashboard {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Crect x='3' y='3' width='7' height='9'/%3E%3Crect x='14' y='3' width='7' height='5'/%3E%3Crect x='14' y='12' width='7' height='9'/%3E%3Crect x='3' y='16' width='7' height='5'/%3E%3C/svg%3E");
-}
-
-.icon-rooms {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Cpath d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3Cpolyline points='9 22 9 12 15 12 15 22'/%3E%3C/svg%3E");
-}
-
-.icon-gift {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Cpolyline points='20 12 20 22 4 22 4 12'/%3E%3Crect x='2' y='7' width='20' height='5'/%3E%3Cline x1='12' y1='22' x2='12' y2='7'/%3E%3Cpath d='M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z'/%3E%3Cpath d='M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z'/%3E%3C/svg%3E");
-}
-
-.icon-messages {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E");
-}
-
-.icon-reports {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Cline x1='18' y1='20' x2='18' y2='10'/%3E%3Cline x1='12' y1='20' x2='12' y2='4'/%3E%3Cline x1='6' y1='20' x2='6' y2='14'/%3E%3C/svg%3E");
-}
-
-.icon-analytics {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cline x1='12' y1='2' x2='12' y2='5'/%3E%3Cline x1='12' y1='19' x2='12' y2='22'/%3E%3Cline x1='2' y1='12' x2='5' y2='12'/%3E%3Cline x1='19' y1='12' x2='22' y2='12'/%3E%3C/svg%3E");
-}
-
 /* Header Icons */
 .icon-calendar {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
@@ -47,10 +18,6 @@
 
 .icon-refresh {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2'%3E%3Cpolyline points='23 4 23 10 17 10'/%3E%3Cpolyline points='1 20 1 14 7 14'/%3E%3Cpath d='M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15'/%3E%3C/svg%3E");
-}
-
-.icon-logout {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' stroke='%23333' stroke-width='1.5'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpolyline points='16 17 21 12 16 7'/%3E%3Cline x1='21' y1='12' x2='9' y2='12'/%3E%3C/svg%3E");
 }
 
 /* Metric Card Icons */
@@ -449,14 +416,14 @@ background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
-.metric-card::before {
+/*.metric-card::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: 4px;
     height: 100%;
-}
+}*/
 
 .metric-card.revenue::before { background: linear-gradient(180deg, #27ae60, #2ecc71); }
 .metric-card.bookings::before { background: linear-gradient(180deg, #3498db, #5dade2); }
@@ -526,15 +493,19 @@ font-size: 12px;
     color: #721c24;
 }
 
+.revenue-by-room {
+    margin-bottom: 24px;
+}
+
 /* Quick Actions */
 .quick-actions {
     margin-bottom: 24px;
 }
 
 .section-title {
-  font-size: 18px;
+    font-size: 18px;
     font-weight: 700;
-  color: #1a1a1a;
+    color: #1a1a1a;
     margin-bottom: 16px;
     font-family: 'Playfair Display', serif;
 }
@@ -594,7 +565,7 @@ font-size: 12px;
 /* Dashboard Grid */
 .dashboard-grid {
     display: grid;
-grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
 }
 
@@ -603,6 +574,7 @@ grid-template-columns: repeat(2, 1fr);
     border-radius: 16px;
     padding: 24px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+/*    margin-bottom: 24px;*/
 }
 
 .dashboard-card.full-width {
@@ -807,6 +779,20 @@ color: #5e1369;
 .booking-status {
     flex-shrink: 0;
 }
+
+/* Status Text (no rounded background, just colored text) */
+.status-text {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.status-text.status-confirmed { color: #27ae60; }
+.status-text.status-completed { color: #1565c0; }
+.status-text.status-cancelled { color: #c62828; }
+.status-text.status-active { color: #7b1fa2; }
+.status-text.status-pending { color: #ef6c00; }
 
 /* Status Badges */
 .status-badge {
@@ -1174,7 +1160,7 @@ transform: translate(-50%, -50%);
 /* Responsive */
 @media (max-width: 1400px) {
     .metrics-row {
- grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     }
     
     .actions-grid {

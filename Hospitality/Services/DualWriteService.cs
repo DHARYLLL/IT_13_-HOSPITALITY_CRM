@@ -267,6 +267,8 @@ await onlineCon.OpenAsync();
               return await SyncLoyaltyProgramToOnlineAsync(entityId, localCon, onlineCon, onlineTx);
             case "LoyaltyTransaction":
                return await SyncLoyaltyTransactionToOnlineAsync(entityId, localCon, onlineCon, onlineTx);
+            case "RedeemedReward":
+               return await SyncRedeemedRewardToOnlineAsync(entityId, localCon, onlineCon, onlineTx);
   default:
     Console.WriteLine($"?? Unknown entity type for sync: {entityType}");
        return false;
@@ -833,6 +835,80 @@ INSERT (loyalty_id, client_id, current_points, lifetime_points, current_tier, ti
   return true;
     }
 
+    private async Task<bool> SyncRedeemedRewardToOnlineAsync(int redeemedId, SqlConnection localCon, SqlConnection onlineCon, SqlTransaction? tx)
+    {
+        string selectSql = "SELECT * FROM RedeemedRewards WHERE redeemed_id = @id";
+        using var selectCmd = new SqlCommand(selectSql, localCon);
+        selectCmd.Parameters.AddWithValue("@id", redeemedId);
+
+        using var reader = await selectCmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return true;
+
+        // Store values before closing reader
+        var redeemedIdValue = reader["redeemed_id"];
+        var loyaltyId = reader["loyalty_id"];
+        var rewardId = reader["reward_id"];
+        var redemptionDate = reader["redemption_date"];
+        var status = reader["status"];
+        var usedDate = reader["used_date"] ?? DBNull.Value;
+        var bookingId = reader["booking_id"] ?? DBNull.Value;
+        var expiryDate = reader["expiry_date"] ?? DBNull.Value;
+        var voucherCode = reader["voucher_code"] ?? DBNull.Value;
+        var notes = reader["notes"] ?? DBNull.Value;
+
+        await reader.CloseAsync();
+
+        // Enable IDENTITY_INSERT
+        string enableIdentitySql = "SET IDENTITY_INSERT RedeemedRewards ON;";
+        using var enableCmd = new SqlCommand(enableIdentitySql, onlineCon, tx);
+        await enableCmd.ExecuteNonQueryAsync();
+
+        try
+        {
+            string mergeSql = @"
+            MERGE INTO RedeemedRewards AS target
+            USING (SELECT @redeemed_id AS redeemed_id) AS source
+            ON target.redeemed_id = source.redeemed_id
+            WHEN MATCHED THEN
+            UPDATE SET 
+                loyalty_id = @loyalty_id,
+                reward_id = @reward_id,
+                redemption_date = @redemption_date,
+                status = @status,
+                used_date = @used_date,
+                booking_id = @booking_id,
+                expiry_date = @expiry_date,
+                voucher_code = @voucher_code,
+                notes = @notes
+            WHEN NOT MATCHED THEN
+            INSERT (redeemed_id, loyalty_id, reward_id, redemption_date, status, used_date, booking_id, expiry_date, voucher_code, notes)
+            VALUES (@redeemed_id, @loyalty_id, @reward_id, @redemption_date, @status, @used_date, @booking_id, @expiry_date, @voucher_code, @notes);";
+
+            using var mergeCmd = new SqlCommand(mergeSql, onlineCon, tx);
+            mergeCmd.Parameters.AddWithValue("@redeemed_id", redeemedIdValue);
+            mergeCmd.Parameters.AddWithValue("@loyalty_id", loyaltyId);
+            mergeCmd.Parameters.AddWithValue("@reward_id", rewardId);
+            mergeCmd.Parameters.AddWithValue("@redemption_date", redemptionDate);
+            mergeCmd.Parameters.AddWithValue("@status", status);
+            mergeCmd.Parameters.AddWithValue("@used_date", usedDate);
+            mergeCmd.Parameters.AddWithValue("@booking_id", bookingId);
+            mergeCmd.Parameters.AddWithValue("@expiry_date", expiryDate);
+            mergeCmd.Parameters.AddWithValue("@voucher_code", voucherCode);
+            mergeCmd.Parameters.AddWithValue("@notes", notes);
+
+            await mergeCmd.ExecuteNonQueryAsync();
+            Console.WriteLine($"✅ RedeemedReward #{redeemedId} synced to online database");
+        }
+        finally
+        {
+            string disableIdentitySql = "SET IDENTITY_INSERT RedeemedRewards OFF;";
+            using var disableCmd = new SqlCommand(disableIdentitySql, onlineCon, tx);
+            await disableCmd.ExecuteNonQueryAsync();
+        }
+
+        return true;
+    }
+
     /// <summary>
     /// Updates sync_status column in the local database
     /// </summary>
@@ -887,6 +963,7 @@ catch
         "rooms" => "room_id",
         "loyaltyprograms" => "loyalty_id",
         "loyaltytransactions" => "transaction_id",
+        "redeemedrewards" => "redeemed_id",
         _ => "id"
     };
 }

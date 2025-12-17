@@ -9,22 +9,29 @@
 <div class="admin-page">
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
-			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
 			<div class="admin-console-text">
 				<h4>InnSight Hotels</h4>
-				<span>Admin console</span>
+				@* <span>Admin console</span> *@
 			</div>
 		</div>
 		<nav class="sidebar-nav">
 			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
-			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
-			<a href="/admin/rooms" class="nav-item active"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
-			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
-			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
-			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
 			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
 			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
+			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/clients" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>CLIENTS</span></a>
+			<a href="/admin/rooms" class="nav-item active"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
 		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
 	</aside>
 
 	<main class="admin-main">
@@ -34,8 +41,6 @@
 				<p class="page-subtitle">Manage hotel rooms and availability</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span><i class="icon icon-notification"></i></button>
-				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
@@ -44,9 +49,22 @@
 				<span><i class="icon icon-search"></i></span>
 				<input type="text" placeholder="Search by room name or number..." @bind="searchQuery" @bind:event="oninput" />
 			</div>
-			<button class="btn-sort" @onclick="SortByNumber">
-				<i class="icon icon-sort"></i> Sort: @(sortAsc ? "Ascending" : "Descending")
-			</button>
+			<div class="filter-dropdown-wrapper">
+				<select class="filter-dropdown" @onchange="OnStatusFilterChanged">
+					<option value="" selected="@(string.IsNullOrEmpty(statusFilter))">All Status (@rooms.Count)</option>
+					<option value="Available" selected="@(statusFilter == "Available")">Available (@rooms.Count(r => r.room_status == "Available"))</option>
+					<option value="Occupied" selected="@(statusFilter == "Occupied")">Occupied (@rooms.Count(r => r.room_status == "Occupied"))</option>
+					<option value="Cleaning" selected="@(statusFilter == "Cleaning")">Cleaning (@rooms.Count(r => r.room_status == "Cleaning"))</option>
+					<option value="Maintenance" selected="@(statusFilter == "Maintenance")">Maintenance (@rooms.Count(r => r.room_status == "Maintenance"))</option>
+					<option value="Reserved" selected="@(statusFilter == "Reserved")">Reserved (@rooms.Count(r => r.room_status == "Reserved"))</option>
+				</select>
+			</div>
+			<div class="filter-dropdown-wrapper">
+				<select class="filter-dropdown" @onchange="OnSortChanged">
+					<option value="asc" selected="@(sortAsc)">Sort: Ascending</option>
+					<option value="desc" selected="@(!sortAsc)">Sort: Descending</option>
+				</select>
+			</div>
 			<button class="btn-add-new" @onclick="ShowAddModal">
 				<span>+</span> Add New Room
 			</button>
@@ -72,8 +90,8 @@
 			<div class="empty-state-modern">
 				<div class="empty-state-icon">🏨</div>
 				<h3 class="empty-state-title">No rooms found</h3>
-				<p class="empty-state-text">@(string.IsNullOrWhiteSpace(searchQuery) ? "Start by adding your first room" : "Try adjusting your search criteria")</p>
-				@if (string.IsNullOrWhiteSpace(searchQuery))
+				<p class="empty-state-text">@(string.IsNullOrWhiteSpace(searchQuery) && string.IsNullOrEmpty(statusFilter) ? "Start by adding your first room" : "Try adjusting your search or filter criteria")</p>
+				@if (string.IsNullOrWhiteSpace(searchQuery) && string.IsNullOrEmpty(statusFilter))
 				{
 					<button class="btn-add-new" @onclick="ShowAddModal">
 						<span>+</span> Add Your First Room
@@ -83,68 +101,80 @@
 		}
 		else
 		{
-			<div class="rooms-grid">
-				@foreach (var room in PagedRooms)
-				{
-					<div class="room-card">
-					<div class="room-card-image">
-						@if (room.room_picture != null && room.room_picture.Length > 0)
+			<!-- Rooms Table -->
+			<div class="table-container">
+				<table class="data-table">
+					<thead>
+						<tr>
+							<th>Room</th>
+							<th>Name</th>
+							<th>Floor</th>
+							<th>Price</th>
+							<th>Occupancy</th>
+							<th>Status</th>
+							<th>Amenities</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (var room in PagedRooms)
 						{
-							<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" alt="@room.room_name" />
-						}
-						else
-						{
-							<div class="room-image-placeholder">
-								<i class="icon icon-rooms" style="font-size: 3rem; opacity: 0.3;"></i>
-							</div>
-						}
-						<div class="room-number-badge-new">@room.room_number</div>
-						<div class="room-status-badge-new status-@room.room_status.ToLower()">@room.room_status</div>
-					</div>
-						<div class="room-card-body">
-							<div class="room-card-title">
-								<span>@room.room_name</span>
-							</div>
-							<div class="room-card-price">
-								P @room.room_price.ToString("N2") <small>/ night</small>
-							</div>
-							<div class="room-card-details">
-								<div class="room-detail-item">
-									<i class="icon icon-building"></i>
-									Floor @room.room_floor
-								</div>
-								<div class="room-detail-item">
-									<i class="icon icon-guests"></i>
-									@room.room_occupancy guests
-								</div>
-							</div>
-							@if (!string.IsNullOrWhiteSpace(room.room_amenities))
-							{
-								<div class="room-amenities-list">
-									@foreach (var amenity in room.room_amenities.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(3))
+							<tr>
+								<td>
+									<div class="table-room-image">
+										@if (room.room_picture != null && room.room_picture.Length > 0)
+										{
+											<img src="@($"data:image/jpeg;base64,{Convert.ToBase64String(room.room_picture)}")" alt="@room.room_name" />
+										}
+										else
+										{
+											<div class="table-room-placeholder">
+												<i class="icon icon-rooms"></i>
+											</div>
+										}
+										<span class="table-room-number">#@room.room_number</span>
+									</div>
+								</td>
+								<td>@room.room_name</td>
+								<td>@room.room_floor</td>
+								<td>P @room.room_price.ToString("N2")</td>
+								<td>@room.room_occupancy guests</td>
+								<td>
+									<span class="status-badge-table status-@room.room_status.ToLower()">@room.room_status</span>
+								</td>
+								<td>
+									@if (!string.IsNullOrWhiteSpace(room.room_amenities))
 									{
-										<span class="amenity-tag">@amenity.Trim()</span>
+										<div class="table-amenities">
+											@foreach (var amenity in room.room_amenities.Split(',', StringSplitOptions.RemoveEmptyEntries).Take(2))
+											{
+												<span class="amenity-tag-small">@amenity.Trim()</span>
+											}
+											@if (room.room_amenities.Split(',').Length > 2)
+											{
+												<span class="amenity-tag-small">+@(room.room_amenities.Split(',').Length - 2)</span>
+											}
+										</div>
 									}
-									@if (room.room_amenities.Split(',').Length > 3)
+									else
 									{
-										<span class="amenity-tag">+@(room.room_amenities.Split(',').Length - 3) more</span>
+										<span>-</span>
 									}
-								</div>
-							}
-							<div class="room-card-actions">
-								<button class="btn-room-action primary" @onclick="() => Edit(room)">
-									<i class="icon icon-edit"></i> Edit
-								</button>
-								<button class="btn-room-action secondary" @onclick="() => BookRoom(room)">
-									<i class="icon icon-calendar"></i> Book
-								</button>
-								<button class="btn-room-action danger" @onclick="() => Delete(room)">
-									<i class="icon icon-delete"></i>
-								</button>
-							</div>
-						</div>
-					</div>
-				}
+								</td>
+								<td>
+									<div class="table-actions">
+										<button class="btn-table-action primary" @onclick="() => Edit(room)" title="Edit">
+											<i class="icon icon-edit"></i>
+										</button>
+										<button class="btn-table-action danger" @onclick="() => Delete(room)" title="Delete">
+											<i class="icon icon-delete"></i>
+										</button>
+									</div>
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
 			</div>
 
 			<!-- Modern Pagination -->
@@ -289,6 +319,7 @@
 @code {
 	List<Hospitality.Models.Room> rooms = new();
 	string searchQuery = string.Empty;
+	string statusFilter = string.Empty;
 	bool showModal = false;
 	bool isEdit = false;
 	Hospitality.Models.Room current = new();
@@ -374,12 +405,38 @@
 		finally { loading = false; }
 	}
 
-	IEnumerable<Hospitality.Models.Room> FilteredRooms => ApplySort(string.IsNullOrWhiteSpace(searchQuery)
-		? rooms
-		: rooms.Where(r => r.room_name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || r.room_number.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase)));
+	IEnumerable<Hospitality.Models.Room> FilteredRooms => ApplySort(ApplyFilters(rooms));
+
+	IEnumerable<Hospitality.Models.Room> ApplyFilters(IEnumerable<Hospitality.Models.Room> list)
+	{
+		var filtered = list;
+
+		if (!string.IsNullOrWhiteSpace(searchQuery))
+		{
+			filtered = filtered.Where(r => r.room_name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || r.room_number.ToString().Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+		}
+
+		if (!string.IsNullOrEmpty(statusFilter))
+		{
+			filtered = filtered.Where(r => r.room_status == statusFilter);
+		}
+
+		return filtered;
+	}
 
 	IEnumerable<Hospitality.Models.Room> ApplySort(IEnumerable<Hospitality.Models.Room> list) => sortAsc ? list.OrderBy(r => r.room_number) : list.OrderByDescending(r => r.room_number);
-	void SortByNumber() { sortAsc = !sortAsc; }
+
+	async Task OnStatusFilterChanged(ChangeEventArgs e)
+	{
+		statusFilter = e.Value?.ToString() ?? string.Empty;
+		page = 1;
+	}
+
+	async Task OnSortChanged(ChangeEventArgs e)
+	{
+		var sortValue = e.Value?.ToString() ?? "asc";
+		sortAsc = sortValue == "asc";
+	}
 
 	string GetStatusColor(string status) => status switch
 	{

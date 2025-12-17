@@ -16,7 +16,6 @@ namespace Hospitality.Database
         // Default points to local for offline-first approach
         public const string Default = Local;
 
-
         /// Gets a connection to the local database (always available)
         internal static SqlConnection GetConnection()
         {

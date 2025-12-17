@@ -4,37 +4,22 @@
 
 <link rel="stylesheet" href="css/admin.css" />
 <link rel="stylesheet" href="css/admin-rewards.css" />
+<link rel="stylesheet" href="css/admin-employees-modern.css" />
 
 <div class="admin-page">
 	<!-- Sidebar -->
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
-			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				@* <span>Admin console</span> *@
+			</div>
 		</div>
 		<nav class="sidebar-nav">
 			<a href="/admin/dashboard" class="nav-item">
 				<span class="nav-icon"><i class="icon icon-dashboard"></i></span>
 				<span>DASHBOARD</span>
-			</a>
-			<a href="/admin" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-users"></i></span>
-				<span>EMPLOYEES</span>
-			</a>
-			<a href="/admin/rooms" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-rooms"></i></span>
-				<span>ROOMS</span>
-			</a>
-			<a href="/admin/walkin" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-bookings-detail"></i></span>
-				<span>WALK-IN</span>
-			</a>
-			<a href="/admin/rewards" class="nav-item active">
-				<span class="nav-icon"><i class="icon icon-gift"></i></span>
-				<span>REWARDS</span>
-			</a>
-			<a href="/admin/messages" class="nav-item">
-				<span class="nav-icon"><i class="icon icon-messages"></i></span>
-				<span>MESSAGES</span>
 			</a>
 			<a href="/admin/reports" class="nav-item">
 				<span class="nav-icon"><i class="icon icon-reports"></i></span>
@@ -44,7 +29,37 @@
 				<span class="nav-icon"><i class="icon icon-analytics"></i></span>
 				<span>SALES & MARKETING</span>
 			</a>
+			<a href="/admin/walkin" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-bookings-detail"></i></span>
+				<span>WALK-IN</span>
+			</a>
+			<a href="/admin/messages" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-messages"></i></span>
+				<span>MESSAGES</span>
+			</a>
+			<a href="/admin" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
+				<span>EMPLOYEES</span>
+			</a>
+			<a href="/admin/clients" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-users"></i></span>
+				<span>CLIENTS</span>
+			</a>
+			<a href="/admin/rooms" class="nav-item">
+				<span class="nav-icon"><i class="icon icon-rooms"></i></span>
+				<span>ROOMS</span>
+			</a>
+			<a href="/admin/rewards" class="nav-item active">
+				<span class="nav-icon"><i class="icon icon-gift"></i></span>
+				<span>REWARDS</span>
+			</a>
 		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
 	</aside>
 
 	<!-- Main Content -->
@@ -55,51 +70,29 @@
 				<p class="page-subtitle">Manage rewards that clients can redeem with their points</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">3</span><i class="icon icon-notification"></i></button>
-				<button class="icon-btn" title="Profile"><i class="icon icon-profile"></i></button>
-				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
-
-		<!-- Stats Cards -->
-		<div class="stats-row">
-			<div class="stat-card">
-				<div class="stat-icon"><i class="icon icon-gift icon-xl"></i></div>
-				<div class="stat-info">
-					<div class="stat-value">@totalRewards</div>
-					<div class="stat-label">Total Rewards</div>
-				</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-icon"><i class="icon icon-toggle-on icon-xl"></i></div>
-				<div class="stat-info">
-					<div class="stat-value">@activeRewards</div>
-					<div class="stat-label">Active Rewards</div>
-				</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-icon"><i class="icon icon-voucher icon-xl"></i></div>
-				<div class="stat-info">
-					<div class="stat-value">@voucherCount</div>
-					<div class="stat-label">Vouchers</div>
-				</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-icon"><i class="icon icon-upgrade icon-xl"></i></div>
-				<div class="stat-info">
-					<div class="stat-value">@upgradeCount</div>
-					<div class="stat-label">Upgrades</div>
-				</div>
-			</div>
-		</div>
 
 		<div class="toolbar">
 			<div class="search-box">
 				<span><i class="icon icon-search"></i></span>
 				<input type="text" placeholder="Search rewards..." @bind="searchQuery" @bind:event="oninput" @onkeyup="OnSearchChanged" />
 			</div>
-			<button class="btn-sort" @onclick="ToggleTypeFilter">Type: @(string.IsNullOrEmpty(typeFilter) ? "All" : typeFilter)</button>
-			<button class="btn-sort" @onclick="ToggleStatusFilter">Status: @(statusFilter == null ? "All" : (statusFilter.Value ? "Active" : "Inactive"))</button>
+			<div class="filter-dropdown-wrapper">
+				<select class="filter-dropdown" @onchange="OnTypeFilterChanged">
+					<option value="" selected="@(string.IsNullOrEmpty(typeFilter))">Type: All</option>
+					<option value="voucher" selected="@(typeFilter == "voucher")">Type: Voucher</option>
+					<option value="upgrade" selected="@(typeFilter == "upgrade")">Type: Upgrade</option>
+					<option value="service" selected="@(typeFilter == "service")">Type: Service</option>
+				</select>
+			</div>
+			<div class="filter-dropdown-wrapper">
+				<select class="filter-dropdown" @onchange="OnStatusFilterChanged">
+					<option value="" selected="@(statusFilter == null)">Status: All</option>
+					<option value="true" selected="@(statusFilter == true)">Status: Active</option>
+					<option value="false" selected="@(statusFilter == false)">Status: Inactive</option>
+				</select>
+			</div>
 			<button class="btn-add-new" @onclick="ShowAddModal"><span>+</span> New Reward</button>
 		</div>
 
@@ -150,7 +143,6 @@
 								<tr class="@(!reward.is_active ? "inactive-row" : "")">
 									<td>
 										<div class="reward-info">
-											<div class="reward-icon"><i class="icon @GetRewardIconClass(reward.reward_type) icon-lg"></i></div>
 											<div class="reward-details">
 												<div class="reward-name">@reward.reward_name</div>
 												<div class="reward-desc">@TruncateText(reward.reward_description, 60)</div>
@@ -182,7 +174,7 @@
 										}
 										else
 										{
-											<span class="no-expiry">No expiry</span>
+											<span class="no-expiry">—</span>
 										}
 									</td>
 									<td>
@@ -201,22 +193,51 @@
 				</table>
 			</div>
 
-			<!-- Pagination -->
-			<div class="pagination">
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="FirstPage">� First</button>
-				<button class="page-btn" disabled="@(!CanPrev)" @onclick="PrevPage">� Prev</button>
-				@foreach (var p in PageNumbers)
-				{
-					<button class="page-btn @(p == page ? "active" : "")" @onclick="() => GoPage(p)">@p</button>
-				}
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="NextPage">Next �</button>
-				<button class="page-btn" disabled="@(!CanNext)" @onclick="LastPage">Last �</button>
-				<span class="page-info">Page @(page) of @totalPages � Total @totalCount</span>
-				<select class="page-size" @onchange="PageSizeChanged">
-					<option value="10" selected="@(pageSize == 10)">10</option>
-					<option value="20" selected="@(pageSize == 20)">20</option>
-					<option value="50" selected="@(pageSize == 50)">50</option>
-				</select>
+			<!-- Modern Pagination -->
+			<div class="pagination-modern">
+				<div class="pagination-controls">
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="FirstPage">
+						<i class="icon icon-chevron-double-left"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanPrev)" @onclick="PrevPage">
+						<i class="icon icon-chevron-left"></i>
+					</button>
+					
+					@foreach (var p in GetVisiblePageNumbers())
+					{
+						@if (p == -1)
+						{
+							<span class="page-dots">...</span>
+						}
+						else
+						{
+							<button class="page-btn-modern @(p == page ? "active" : "")" @onclick="() => GoPage(p)">
+								@p
+							</button>
+						}
+					}
+
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="NextPage">
+						<i class="icon icon-chevron-right"></i>
+					</button>
+					<button class="page-btn-modern" disabled="@(!CanNext)" @onclick="LastPage">
+						<i class="icon icon-chevron-double-right"></i>
+					</button>
+				</div>
+
+				<div class="pagination-info">
+					<span class="page-info-text">
+						Showing <strong>@((page - 1) * pageSize + 1)</strong> to <strong>@Math.Min(page * pageSize, FilteredRewards.Count)</strong> of <strong>@FilteredRewards.Count</strong> rewards
+					</span>
+					<div class="page-size-selector">
+						<label>Show:</label>
+						<select class="page-size-select" @onchange="PageSizeChanged">
+							<option value="10" selected="@(pageSize == 10)">10 per page</option>
+							<option value="20" selected="@(pageSize == 20)">20 per page</option>
+							<option value="50" selected="@(pageSize == 50)">50 per page</option>
+						</select>
+					</div>
+				</div>
 			</div>
 		}
 	</main>
@@ -456,28 +477,28 @@
 		return filtered.ToList();
 	}
 
-	void ToggleTypeFilter()
+	async Task OnTypeFilterChanged(ChangeEventArgs e)
 	{
-		typeFilter = typeFilter switch
-		{
-			"" => "voucher",
-			"voucher" => "upgrade",
-			"upgrade" => "service",
-			"service" => "",
-			_ => ""
-		};
+		typeFilter = e.Value?.ToString() ?? string.Empty;
 		page = 1;
-		_ = LoadRewardsAsync();
+		await LoadRewardsAsync();
 	}
 
-	void ToggleStatusFilter()
+	async Task OnStatusFilterChanged(ChangeEventArgs e)
 	{
-		statusFilter = statusFilter switch
+		var value = e.Value?.ToString();
+		if (string.IsNullOrEmpty(value))
 		{
-			null => true,
-			true => false,
-			false => null
-		};
+			statusFilter = null;
+		}
+		else if (bool.TryParse(value, out var boolValue))
+		{
+			statusFilter = boolValue;
+		}
+		else
+		{
+			statusFilter = null;
+		}
 		StateHasChanged();
 	}
 
@@ -661,6 +682,35 @@
 	}
 
 	// Pagination
+	List<int> GetVisiblePageNumbers()
+	{
+		var pages = new List<int>();
+		int maxVisible = 7;
+		
+		if (totalPages <= maxVisible)
+		{
+			return Enumerable.Range(1, totalPages).ToList();
+		}
+		
+		pages.Add(1);
+		
+		int start = Math.Max(2, page - 2);
+		int end = Math.Min(totalPages - 1, page + 2);
+		
+		if (start > 2) pages.Add(-1); // ellipsis
+		
+		for (int i = start; i <= end; i++)
+		{
+			pages.Add(i);
+		}
+		
+		if (end < totalPages - 1) pages.Add(-1); // ellipsis
+		
+		pages.Add(totalPages);
+		
+		return pages;
+	}
+
 	async Task PrevPage() { if (CanPrev) { page--; await LoadRewardsAsync(); } }
 	async Task NextPage() { if (CanNext) { page++; await LoadRewardsAsync(); } }
 	async Task FirstPage() { if (CanPrev) { page = 1; await LoadRewardsAsync(); } }

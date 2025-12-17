@@ -1,6 +1,7 @@
 /* New Booking Page - Modern Design with Theme */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Lora:wght@400;500;600;700&family=Open+Sans:wght@300;400;500;600;700&display=swap');
 @import url('client-nav.css');
+@import url('client-layout.css');
 
 * {
 	margin: 0;
@@ -408,7 +409,9 @@
 	background: white;
 	border: 1px solid #e5e5e7;
 	border-radius: 12px;
-	overflow: hidden;
+	overflow: visible;
+	display: flex;
+	flex-direction: column;
 }
 
 .summary-header {
@@ -424,6 +427,20 @@
 	font-size: 20px;
 }
 
+.summary-header .icon {
+	width: 20px;
+	height: 20px;
+	font-size: 0;
+	line-height: 0;
+}
+
+.offer-badge .icon {
+	width: 18px;
+	height: 18px;
+	font-size: 0;
+	line-height: 0;
+}
+
 .summary-header h3 {
 	font-size: 16px;
 	font-weight: 600;
@@ -435,6 +452,8 @@
 .summary-section {
 	padding: 16px 24px;
 	border-bottom: 1px solid #e5e5e7;
+	display: flex;
+	flex-direction: column;
 }
 
 .summary-section:last-child {
@@ -453,17 +472,25 @@
 	font-family: 'Lora', serif;
 	color: #1d1d1f;
 	margin: 0 0 10px 0;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
 }
 
 .summary-item {
-	margin-bottom: 6px;
+	margin-bottom: 8px;
+	display: block;
+}
+
+.summary-item:last-child {
+	margin-bottom: 0;
 }
 
 .summary-label {
 	font-size: 14px;
 	font-family: 'Open Sans', sans-serif;
 	color: #1d1d1f;
-	line-height: 1.4;
+	line-height: 1.5;
+	display: block;
 }
 
 .date-card {
@@ -711,7 +738,31 @@
 }
 
 .policy-list li::before {
-	content: '• ';
+	content: 'â—† ';
 	color: #5e1369;
 	font-weight: 600;
+}
+
+/* Icon Definitions */
+.icon {
+	display: inline-block;
+	width: 20px;
+	height: 20px;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	vertical-align: middle;
+	color: #5e1369;
+	font-size: 0;
+	line-height: 0;
+	text-indent: -9999px;
+	overflow: hidden;
+}
+
+.icon-calendar {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+}
+
+.icon-gift {
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.5'%3E%3Cpolyline points='20 12 20 22 4 22 4 12'/%3E%3Crect x='2' y='7' width='20' height='5'/%3E%3Cline x1='12' y1='22' x2='12' y2='7'/%3E%3Cpath d='M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z'/%3E%3Cpath d='M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z'/%3E%3C/svg%3E");
 }

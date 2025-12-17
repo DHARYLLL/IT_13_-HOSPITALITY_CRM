@@ -1,0 +1,537 @@
+@page "/staff/messages"
+@inject NavigationManager Navigation
+@inject Hospitality.Services.MessageService MessageService
+
+<link rel="stylesheet" href="css/admin.css" />
+<link rel="stylesheet" href="css/admin-messages.css" />
+
+<div class="admin-page">
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				<span>Staff console</span>
+			</div>
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/staff/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/staff/messages" class="nav-item active"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
+	</aside>
+
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Client Messages</h1>
+				<p class="page-subtitle">View and respond to messages sent by guests</p>
+			</div>
+			<div class="header-actions">
+			</div>
+		</header>
+
+		<div class="messages-container">
+			<!-- Left Panel: Conversations List -->
+			<div class="conversations-panel">
+				<div class="conversations-header">
+					<h2>Conversations</h2>
+					<span class="conversation-count">@conversationCount open</span>
+				</div>
+
+				<div class="filter-tabs">
+					<button class="filter-tab @(currentFilter == "All" ? "active" : "")" @onclick='() => SetFilter("All")'>
+						All <span class="badge">@allMessagesCount</span>
+					</button>
+					<button class="filter-tab @(currentFilter == "Open" ? "active" : "")" @onclick='() => SetFilter("Open")'>
+						Open <span class="badge">@openCount</span>
+					</button>
+					<button class="filter-tab @(currentFilter == "Resolved" ? "active" : "")" @onclick='() => SetFilter("Resolved")'>
+						Resolved
+					</button>
+				</div>
+
+				<!-- Moved search box here, right after filter tabs -->
+				<div class="messages-search-box">
+					<i class="icon icon-search"></i>
+					<input type="text" placeholder="Search guest, email, booking..." @bind="searchQuery" @bind:event="oninput" />
+				</div>
+
+				@if (loading)
+				{
+					<div class="loading-state">
+						<div class="spinner"></div>
+						<p>Loading conversations...</p>
+					</div>
+				}
+				else if (!FilteredConversations.Any())
+				{
+					<div class="empty-state">
+						<div class="empty-icon"><i class="icon icon-inbox icon-xl"></i></div>
+						<h3>No conversations found</h3>
+						<p>@(currentFilter == "All" ? "No client messages yet." : $"No {currentFilter.ToLower()} conversations.")</p>
+					</div>
+				}
+				else
+				{
+					<div class="conversations-list">
+						@foreach (var group in GroupedConversations)
+						{
+							<div class="conversation-item @(selectedClientId == group.ClientId ? "selected" : "") @(group.HasUnread ? "unread" : "")" 
+							     @onclick="() => SelectConversation(group.ClientId)">
+								<div class="conversation-header">
+									<div class="client-avatar">@GetInitials(group.ClientName)</div>
+									<div class="conversation-info">
+										<h4 class="client-name">@group.ClientName @(group.HasUnread ? "?" : "")</h4>
+										<p class="conversation-meta">
+											@TruncateText(group.LatestRegarding, 30)
+											@if (group.BookingId.HasValue)
+											{
+												<span class="booking-badge">#@group.BookingId</span>
+											}
+										</p>
+									</div>
+									<div class="conversation-time">
+										<span>@FormatTime(group.LatestDate)</span>
+										@if (group.UnreadCount > 0)
+										{
+											<span class="unread-badge">@group.UnreadCount</span>
+										}
+									</div>
+								</div>
+								<p class="conversation-preview">@TruncateText(group.LatestMessage, 60)</p>
+								@if (group.Status == "waiting")
+								{
+									<span class="status-badge status-waiting">Waiting</span>
+								}
+							</div>
+						}
+					</div>
+				}
+			</div>
+
+			<!-- Right Panel: Conversation Detail -->
+			<div class="conversation-detail">
+				@if (selectedClientId == null)
+				{
+					<div class="no-selection">
+						<div class="no-selection-icon"><i class="icon icon-messages icon-xl"></i></div>
+						<h3>Select a conversation</h3>
+						<p>Choose a conversation from the list to view and respond</p>
+					</div>
+				}
+				else if (loadingConversation)
+				{
+					<div class="loading-state">
+						<div class="spinner"></div>
+						<p>Loading...</p>
+					</div>
+				}
+				else if (selectedConversation.Count == 0)
+				{
+					<div class="empty-state">
+						<p>No messages in this conversation</p>
+					</div>
+				}
+				else
+				{
+					<div class="detail-header">
+						<div class="client-info">
+							<div class="client-avatar-large">@GetInitials(currentClientName)</div>
+							<div>
+								<h3>@currentClientName</h3>
+								@if (currentBookingId.HasValue)
+								{
+									<span class="booking-badge">Booking #@currentBookingId</span>
+								}
+							</div>
+						</div>
+						<div class="detail-actions">
+							<button class="btn-action" @onclick="@(() => selectedClientId = null)" title="Close">
+								<i class="icon icon-close"></i>
+							</button>
+						</div>
+					</div>
+
+					<div class="messages-thread">
+						@foreach (var message in selectedConversation.OrderBy(m => m.sent_date))
+						{
+							<div class="message-bubble @(message.message_type == "outgoing" ? "client-message" : "admin-message")">
+								<div class="message-header">
+									<div class="message-sender-info">
+										<div class="message-avatar @(message.message_type == "outgoing" ? "client-avatar" : "admin-avatar")">
+											@if (message.message_type == "outgoing")
+											{
+												@GetInitials(message.client_name)
+											}
+											else
+											{
+												<span><i class="icon icon-admin"></i></span>
+											}
+										</div>
+										<strong>@(message.message_type == "outgoing" ? message.client_name : "You (Staff)")</strong>
+									</div>
+									<span class="message-time">@message.sent_date.ToString("MMM dd, h:mm tt")</span>
+								</div>
+								@if (!string.IsNullOrWhiteSpace(message.message_subject))
+								{
+									<div class="message-subject">@message.message_subject</div>
+								}
+								@if (!string.IsNullOrWhiteSpace(message.regarding_text))
+								{
+									<div class="message-regarding">@message.regarding_text</div>
+								}
+								<div class="message-body">
+									@foreach (var paragraph in (message.message_body ?? "").Split(new[] { "\n\n", "\r\n\r\n", "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
+									{
+										<p>@paragraph</p>
+									}
+								</div>
+							</div>
+						}
+					</div>
+
+					<div class="reply-section">
+						<div class="reply-form">
+							<div class="form-field">
+								<label>Message</label>
+								<textarea @bind="replyMessage" 
+								  placeholder="Write your reply..."
+								       rows="3"></textarea>
+							</div>
+							<div class="reply-actions">
+								<button class="btn-secondary" @onclick="ClearReply">Clear</button>
+								<button class="btn-primary" @onclick="SendReply" disabled="@(isReplying || string.IsNullOrWhiteSpace(replyMessage))">
+									<i class="icon icon-send"></i> @(isReplying ? "Sending..." : "Send Reply")
+								</button>
+							</div>
+						</div>
+						
+						@if (!string.IsNullOrWhiteSpace(replyError))
+						{
+							<div class="error-message"><i class="icon icon-error"></i> @replyError</div>
+						}
+						@if (!string.IsNullOrWhiteSpace(replySuccess))
+						{
+							<div class="success-message"><i class="icon icon-success"></i> @replySuccess</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	</main>
+</div>
+
+@code {
+	List<Hospitality.Models.Message> allMessages = new();
+	List<ConversationGroup> groupedConversations = new();
+	List<Hospitality.Models.Message> selectedConversation = new();
+	
+	int? selectedClientId = null;
+	string currentClientName = string.Empty;
+	string currentClientEmail = string.Empty;
+	int? currentBookingId = null;
+	
+	string currentFilter = "All";
+	string searchQuery = string.Empty;
+	bool loading = true;
+	bool loadingConversation = false;
+	bool isReplying = false;
+	
+	int unreadCount = 0;
+	int conversationCount = 0;
+	int allMessagesCount = 0;
+	int unassignedCount = 0;
+	int openCount = 0;
+	
+	string replyMessage = string.Empty;
+	string replySubject = string.Empty;
+	string? replyError = null;
+	string? replySuccess = null;
+	
+	ElementReference messagesEndRef;
+
+	protected override async Task OnInitializedAsync()
+	{
+		await LoadMessagesAsync();
+	}
+
+	async Task LoadMessagesAsync()
+	{
+		loading = true;
+		try
+		{
+			var filter = new Hospitality.Models.MessageFilter 
+			{ 
+				FilterType = currentFilter,
+				TimeRange = "Last 90 days"
+			};
+			
+			allMessages = await MessageService.GetAllMessagesForAdminAsync(filter);
+			GroupConversations();
+			CalculateCounts();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading messages: {ex.Message}");
+		}
+		finally
+		{
+			loading = false;
+		}
+	}
+
+	void GroupConversations()
+	{
+		groupedConversations = allMessages
+			.GroupBy(m => m.client_id)
+			.Select(g => new ConversationGroup
+			{
+				ClientId = g.Key,
+				ClientName = g.First().client_name ?? "Unknown Guest",
+				ClientEmail = "", // Will be populated from database if needed
+				LatestMessage = g.OrderByDescending(m => m.sent_date).First().message_body ?? "",
+				LatestSubject = g.OrderByDescending(m => m.sent_date).First().message_subject ?? "",
+				LatestRegarding = g.OrderByDescending(m => m.sent_date).First().regarding_text ?? "General inquiry",
+				LatestDate = g.Max(m => m.sent_date),
+				UnreadCount = g.Count(m => !m.is_read && m.message_type == "outgoing"),
+				HasUnread = g.Any(m => !m.is_read && m.message_type == "outgoing"),
+				BookingId = g.FirstOrDefault(m => m.booking_id.HasValue)?.booking_id,
+				Status = g.Any(m => !m.is_read && m.message_type == "outgoing") ? "waiting" : "resolved"
+			})
+			.OrderByDescending(g => g.LatestDate)
+			.ToList();
+	}
+
+	void CalculateCounts()
+	{
+		conversationCount = groupedConversations.Count(g => g.Status == "waiting");
+		unreadCount = allMessages.Count(m => !m.is_read && m.message_type == "outgoing");
+		allMessagesCount = groupedConversations.Count;
+		unassignedCount = groupedConversations.Count(g => g.UnreadCount > 0 && g.Status == "waiting");
+		openCount = groupedConversations.Count(g => g.Status == "waiting");
+	}
+
+	async Task SetFilter(string filter)
+	{
+		if (currentFilter != filter)
+		{
+			currentFilter = filter;
+			await LoadMessagesAsync();
+			selectedClientId = null;
+		}
+	}
+
+	async Task SelectConversation(int clientId)
+	{
+		if (selectedClientId == clientId) return;
+		
+		selectedClientId = clientId;
+		loadingConversation = true;
+		replyError = null;
+		replySuccess = null;
+		replySubject = "";
+		replyMessage = "";
+		
+		try
+		{
+			selectedConversation = await MessageService.GetConversationAsync(clientId);
+			
+			if (selectedConversation.Any())
+			{
+				var firstMessage = selectedConversation.First();
+				currentClientName = firstMessage.client_name ?? "Unknown Guest";
+				currentClientEmail = ""; // TODO: Get from database if needed
+				currentBookingId = firstMessage.booking_id;
+				
+				// Set default reply subject based on latest client message
+				var latestClientMessage = selectedConversation
+					.Where(m => m.message_type == "outgoing")
+					.OrderByDescending(m => m.sent_date)
+					.FirstOrDefault();
+				if (latestClientMessage != null && !string.IsNullOrWhiteSpace(latestClientMessage.message_subject))
+				{
+					replySubject = latestClientMessage.message_subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase)
+						? latestClientMessage.message_subject
+						: $"Re: {latestClientMessage.message_subject}";
+				}
+				
+				// Mark unread client messages as read
+				var unreadMessages = selectedConversation.Where(m => !m.is_read && m.message_type == "outgoing");
+				foreach (var msg in unreadMessages)
+				{
+					await MessageService.MarkAsReadAsync(msg.message_id);
+					msg.is_read = true;
+				}
+				
+				// Refresh counts
+				CalculateCounts();
+				unreadCount = allMessages.Count(m => !m.is_read && m.message_type == "outgoing");
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error loading conversation: {ex.Message}");
+		}
+		finally
+		{
+			loadingConversation = false;
+		}
+	}
+
+	async Task SendReply()
+	{
+		if (string.IsNullOrWhiteSpace(replyMessage) || selectedClientId == null) return;
+		
+		isReplying = true;
+		replyError = null;
+		replySuccess = null;
+		
+		try
+		{
+			var latestClientMessage = selectedConversation
+				.Where(m => m.message_type == "outgoing")
+				.OrderByDescending(m => m.sent_date)
+				.FirstOrDefault();
+			
+			var replyMsg = new Hospitality.Models.Message
+			{
+				client_id = selectedClientId.Value,
+				message_subject = !string.IsNullOrWhiteSpace(replySubject) 
+					? replySubject 
+					: (latestClientMessage?.message_subject != null 
+						? $"Re: {latestClientMessage.message_subject}" 
+						: "Response from InnSight Team"),
+				message_body = replyMessage,
+				message_type = "service", // Not "outgoing" - this is from staff
+				regarding_text = latestClientMessage?.regarding_text,
+				booking_id = currentBookingId
+			};
+			
+			await MessageService.ReplyToClientAsync(replyMsg);
+			
+			replySuccess = "Reply sent successfully! The client will see this in their messages.";
+			replyMessage = string.Empty;
+			replySubject = string.Empty;
+			
+			// Refresh conversation to show the new message
+			selectedConversation = await MessageService.GetConversationAsync(selectedClientId.Value);
+			
+			// Set new reply subject
+			var newLatestClientMessage = selectedConversation
+				.Where(m => m.message_type == "outgoing")
+				.OrderByDescending(m => m.sent_date)
+				.FirstOrDefault();
+			if (newLatestClientMessage != null && !string.IsNullOrWhiteSpace(newLatestClientMessage.message_subject))
+			{
+				replySubject = newLatestClientMessage.message_subject.StartsWith("Re:", StringComparison.OrdinalIgnoreCase)
+					? newLatestClientMessage.message_subject
+					: $"Re: {newLatestClientMessage.message_subject}";
+			}
+			
+			// Reload all messages to update counts
+			await LoadMessagesAsync();
+			
+			// Clear success message after 3 seconds
+			await Task.Delay(3000);
+			replySuccess = null;
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			replyError = $"Failed to send reply: {ex.Message}";
+			Console.WriteLine($"Error sending reply: {ex.Message}");
+		}
+		finally
+		{
+			isReplying = false;
+		}
+	}
+
+	void ClearReply()
+	{
+		replyMessage = string.Empty;
+		replySubject = string.Empty;
+		replyError = null;
+		replySuccess = null;
+	}
+
+	async Task MarkAsResolved()
+	{
+		if (selectedClientId == null) return;
+		
+		try
+		{
+			await MessageService.MarkConversationResolvedAsync(selectedClientId.Value);
+			await LoadMessagesAsync();
+			replySuccess = "Conversation marked as resolved!";
+			
+			await Task.Delay(2000);
+			selectedClientId = null;
+			replySuccess = null;
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			replyError = $"Failed to mark as resolved: {ex.Message}";
+		}
+	}
+
+	IEnumerable<ConversationGroup> FilteredConversations => 
+		string.IsNullOrWhiteSpace(searchQuery) 
+			? groupedConversations
+			: groupedConversations.Where(c => 
+				c.ClientName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+				c.LatestMessage.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+				(c.BookingId.HasValue && c.BookingId.Value.ToString().Contains(searchQuery)));
+
+	IEnumerable<ConversationGroup> GroupedConversations => FilteredConversations;
+
+	string GetInitials(string? name)
+	{
+		if (string.IsNullOrWhiteSpace(name)) return "G";
+		var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		if (parts.Length >= 2)
+			return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+		return parts[0].Length >= 2 ? parts[0].Substring(0, 2).ToUpper() : parts[0].ToUpper();
+	}
+
+	string FormatTime(DateTime date)
+	{
+		var diff = DateTime.Now - date;
+		if (diff.TotalMinutes < 1) return "Just now";
+		if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+		if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+		if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+		return date.ToString("MMM dd");
+	}
+
+	string TruncateText(string text, int maxLength)
+	{
+		if (string.IsNullOrWhiteSpace(text)) return "";
+		return text.Length <= maxLength ? text : text.Substring(0, maxLength) + "...";
+	}
+
+	void Logout() => Navigation.NavigateTo("/");
+
+	public class ConversationGroup
+	{
+		public int ClientId { get; set; }
+		public string ClientName { get; set; } = string.Empty;
+		public string ClientEmail { get; set; } = string.Empty;
+		public string LatestMessage { get; set; } = string.Empty;
+		public string LatestSubject { get; set; } = string.Empty;
+		public string LatestRegarding { get; set; } = string.Empty;
+		public DateTime LatestDate { get; set; }
+		public int UnreadCount { get; set; }
+		public bool HasUnread { get; set; }
+		public int? BookingId { get; set; }
+		public string Status { get; set; } = string.Empty;
+	}
+}
+ 

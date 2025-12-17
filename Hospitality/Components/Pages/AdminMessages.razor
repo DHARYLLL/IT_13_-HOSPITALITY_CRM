@@ -8,18 +8,29 @@
 <div class="admin-page">
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
-			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				@* <span>Admin Console</span> *@
+			</div>
 		</div>
 		<nav class="sidebar-nav">
 			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
-			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
-			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
-			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
-			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
-			<a href="/admin/messages" class="nav-item active"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
 			<a href="/admin/reports" class="nav-item"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
 			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
+			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/admin/messages" class="nav-item active"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/clients" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>CLIENTS</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
 		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
 	</aside>
 
 	<main class="admin-main">
@@ -29,9 +40,6 @@
 				<p class="page-subtitle">View and respond to messages sent by guests</p>
 			</div>
 			<div class="header-actions">
-				<button class="icon-btn" title="Notifications"><span class="badge-dot">@unreadCount</span><i class="icon icon-notification"></i></button>
-				<button class="icon-btn" title="Profile"><i class="icon icon-profile"></i></button>
-				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
@@ -46,9 +54,6 @@
 				<div class="filter-tabs">
 					<button class="filter-tab @(currentFilter == "All" ? "active" : "")" @onclick='() => SetFilter("All")'>
 						All <span class="badge">@allMessagesCount</span>
-					</button>
-					<button class="filter-tab @(currentFilter == "Unassigned" ? "active" : "")" @onclick='() => SetFilter("Unassigned")'>
-						Unassigned <span class="badge">@unassignedCount</span>
 					</button>
 					<button class="filter-tab @(currentFilter == "Open" ? "active" : "")" @onclick='() => SetFilter("Open")'>
 						Open <span class="badge">@openCount</span>
@@ -154,9 +159,6 @@
 							</div>
 						</div>
 						<div class="detail-actions">
-							<button class="btn-action" @onclick="MarkAsResolved" title="Mark as resolved">
-								<i class="icon icon-check"></i> Resolve
-							</button>
 							<button class="btn-action" @onclick="@(() => selectedClientId = null)" title="Close">
 								<i class="icon icon-close"></i>
 							</button>

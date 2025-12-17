@@ -1,0 +1,51 @@
+@page "/staff/dashboard"
+@inject NavigationManager Navigation
+
+<link rel="stylesheet" href="css/admin.css" />
+
+<div class="admin-page">
+	<!-- Sidebar -->
+	<aside class="admin-sidebar">
+		<div class="sidebar-header">
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
+			<div class="admin-console-text">
+				<h4>InnSight Hotels</h4>
+				<span>Staff console</span>
+			</div>
+		</div>
+		<nav class="sidebar-nav">
+			<a href="/staff/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/staff/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
+	</aside>
+
+	<!-- Main Content -->
+	<main class="admin-main">
+		<header class="admin-header">
+			<div class="header-left">
+				<h1 class="page-title">Staff Dashboard</h1>
+				<p class="page-subtitle">Welcome to your staff portal</p>
+			</div>
+			<div class="header-actions">
+			</div>
+		</header>
+
+		<div class="dashboard-content">
+			<div class="welcome-card">
+				<h2>Welcome to InnSight Staff Portal</h2>
+				<p>Use the sidebar to navigate to Walk-in Bookings or Messages.</p>
+			</div>
+		</div>
+	</main>
+</div>
+
+@code {
+	void Logout() => Navigation.NavigateTo("/");
+}
+

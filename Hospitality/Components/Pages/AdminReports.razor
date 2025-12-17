@@ -13,29 +13,36 @@
 	<!-- Sidebar -->
 	<aside class="admin-sidebar">
 		<div class="sidebar-header">
-			<img src="images/InnSight.png" alt="InnSight" class="sidebar-logo" />
+			<img src="images/InnSight_NO_BG.png" alt="InnSight" class="sidebar-logo" />
 			<div class="admin-console-text">
 				<h4>InnSight Hotels</h4>
-				<span>Admin console</span>
+				@* <span>Admin console</span> *@
 			</div>
 		</div>
 		<nav class="sidebar-nav">
 			<a href="/admin/dashboard" class="nav-item"><span class="nav-icon"><i class="icon icon-dashboard"></i></span><span>DASHBOARD</span></a>
-			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
-			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
-			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
-			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
-			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
 			<a href="/admin/reports" class="nav-item active"><span class="nav-icon"><i class="icon icon-reports"></i></span><span>REPORTS</span></a>
 			<a href="/admin/analytics" class="nav-item"><span class="nav-icon"><i class="icon icon-analytics"></i></span><span>SALES & MARKETING</span></a>
+			<a href="/admin/walkin" class="nav-item"><span class="nav-icon"><i class="icon icon-bookings-detail"></i></span><span>WALK-IN</span></a>
+			<a href="/admin/messages" class="nav-item"><span class="nav-icon"><i class="icon icon-messages"></i></span><span>MESSAGES</span></a>
+			<a href="/admin" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>EMPLOYEES</span></a>
+			<a href="/admin/clients" class="nav-item"><span class="nav-icon"><i class="icon icon-users"></i></span><span>CLIENTS</span></a>
+			<a href="/admin/rooms" class="nav-item"><span class="nav-icon"><i class="icon icon-rooms"></i></span><span>ROOMS</span></a>
+			<a href="/admin/rewards" class="nav-item"><span class="nav-icon"><i class="icon icon-gift"></i></span><span>REWARDS</span></a>
 		</nav>
+		<div class="sidebar-footer">
+			<button class="nav-item logout-btn" @onclick="Logout">
+				<span class="nav-icon"><i class="icon icon-logout"></i></span>
+				<span>LOGOUT</span>
+			</button>
+		</div>
 	</aside>
 
 	<!-- Main Content -->
 	<main class="admin-main">
 		<header class="admin-header">
 			<div class="header-left">
-				<h1 class="page-title">Reports & Analytics</h1>
+				<h1 class="page-title">Reports</h1>
 				<p class="page-subtitle">Comprehensive overview of hotel performance and booking insights</p>
 			</div>
 			<div class="header-actions">
@@ -49,12 +56,8 @@
 					</select>
 				</div>
 				<button class="btn-refresh" @onclick="LoadReportData" disabled="@loading">
-					<i class="icon icon-refresh @(loading ? "spinning" : "")"></i>
+					<i class="icon icon-refresh @(loading ? "spinning" : "")"></i> Refresh
 				</button>
-				<button class="btn-export" @onclick="ExportReport">
-					<i class="icon icon-export"></i> Export
-				</button>
-				<button class="icon-btn" title="Logout" @onclick="Logout"><i class="icon icon-logout"></i></button>
 			</div>
 		</header>
 
@@ -67,72 +70,13 @@
 		}
 		else
 		{
-			<!-- Summary Stats Row - Dashboard Style -->
-			<section class="metrics-row">
-				<div class="metric-card revenue">
-					<div class="metric-icon">
-						<i class="icon icon-revenue"></i>
-					</div>
-					<div class="metric-content">
-						<span class="metric-value">P @totalRevenue.ToString("N0")</span>
-						<span class="metric-label">Total Revenue</span>
-						<span class="metric-period">Last @dateRangeDays days</span>
-					</div>
-					<div class="metric-trend @(revenueGrowthPercent >= 0 ? "positive" : "negative")">
-						<i class="icon icon-trend-up"></i> @(revenueGrowthPercent >= 0 ? "+" : "")@Math.Abs(revenueGrowthPercent).ToString("N0")%
-					</div>
-				</div>
-
-				<div class="metric-card bookings">
-					<div class="metric-icon">
-						<i class="icon icon-bookings"></i>
-					</div>
-					<div class="metric-content">
-						<span class="metric-value">@totalBookings</span>
-						<span class="metric-label">Total Bookings</span>
-						<span class="metric-period">Last @dateRangeDays days</span>
-					</div>
-					<div class="metric-trend positive">
-						<i class="icon icon-trend-up"></i> +@Math.Max(1, (int)(totalBookings * 0.08))%
-					</div>
-				</div>
-
-				<div class="metric-card occupancy">
-					<div class="metric-icon">
-						<i class="icon icon-hotel"></i>
-					</div>
-					<div class="metric-content">
-						<span class="metric-value">@occupancyRate%</span>
-						<span class="metric-label">Occupancy Rate</span>
-						<span class="metric-period">Current</span>
-					</div>
-					<div class="metric-trend @(occupancyRate > 70 ? "positive" : "neutral")">
-						<i class="icon @(occupancyRate > 70 ? "icon-check-circle" : "icon-info-circle")"></i> @(occupancyRate > 70 ? "Good" : "Normal")
-					</div>
-				</div>
-
-				<div class="metric-card guests">
-					<div class="metric-icon">
-						<i class="icon icon-guests"></i>
-					</div>
-					<div class="metric-content">
-						<span class="metric-value">@totalGuests</span>
-						<span class="metric-label">Total Guests</span>
-						<span class="metric-period">Last @dateRangeDays days</span>
-					</div>
-					<div class="metric-trend positive">
-						<i class="icon icon-trend-up"></i> +@Math.Max(1, (int)(totalGuests * 0.05))%
-					</div>
-				</div>
-			</section>
-
 			<!-- Performance Metrics Row -->
 			<section class="performance-section">
 				<div class="section-header">
 					<h2>Key Performance Indicators</h2>
 				</div>
 				<div class="kpi-cards">
-					<div class="kpi-card">
+					@* <div class="kpi-card">
 						<div class="kpi-header">
 							<span class="kpi-label">RevPAR</span>
 							<span class="kpi-badge">REVENUE PER AVAILABLE ROOM</span>
@@ -141,7 +85,7 @@
 						<div class="kpi-footer">
 							<span class="kpi-change positive">Per room per day</span>
 						</div>
-					</div>
+					</div> *@
 
 					<div class="kpi-card">
 						<div class="kpi-header">
@@ -165,7 +109,7 @@
 						</div>
 					</div>
 
-					<div class="kpi-card warning">
+					<div class="kpi-card">
 						<div class="kpi-header">
 							<span class="kpi-label">Cancellation Rate</span>
 							<span class="kpi-badge">RISK METRIC</span>
@@ -349,8 +293,7 @@
 								<div class="stat-circle">
 									<svg viewBox="0 0 36 36">
 										<circle class="circle-bg" cx="18" cy="18" r="15.915" />
-										<circle class="circle-fill retention" cx="18" cy="18" r="15.915"
-												stroke-dasharray="@retentionRate 100" />
+										<circle class="circle-fill retention" cx="18" cy="18" r="15.915" stroke-dasharray="@retentionRate 100" />
 									</svg>
 									<span class="stat-percent">@retentionRate.ToString("N0")%</span>
 								</div>
@@ -485,12 +428,14 @@
 										<td>@booking.CheckOutDate.ToString("MMM dd, yyyy")</td>
 										<td class="nights-cell">@booking.Nights</td>
 										<td class="guests-cell">@booking.GuestCount</td>
-										<td>
-											<span class="status-badge status-@booking.Status.ToLower().Replace(" ", "-")">
+										<td class="status-cell">
+											<span class="status-text status-@booking.Status.ToLower().Replace(" ", "-")">
 												@booking.Status
 											</span>
 										</td>
-										<td class="amount-cell">P @booking.Total.ToString("N2")</td>
+										<td class="amount-cell">
+											<span class="amount-value">P @booking.Total.ToString("N2")</span>
+										</td>
 									</tr>
 								}
 							}
@@ -499,15 +444,24 @@
 				</div>
 
 				<div class="table-footer">
-					<span class="showing-info">Showing @Math.Min(GetFilteredBookings().Count(), pageSize) of @GetFilteredBookings().Count() bookings</span>
 					<div class="pagination">
-						<button class="page-btn" disabled="@(currentPage == 1)" @onclick="PrevPage">Prev</button>
-						@for (int i = 1; i <= Math.Min(totalPages, 5); i++)
-						{
-							var pageNum = i;
-							<button class="page-btn @(currentPage == pageNum ? "active" : "")" @onclick="() => GoToPage(pageNum)">@pageNum</button>
-						}
-						<button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="NextPage">Next</button>
+						<button class="page-btn" disabled="@(currentPage == 1)" @onclick="FirstPage" title="First Page">««</button>
+						<button class="page-btn" disabled="@(currentPage == 1)" @onclick="PrevPage" title="Previous Page">‹</button>
+						<button class="page-btn active">@currentPage</button>
+						<button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="NextPage" title="Next Page">›</button>
+						<button class="page-btn" disabled="@(currentPage >= totalPages)" @onclick="LastPage" title="Last Page">»»</button>
+					</div>
+					<span class="showing-info">
+						Showing <strong>@GetStartIndex()</strong> to <strong>@GetEndIndex()</strong> of <strong>@GetFilteredBookings().Count()</strong> bookings
+					</span>
+					<div class="per-page-selector">
+						<span class="per-page-label">Show:</span>
+						<select class="per-page-select" @onchange="OnPageSizeChanged">
+							<option value="8" selected="@(pageSize == 8)">8 per page</option>
+							<option value="15" selected="@(pageSize == 15)">15 per page</option>
+							<option value="25" selected="@(pageSize == 25)">25 per page</option>
+							<option value="50" selected="@(pageSize == 50)">50 per page</option>
+						</select>
 					</div>
 				</div>
 			</section>
@@ -855,10 +809,25 @@
 			_ = LoadReportData();
 		}
 	}
-
+	
+	int GetStartIndex() => GetFilteredBookings().Count() == 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+	int GetEndIndex() => GetFilteredBookings().Count() == 0 ? 0 : Math.Min(currentPage * pageSize, GetFilteredBookings().Count());
+	
+	void FirstPage() { currentPage = 1; }
 	void PrevPage() { if (currentPage > 1) currentPage--; }
 	void NextPage() { if (currentPage < totalPages) currentPage++; }
+	void LastPage() { currentPage = totalPages; }
 	void GoToPage(int page) { currentPage = page; }
+	
+	void OnPageSizeChanged(ChangeEventArgs e)
+	{
+		if (int.TryParse(e.Value?.ToString(), out var newSize))
+		{
+			pageSize = newSize;
+			currentPage = 1; // Reset to first page when changing page size
+			StateHasChanged();
+		}
+	}
 
 	void ExportReport()
 	{

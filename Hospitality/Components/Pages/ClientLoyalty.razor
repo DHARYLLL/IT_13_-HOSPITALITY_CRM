@@ -3,6 +3,7 @@
 @inject Hospitality.Services.LoyaltyService LoyaltyService
 @inject Hospitality.Services.UserService UserService
 @inject Hospitality.Services.BookingService BookingService
+@using Microsoft.Maui.ApplicationModel.DataTransfer
 
 <link rel="stylesheet" href="css/clientprofile.css" />
 <link rel="stylesheet" href="css/client-layout.css" />
@@ -11,6 +12,22 @@
 <div class="loyalty-page">
 	<!-- Shared Navigation Component -->
 	<ClientNavigation UserId="@clientId" ActivePage="loyalty" User="@user" LoyaltyProgram="@loyalty" />
+
+	@if (!string.IsNullOrEmpty(copiedMessage))
+	{
+		<div class="notification-toast">
+			<i class="icon icon-check"></i>
+			<span>@copiedMessage</span>
+		</div>
+	}
+
+	@if (!string.IsNullOrEmpty(useInstructions))
+	{
+		<div class="notification-toast instructions-toast">
+			<i class="icon icon-gift"></i>
+			<span>@useInstructions</span>
+		</div>
+	}
 
 	<div class="loyalty-container">
 		@if (loading)
@@ -31,11 +48,11 @@
 			<!-- Hero Section -->
 			<header class="loyalty-hero">
 				<div class="hero-content">
-					<h1 class="hero-title">Your loyalty & rewards</h1>
+					<h1 class="hero-title">Your loyalty and rewards</h1>
 					<p class="hero-subtitle">Track your points, tier progress, and available benefits.</p>
 				</div>
 				<div class="hero-badge">
-					<span class="badge-icon">@currentTier.Icon</span>
+					<span class="badge-icon" style="font-size: 48px;">@currentTier.Icon</span>
 					<span class="badge-label">Member since @loyalty.member_since.Year</span>
 				</div>
 			</header>
@@ -45,7 +62,7 @@
 				<!-- Current Status Card -->
 				<div class="card status-card">
 					<div class="card-header">
-						<div class="card-icon">??</div>
+						<i class="icon icon-gift"></i>
 						<h3>Current status</h3>
 						<span class="tier-badge" style="background: @currentTier.Color">@currentTier.Icon @currentTier.Name tier</span>
 					</div>
@@ -77,7 +94,7 @@
 							}
 							else
 							{
-								<p class="progress-text max-tier">?? You've reached the highest tier!</p>
+								<p class="progress-text max-tier"><i class="icon icon-star"></i> You've reached the highest tier!</p>
 							}
 						</div>
 					</div>
@@ -86,7 +103,7 @@
 				<!-- Benefits Card -->
 				<div class="card benefits-card">
 					<div class="card-header">
-						<div class="card-icon">??</div>
+						<i class="icon icon-gift"></i>
 						<h3>@currentTier.Name benefits</h3>
 					</div>
 
@@ -95,7 +112,7 @@
 							@foreach (var benefit in currentTier.Benefits)
 							{
 								<li>
-									<span class="benefit-check">?</span>
+									<i class="icon icon-check"></i>
 									<span>@benefit</span>
 								</li>
 							}
@@ -126,7 +143,7 @@
 				<!-- Statistics Card -->
 				<div class="card stats-card">
 					<div class="card-header">
-						<div class="card-icon">??</div>
+						<i class="icon icon-calendar"></i>
 						<h3>Lifetime statistics</h3>
 						<span class="time-label">Since @loyalty.member_since.ToString("MMM yyyy")</span>
 					</div>
@@ -137,7 +154,7 @@
 							<div class="stat-label">Total stays</div>
 						</div>
 						<div class="stat-item">
-							<div class="stat-number">$@loyalty.lifetime_spend.ToString("N0")</div>
+							<div class="stat-number">PHP @loyalty.lifetime_spend.ToString("N0")</div>
 							<div class="stat-label">Total spend</div>
 						</div>
 						<div class="stat-item">
@@ -154,7 +171,7 @@
 				<!-- Available Rewards -->
 				<div class="card rewards-card">
 					<div class="card-header">
-						<div class="card-icon">??</div>
+						<i class="icon icon-gift"></i>
 						<h3>Available rewards</h3>
 						<span class="rewards-count">@availableRewards.Count rewards</span>
 					</div>
@@ -184,7 +201,14 @@
 									<button class="btn-redeem" 
 											disabled="@(!canRedeem)"
 											@onclick="() => RedeemReward(reward.reward_id)">
-										@(canRedeem ? "Redeem" : "?? Locked")
+										@if (canRedeem)
+										{
+											<span>Redeem</span>
+										}
+										else
+										{
+											<span><i class="icon icon-lock"></i> Locked</span>
+										}
 									</button>
 								</div>
 							}
@@ -192,10 +216,123 @@
 					}
 				</div>
 
+				<!-- My Redeemed Rewards -->
+				<div class="card redeemed-rewards-card">
+					<div class="card-header">
+						<i class="icon icon-gift"></i>
+						<h3>My redeemed rewards</h3>
+					</div>
+
+					<div class="rewards-usage-info">
+						<p><strong>How to use your rewards:</strong></p>
+						<ul>
+							<li><strong>Vouchers:</strong> Copy the voucher code and enter it during booking or present it at check-in</li>
+							<li><strong>Services/Upgrades:</strong> Present your voucher code at the front desk during check-in</li>
+							<li><strong>Late Checkout:</strong> Request late checkout when making your reservation or at check-in</li>
+						</ul>
+					</div>
+
+					@if (redeemedRewards.Count == 0)
+					{
+						<p class="empty-text">You haven't redeemed any rewards yet.</p>
+					}
+					else
+					{
+						<div class="table-wrapper">
+							<table class="redeemed-rewards-table">
+								<thead>
+									<tr>
+										<th>Reward</th>
+										<th>Description</th>
+										<th>Voucher Code</th>
+										<th>Redeemed</th>
+										<th>Expires</th>
+										<th>Status</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+									@foreach (var redeemed in redeemedRewards)
+									{
+										var statusClass = redeemed.IsUsed ? "used" : redeemed.IsExpired ? "expired" : "active";
+										<tr class="@statusClass">
+											<td>
+												<strong>@redeemed.reward_name</strong>
+												<br />
+												<small class="reward-type">@redeemed.reward_type</small>
+											</td>
+											<td>@redeemed.reward_description</td>
+											<td>
+												@if (!string.IsNullOrEmpty(redeemed.voucher_code))
+												{
+													<div class="voucher-code-cell">
+														<code class="voucher-code-text @(redeemed.IsUsed || redeemed.IsExpired ? "voucher-used" : "")">@redeemed.voucher_code</code>
+														@if (!redeemed.IsUsed && !redeemed.IsExpired)
+														{
+															<button class="btn-copy-small" @onclick="() => CopyVoucherCode(redeemed.voucher_code)" title="Copy voucher code">
+																<i class="icon icon-check"></i>
+															</button>
+														}
+													</div>
+												}
+												else
+												{
+													<span class="no-code">—</span>
+												}
+											</td>
+											<td>@redeemed.redemption_date.ToString("MMM dd, yyyy")</td>
+											<td>
+												@if (redeemed.expiry_date.HasValue)
+												{
+													<span class="@(redeemed.IsExpired ? "expired-date" : "")">
+														@redeemed.expiry_date.Value.ToString("MMM dd, yyyy")
+													</span>
+												}
+												else
+												{
+													<span class="no-expiry">No expiry</span>
+												}
+											</td>
+											<td>
+												<span class="status-badge @statusClass">
+													@if (redeemed.IsUsed)
+													{
+														<i class="icon icon-check"></i> <text>Used</text>
+													}
+													else if (redeemed.IsExpired)
+													{
+														<i class="icon icon-lock"></i> <text>Expired</text>
+													}
+													else
+													{
+														<i class="icon icon-gift"></i> <text>Active</text>
+													}
+												</span>
+											</td>
+											<td>
+												@if (!redeemed.IsUsed && !redeemed.IsExpired)
+												{
+													<button class="btn-use" @onclick="async () => await ShowUseInstructions(redeemed)" title="How to use this reward">
+														Use
+													</button>
+												}
+												else
+												{
+													<span class="no-action">—</span>
+												}
+											</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+					}
+				</div>
+
 				<!-- Recent Activity -->
 				<div class="card activity-card">
 					<div class="card-header">
-						<div class="card-icon">??</div>
+						<i class="icon icon-calendar"></i>
 						<h3>Recent points activity</h3>
 						<a href="#" class="view-all-link">View all</a>
 					</div>
@@ -230,7 +367,7 @@
 			<!-- Tier Comparison Table -->
 			<div class="card tiers-comparison-card">
 				<div class="card-header">
-					<div class="card-icon">??</div>
+					<i class="icon icon-gift"></i>
 					<h3>All membership tiers</h3>
 				</div>
 
@@ -250,7 +387,7 @@
 								<tr class="@(tier.Name == currentTier.Name ? "current-tier" : "")">
 									<td>
 										<span class="tier-name-cell">
-											<span style="font-size: 1.5rem;">@tier.Icon</span>
+											<span style="font-size: 1.5rem; margin-right: 8px;">@tier.Icon</span>
 											<strong>@tier.Name</strong>
 											@if (tier.Name == currentTier.Name)
 											{
@@ -263,11 +400,11 @@
 										@{
 											var rate = tier.Name switch
 											{
-												"Bronze" => "10 pts/$1",
-												"Silver" => "12 pts/$1",
-												"Gold" => "15 pts/$1",
-												"Platinum" => "20 pts/$1",
-												_ => "10 pts/$1"
+												"Bronze" => "10 pts/₱1",
+												"Silver" => "12 pts/₱1",
+												"Gold" => "15 pts/₱1",
+												"Platinum" => "20 pts/₱1",
+												_ => "10 pts/₱1"
 											};
 										}
 										@rate
@@ -299,8 +436,11 @@
 	LoyaltyTier? nextTier;
 	List<LoyaltyReward> availableRewards = new();
 	List<LoyaltyTransaction> recentTransactions = new();
+	List<RedeemedReward> redeemedRewards = new();
 	bool loading = true;
 	int actualClientId = 0;
+	string? copiedMessage = null;
+	string? useInstructions = null;
 
 	protected override async Task OnParametersSetAsync()
 	{
@@ -356,6 +496,10 @@
 			// Load recent transactions
 			recentTransactions = await LoyaltyService.GetTransactionHistoryAsync(actualClientId, 10);
 			Console.WriteLine($"? Loaded {recentTransactions.Count} transactions");
+
+			// Load redeemed rewards
+			redeemedRewards = await LoyaltyService.GetRedeemedRewardsAsync(actualClientId);
+			Console.WriteLine($"? Loaded {redeemedRewards.Count} redeemed rewards");
 		}
 		catch (Exception ex)
 		{
@@ -420,9 +564,9 @@
 
 	string GetAverageNightlyRate()
 	{
-		if (loyalty == null || loyalty.lifetime_stays == 0) return "$0";
+		if (loyalty == null || loyalty.lifetime_stays == 0) return "PHP 0";
 		var avg = loyalty.lifetime_spend / loyalty.lifetime_stays;
-		return $"${avg:N0}";
+		return $"PHP {avg:N0}";
 	}
 
 	async Task RedeemReward(int rewardId)
@@ -438,6 +582,7 @@
 				// Reload loyalty data
 				loyalty = await LoyaltyService.GetLoyaltyProgramAsync(actualClientId);
 				recentTransactions = await LoyaltyService.GetTransactionHistoryAsync(actualClientId, 10);
+				redeemedRewards = await LoyaltyService.GetRedeemedRewardsAsync(actualClientId);
 				StateHasChanged();
 			}
 		}
@@ -445,5 +590,51 @@
 		{
 			Console.WriteLine($"? Error redeeming reward: {ex.Message}");
 		}
+	}
+
+	private async Task CopyVoucherCode(string voucherCode)
+	{
+		try
+		{
+			// Copy to clipboard using MAUI Clipboard API
+			await Clipboard.SetTextAsync(voucherCode);
+			
+			copiedMessage = $"Voucher code '{voucherCode}' copied!";
+			StateHasChanged();
+			
+			// Clear message after 3 seconds
+			await Task.Delay(3000);
+			copiedMessage = null;
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error copying voucher code: {ex.Message}");
+			copiedMessage = "Failed to copy. Please copy manually: " + voucherCode;
+			StateHasChanged();
+			
+			await Task.Delay(5000);
+			copiedMessage = null;
+			StateHasChanged();
+		}
+	}
+
+	private async Task ShowUseInstructions(RedeemedReward redeemed)
+	{
+		var instructions = redeemed.reward_type?.ToLower() switch
+		{
+			"voucher" => $"To use this voucher: 1) Copy the voucher code '{redeemed.voucher_code}', 2) Go to Book a Room, 3) Enter the code when prompted, or 4) Present it at check-in.",
+			"service" => $"To use this service: Present your voucher code '{redeemed.voucher_code}' at the front desk during check-in.",
+			"upgrade" => $"To use this upgrade: Present your voucher code '{redeemed.voucher_code}' at the front desk during check-in. Subject to availability.",
+			_ => $"Present your voucher code '{redeemed.voucher_code}' at the front desk during check-in."
+		};
+		
+		useInstructions = instructions;
+		StateHasChanged();
+		
+		// Clear message after 5 seconds
+		await Task.Delay(5000);
+		useInstructions = null;
+		StateHasChanged();
 	}
 }

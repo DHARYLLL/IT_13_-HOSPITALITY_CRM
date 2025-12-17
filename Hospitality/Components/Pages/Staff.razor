@@ -1,12 +1,30 @@
 @page "/staff"
 @inject NavigationManager Navigation
-@inject Hospitality.Services.RoomService RoomService
+@implements IDisposable
 
-<h3>Staff Dashboard</h3>
-<p>Welcome staff. You can manage rooms (book only) and view dashboards. Employee management hidden.</p>
-<a href="/admin/rooms">Go to Rooms</a>
-<button @onclick="Logout">Logout</button>
+<div style="display: none;">
+Redirecting...
+</div>
 
 @code {
- void Logout()=> Navigation.NavigateTo("/");
+protected override void OnInitialized()
+{
+// Immediately redirect staff to dashboard
+Navigation.NavigateTo("/staff/dashboard", forceLoad: true);
+}
+
+protected override async Task OnAfterRenderAsync(bool firstRender)
+{
+if (firstRender)
+{
+// Force redirect on first render
+await Task.Delay(10);
+Navigation.NavigateTo("/staff/dashboard", forceLoad: true);
+}
+}
+
+public void Dispose()
+{
+// Nothing to dispose
+}
 }
